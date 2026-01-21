@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><%= title || 'Visolux' %></title>
+  <link rel="icon" href="/favicon.ico" />
+  <% const faviconHref = siteLogoUrl || '/public/placeholder.svg'; %>
+  <link rel="icon" href="<%= faviconHref %>" />
+  <link rel="apple-touch-icon" href="<%= faviconHref %>" />
   <link rel="stylesheet" href="/public/css/app.css" />
 </head>
 <body>
