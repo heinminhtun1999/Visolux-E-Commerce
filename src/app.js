@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const SQLiteStoreFactory = require('connect-sqlite3');
 
 const { env } = require('./config/env');
+const { getDb } = require('./db/db');
 const { attachLocals } = require('./middleware/locals');
 const { ensureCsrfToken, csrfProtection } = require('./middleware/csrf');
 const { notFoundHandler, errorHandler } = require('./middleware/errors');
@@ -34,6 +35,32 @@ function getFiuuGatewayOrigin() {
 
 function createApp() {
   const app = express();
+
+  // Health check for uptime monitors. Keep it before session/CSRF so it doesn't write cookies.
+  app.locals.startedAt = Date.now();
+  app.get('/healthz', (req, res) => {
+    let dbOk = true;
+    let dbError = null;
+    try {
+      // Lightweight DB check (also ensures schema/migrations can run).
+      const db = getDb();
+      db.prepare('SELECT 1 as ok').get();
+    } catch (e) {
+      dbOk = false;
+      dbError = String(e && e.message ? e.message : e);
+    }
+
+    const ok = dbOk;
+    return res.status(ok ? 200 : 503).json({
+      ok,
+      status: ok ? 'ok' : 'db_error',
+      nodeEnv: env.nodeEnv,
+      uptimeSec: Math.round(process.uptime()),
+      startedAt: new Date(app.locals.startedAt).toISOString(),
+      now: new Date().toISOString(),
+      ...(ok ? {} : { error: dbError }),
+    });
+  });
 
   app.set('trust proxy', env.trustProxy);
   app.set('view engine', 'ejs');
@@ -73,6 +100,7 @@ function createApp() {
         legacyHeaders: false,
         skip: (req) => {
           const p = String(req.path || '');
+          if (p === '/healthz') return true;
           if (p === '/payment/callback' || p === '/payment/return' || p === '/payment/refund/notify') return true;
           if (p.startsWith('/public/')) return true;
           if (p.startsWith('/uploads/')) return true;

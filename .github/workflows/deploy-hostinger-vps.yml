@@ -26,6 +26,45 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p "${{ secrets.VPS_PORT }}" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
 
+      - name: Backup current app on VPS
+        run: |
+          ssh -p "${{ secrets.VPS_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" << 'EOF'
+            set -e
+
+            BASE="${{ secrets.VPS_PATH }}"
+            APP_DIR="$BASE/app"
+            BK_DIR="$BASE/backups"
+            TS="$(date +%Y%m%d_%H%M%S)"
+
+            mkdir -p "$BK_DIR"
+
+            if [ -d "$APP_DIR" ]; then
+              # Code/config backup (excludes node_modules, uploads and DB files)
+              tar -czf "$BK_DIR/app_${TS}.tgz" \
+                --exclude='app/.git' \
+                --exclude='app/node_modules' \
+                --exclude='app/storage/uploads' \
+                --exclude='app/storage/data/*.db*' \
+                --exclude='app/storage/data/*.sqlite*' \
+                -C "$BASE" app || true
+
+              # SQLite DB backup (fast copy; keep a few generations)
+              if [ -f "$APP_DIR/storage/data/app.db" ]; then
+                cp -f "$APP_DIR/storage/data/app.db" "$BK_DIR/appdb_${TS}.db"
+              fi
+              if [ -f "$APP_DIR/storage/data/sessions.db" ]; then
+                cp -f "$APP_DIR/storage/data/sessions.db" "$BK_DIR/sessions_${TS}.db"
+              fi
+            fi
+
+            # Retain only the newest 10 backups
+            ls -1t "$BK_DIR"/app_*.tgz 2>/dev/null | tail -n +11 | xargs -r rm -f || true
+            ls -1t "$BK_DIR"/appdb_*.db 2>/dev/null | tail -n +11 | xargs -r rm -f || true
+            ls -1t "$BK_DIR"/sessions_*.db 2>/dev/null | tail -n +11 | xargs -r rm -f || true
+
+            echo "Backups ready in $BK_DIR"
+          EOF
+
       - name: Sync app to VPS (rsync)
         run: |
           rsync -az --delete \
@@ -59,6 +98,37 @@ jobs:
 
               pm2 startOrReload ecosystem.config.cjs --env production
               pm2 save
+
+              # Post-restart health check (no external DNS/HTTPS required).
+              PORT="$(node -e "require('dotenv').config(); console.log(process.env.PORT || 3000)")"
+              echo "Checking /healthz on 127.0.0.1:${PORT}"
+              ok=""
+              for i in $(seq 1 20); do
+                if command -v curl >/dev/null 2>&1; then
+                  if curl -fsS "http://127.0.0.1:${PORT}/healthz" >/dev/null; then ok="yes"; break; fi
+                elif command -v wget >/dev/null 2>&1; then
+                  if wget -qO- "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1; then ok="yes"; break; fi
+                else
+                  if PORT="$PORT" node -e "const http=require('http');const port=Number(process.env.PORT||3000);const req=http.get({host:'127.0.0.1',port,path:'/healthz',timeout:1500},(res)=>{process.exit(res.statusCode===200?0:1)});req.on('timeout',()=>{req.destroy();process.exit(1)});req.on('error',()=>process.exit(1));" >/dev/null 2>&1; then ok="yes"; break; fi
+                fi
+                sleep 1
+              done
+
+              if [ -z "$ok" ]; then
+                echo "Health check failed; showing last logs"
+                pm2 logs visolux --lines 80 --nostream || true
+                exit 1
+              fi
+
+              if command -v curl >/dev/null 2>&1; then
+                curl -fsS "http://127.0.0.1:${PORT}/healthz" | head -c 2000
+                echo ""
+              elif command -v wget >/dev/null 2>&1; then
+                wget -qO- "http://127.0.0.1:${PORT}/healthz" | head -c 2000
+                echo ""
+              else
+                PORT="$PORT" node -e "const http=require('http');const port=Number(process.env.PORT||3000);http.get({host:'127.0.0.1',port,path:'/healthz'},(res)=>{let d='';res.setEncoding('utf8');res.on('data',c=>d+=c);res.on('end',()=>{process.stdout.write(d.slice(0,2000)+'\\n');process.exit(res.statusCode===200?0:1);});}).on('error',(e)=>{console.error(e.message);process.exit(1);});"
+              fi
             else
               echo "pm2 not found on VPS. Install it once: npm i -g pm2"
               echo "Then run: pm2 startOrReload ecosystem.config.cjs --env production && pm2 save"
