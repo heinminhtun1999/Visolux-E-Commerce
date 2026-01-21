@@ -56,7 +56,22 @@ function regenerateSession(req) {
   });
 }
 
-router.get('/login', (req, res) => res.render('auth/login', { title: 'Sign in' }));
+function safeReturnTo(returnTo, fallbackPath) {
+  const fallback = fallbackPath || '/';
+  const raw = String(returnTo || '').trim();
+  if (!raw) return fallback;
+
+  // Only allow relative paths within this site.
+  if (!raw.startsWith('/')) return fallback;
+  if (raw.startsWith('//')) return fallback;
+  if (raw.includes('://')) return fallback;
+  return raw;
+}
+
+router.get('/login', (req, res) => {
+  const returnTo = safeReturnTo(req.query.returnTo, '');
+  return res.render('auth/login', { title: 'Sign in', returnTo });
+});
 router.get('/register', (req, res) =>
   res.render('auth/register', { title: 'Create account', malaysiaStates: MALAYSIA_STATES })
 );
@@ -278,6 +293,7 @@ router.post(
       body: z.object({
         identifier: z.string().trim().min(1).max(128),
         password: z.string().min(1).max(200),
+        returnTo: z.string().trim().max(2000).optional().or(z.literal('')),
       }),
       query: z.any().optional(),
       params: z.any().optional(),
@@ -285,12 +301,13 @@ router.post(
   ),
   async (req, res, next) => {
     try {
+      const returnTo = safeReturnTo(req.validated.body.returnTo, '');
       const { identifier, password } = req.validated.body;
       const user = userRepo.findByUsernameOrEmail(identifier);
       if (!user) {
         logger.warn({ event: 'login_failed', reason: 'user_not_found', identifier, ip: req.ip }, 'login failed');
         req.session.flash = { type: 'error', message: 'Invalid credentials.' };
-        return res.redirect('/login');
+        return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
 
       const ok = await bcrypt.compare(password, user.password_hash);
@@ -300,7 +317,7 @@ router.post(
           'login failed'
         );
         req.session.flash = { type: 'error', message: 'Invalid credentials.' };
-        return res.redirect('/login');
+        return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
 
       await regenerateSession(req);
@@ -318,7 +335,7 @@ router.post(
       );
 
       req.session.flash = { type: 'success', message: 'Signed in.' };
-      return res.redirect('/');
+      return res.redirect(returnTo || '/');
     } catch (e) {
       return next(e);
     }

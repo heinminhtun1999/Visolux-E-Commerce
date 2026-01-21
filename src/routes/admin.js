@@ -1091,14 +1091,31 @@ router.post(
         throw err;
       }
 
+      const previousImageUrl = String(current.image_url || '').trim();
+
       if (!req.file) {
         const err = new Error('Please choose an image to upload.');
         err.status = 400;
         throw err;
       }
 
-      const optimized = await imageService.optimizeAndSaveSiteImage(req.file.path, `category_${id}`);
+      // Use versioned filenames for categories so updates don't get stuck behind
+      // long-lived immutable caching in production.
+      const optimized = await imageService.optimizeAndSaveSiteContentImage(req.file.path, `category_${id}`);
       categoryRepo.setImageUrl(id, optimized);
+
+      // Clean up the previous category image file (best-effort).
+      if (previousImageUrl.startsWith('/uploads/site/')) {
+        const file = previousImageUrl.slice('/uploads/site/'.length);
+        const safe = file && !file.includes('/') && !file.includes('\\') && !file.includes('..');
+        if (safe && file.startsWith(`site_category_${id}`) && file.endsWith('.webp')) {
+          try {
+            fs.unlinkSync(path.join(process.cwd(), 'storage', 'uploads', 'site', file));
+          } catch (_) {
+            // ignore
+          }
+        }
+      }
       try {
         fs.unlinkSync(req.file.path);
       } catch (_) {
@@ -1133,7 +1150,30 @@ router.post(
         err.status = 400;
         throw err;
       }
+
+      const current = categoryRepo.getById(id);
+      if (!current) {
+        const err = new Error('Category not found.');
+        err.status = 404;
+        throw err;
+      }
+
+      const previousImageUrl = String(current.image_url || '').trim();
       categoryRepo.setImageUrl(id, '');
+
+      // Remove the on-disk image file (best-effort).
+      if (previousImageUrl.startsWith('/uploads/site/')) {
+        const file = previousImageUrl.slice('/uploads/site/'.length);
+        const safe = file && !file.includes('/') && !file.includes('\\') && !file.includes('..');
+        if (safe && file.startsWith(`site_category_${id}`) && file.endsWith('.webp')) {
+          try {
+            fs.unlinkSync(path.join(process.cwd(), 'storage', 'uploads', 'site', file));
+          } catch (_) {
+            // ignore
+          }
+        }
+      }
+
       req.session.flash = { type: 'success', message: 'Category image removed.' };
       return res.redirect('/admin/categories');
     } catch (e) {

@@ -25,6 +25,7 @@ const { MALAYSIA_STATES, buildMalaysiaFullAddress, getMalaysiaRegionForState } =
 const shippingService = require('../services/shippingService');
 const promoService = require('../services/promoService');
 const { logger } = require('../utils/logger');
+const { verifyOrderViewToken } = require('../utils/orderViewToken');
 
 const router = express.Router();
 
@@ -32,6 +33,28 @@ function canAccessOrder(req, order) {
   if (!order) return false;
   if (req.session.user && order.user_id && req.session.user.user_id === order.user_id) return true;
   if (!order.user_id && req.session.lastGuestOrderId && Number(req.session.lastGuestOrderId) === order.order_id) return true;
+  return false;
+}
+
+function canAccessOrderViaEmailToken(req, order) {
+  if (!order || order.user_id) return false;
+  const token = String(req.query.t || '').trim();
+  if (!token) return false;
+  if (!verifyOrderViewToken({ token, orderId: order.order_id })) return false;
+  // Promote token-based access into the session for subsequent navigation.
+  req.session.lastGuestOrderId = order.order_id;
+  return true;
+}
+
+function requireOrderAccess(req, res, order) {
+  if (canAccessOrder(req, order) || canAccessOrderViaEmailToken(req, order)) return true;
+
+  // Registered customers should sign in to view their orders.
+  if (order?.user_id && !req.session.user) {
+    req.session.flash = { type: 'error', message: 'Please sign in to view your order.' };
+    return res.redirect(`/login?returnTo=${encodeURIComponent(req.originalUrl || '/')}`);
+  }
+
   return false;
 }
 
@@ -272,7 +295,13 @@ router.post(
 router.get('/orders/:id/confirmation', (req, res) => {
   const id = Number(req.params.id);
   const order = orderRepo.getWithItems(id);
-  if (!order || !canAccessOrder(req, order)) {
+  if (!order) {
+    return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+  }
+  const ok = requireOrderAccess(req, res, order);
+  if (ok !== true) {
+    // requireOrderAccess already handled redirect OR access was denied.
+    if (ok) return ok;
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
   return res.render('orders/confirmation', { title: 'Order Confirmation', order, promo: orderRepo.getPromoForOrder(id) });
@@ -339,7 +368,12 @@ router.get('/orders/slips', requireUser, (req, res) => {
 router.get('/orders/:id', (req, res) => {
   const id = Number(req.params.id);
   const order = orderRepo.getWithItems(id);
-  if (!order || !canAccessOrder(req, order)) {
+  if (!order) {
+    return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+  }
+  const ok = requireOrderAccess(req, res, order);
+  if (ok !== true) {
+    if (ok) return ok;
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
   return res.render('orders/detail', {
@@ -356,7 +390,12 @@ router.get('/orders/:id', (req, res) => {
 router.get('/orders/:id/offline-transfer', (req, res) => {
   const id = Number(req.params.id);
   const order = orderRepo.getWithItems(id);
-  if (!order || !canAccessOrder(req, order)) {
+  if (!order) {
+    return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+  }
+  const ok = requireOrderAccess(req, res, order);
+  if (ok !== true) {
+    if (ok) return ok;
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
   if (order.payment_method !== 'OFFLINE_TRANSFER') {
@@ -387,7 +426,10 @@ router.post(
     try {
       const id = Number(req.params.id);
       const order = orderRepo.getWithItems(id);
-      if (!order || !canAccessOrder(req, order)) {
+      if (!order) return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+      const ok = requireOrderAccess(req, res, order);
+      if (ok !== true) {
+        if (ok) return ok;
         return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
       }
       if (order.payment_method !== 'OFFLINE_TRANSFER') return res.redirect(`/orders/${order.order_id}`);

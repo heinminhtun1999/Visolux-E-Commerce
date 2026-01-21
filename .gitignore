@@ -43,5 +43,11 @@ storage/uploads/**
 # generated docs
 *.pdf
 
+# generated doc outputs
+docs/generated/
+
+# extracted/reference specs (non-essential)
+fiuu-spec-*.txt
+
 # VS Code
 .vscode/
