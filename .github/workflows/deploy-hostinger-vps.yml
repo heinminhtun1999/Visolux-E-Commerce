@@ -68,6 +68,7 @@ jobs:
       - name: Sync app to VPS (rsync)
         run: |
           rsync -az --delete \
+            -e "ssh -p ${{ secrets.VPS_PORT }}" \
             --exclude '.git' \
             --exclude 'node_modules' \
             --exclude '.env' \
