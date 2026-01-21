@@ -108,7 +108,8 @@ router.post(
 
         userRepo.setPasswordResetToken(user.user_id, { tokenHash, ttlMinutes });
 
-        const base = String(env.appBaseUrl || '').replace(/\/$/, '');
+        let base = String(env.appBaseUrl || '').replace(/\/$/, '');
+        if (env.secureCookies && base.startsWith('http://')) base = `https://${base.slice('http://'.length)}`;
         const resetLink = `${base}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
         // Best-effort email send; do not leak failures to the user.

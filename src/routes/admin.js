@@ -1584,8 +1584,11 @@ router.get('/orders', (req, res) => {
 });
 
 router.get('/orders/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const order = orderRepo.getWithItems(id);
+  const raw = String(req.params.id || '').trim();
+  const numeric = Number(raw);
+  const resolvedId = Number.isFinite(numeric) && numeric > 0 ? numeric : (orderRepo.getByCode(raw)?.order_id || null);
+  const id = resolvedId;
+  const order = id ? orderRepo.getWithItems(id) : null;
   if (!order) return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
 
   const promo = orderRepo.getPromoForOrder(id);

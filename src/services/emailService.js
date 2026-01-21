@@ -41,6 +41,14 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+function getPublicBaseUrl() {
+  let base = String(env.appBaseUrl || '').trim().replace(/\/$/, '');
+  // If cookies are marked Secure, the public site should be HTTPS.
+  // This prevents broken email links (e.g. http://...) in SSL-only deployments.
+  if (env.secureCookies && base.startsWith('http://')) base = `https://${base.slice('http://'.length)}`;
+  return base;
+}
+
 function buildOrderEmail({ order, promo, orderLink }) {
   const orderLabel = order.order_code || `#${order.order_id}`;
 
@@ -300,7 +308,7 @@ async function sendOrderReceivedEmail({ order, promo }) {
     return { sent: false, reason: 'not_configured' };
   }
 
-  const orderLink = `${String(env.appBaseUrl || '').replace(/\/$/, '')}/admin/orders/${order.order_id}`;
+  const orderLink = `${getPublicBaseUrl()}/admin/orders/${order.order_id}`;
   const msg = buildOrderEmail({ order, promo, orderLink });
 
   const transport = createTransport();
@@ -334,7 +342,7 @@ async function sendOrderPlacedEmailToCustomer({ order, promo }) {
     return { sent: false, reason: 'missing_customer_email' };
   }
 
-  const base = String(env.appBaseUrl || '').replace(/\/$/, '');
+  const base = getPublicBaseUrl();
   const token = order.user_id ? '' : createOrderViewToken({ orderId: order.order_id, ttlDays: 180 });
   const orderLink = `${base}/orders/${order.order_id}${token ? `?t=${encodeURIComponent(token)}` : ''}`;
   const msg = buildCustomerOrderEmail({ order, promo, orderLink });
@@ -370,7 +378,7 @@ async function sendOrderStatusChangedEmailToCustomer({ order, event, note }) {
     return { sent: false, reason: 'missing_customer_email' };
   }
 
-  const base = String(env.appBaseUrl || '').replace(/\/$/, '');
+  const base = getPublicBaseUrl();
   const token = order.user_id ? '' : createOrderViewToken({ orderId: order.order_id, ttlDays: 180 });
   const orderLink = `${base}/orders/${order.order_id}${token ? `?t=${encodeURIComponent(token)}` : ''}`;
   const msg = buildCustomerOrderStatusEmail({ order, event, note, orderLink });
@@ -477,7 +485,7 @@ async function sendRefundRequestFailedEmail({ order, toCustomerEmail, itemLabel,
   if (!to) return { sent: false, reason: 'missing_recipients' };
 
   const adminOrderLink = order && order.order_id
-    ? `${String(env.appBaseUrl || '').replace(/\/$/, '')}/admin/orders/${order.order_id}`
+    ? `${getPublicBaseUrl()}/admin/orders/${order.order_id}`
     : null;
   const msg = buildRefundRequestFailedEmail({ order, itemLabel, qty, amountCents, reason, errorMessage, adminOrderLink });
 
