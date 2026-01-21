@@ -24,6 +24,7 @@ const adminNotificationRepo = require('../repositories/adminNotificationRepo');
 const { MALAYSIA_STATES, buildMalaysiaFullAddress, getMalaysiaRegionForState } = require('../utils/malaysia');
 const shippingService = require('../services/shippingService');
 const promoService = require('../services/promoService');
+const { logger } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -208,10 +209,7 @@ router.post(
         await emailService.sendOrderPlacedEmailToCustomer({ order, promo });
 
       } catch (e) {
-        if (env.nodeEnv !== 'test') {
-          // eslint-disable-next-line no-console
-          console.warn('[email] failed to send order notification', String(e && e.message ? e.message : e));
-        }
+        logger.warn({ event: 'order_email_failed', err: e, orderId: order.order_id }, 'failed to send order notification emails');
       }
 
       cartService.clear(req.session);
@@ -225,6 +223,10 @@ router.post(
 
       if (!fiuu.isConfigured()) {
         req.session.flash = { type: 'error', message: 'Online payment is not configured yet. Please use offline bank transfer.' };
+        logger.error(
+          { event: 'checkout_online_payment_not_configured', orderId: order.order_id },
+          'online payment attempted but FIUU is not configured'
+        );
         orderRepo.updatePaymentStatus(order.order_id, 'FAILED', 'Online payment attempted but Fiuu not configured');
         orderRepo.updateFulfilmentStatus(order.order_id, 'CANCELLED', 'Online payment not configured');
         return res.redirect(`/orders/${order.order_id}`);

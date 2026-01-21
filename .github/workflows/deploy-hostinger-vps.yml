@@ -50,6 +50,13 @@ jobs:
             node scripts/ensure-storage.js
 
             if command -v pm2 >/dev/null 2>&1; then
+              # Ensure PM2 log rotation is installed/configured (best-effort).
+              pm2 describe pm2-logrotate >/dev/null 2>&1 || pm2 install pm2-logrotate || true
+              pm2 set pm2-logrotate:max_size 10M || true
+              pm2 set pm2-logrotate:retain 10 || true
+              pm2 set pm2-logrotate:compress true || true
+              pm2 set pm2-logrotate:dateFormat YYYY-MM-DD_HH-mm-ss || true
+
               pm2 startOrReload ecosystem.config.cjs --env production
               pm2 save
             else

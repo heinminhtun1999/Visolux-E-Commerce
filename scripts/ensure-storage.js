@@ -10,6 +10,9 @@ function main() {
 
   ensureDir(path.join(root, 'storage', 'data'));
 
+  // App logs
+  ensureDir(path.join(root, 'storage', 'logs'));
+
   // Product uploads
   ensureDir(path.join(root, 'storage', 'uploads', 'products'));
 

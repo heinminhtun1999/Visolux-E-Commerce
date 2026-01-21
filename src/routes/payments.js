@@ -10,6 +10,7 @@ const orderService = require('../services/orderService');
 const orderRefundRepo = require('../repositories/orderRefundRepo');
 const orderRefundExtraRepo = require('../repositories/orderRefundExtraRepo');
 const refundService = require('../services/refundService');
+const { logger } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -62,15 +63,18 @@ function processPaymentPayload(payload, source) {
   const verification = fiuu.verifySkey(payload, env.fiuu.secretKey);
   if (!verification.ok) {
     if (env.fiuu.logRequests) {
-      // eslint-disable-next-line no-console
-      console.warn('[fiuu] signature verification failed', {
-        source,
-        reason: verification.reason || 'bad_skey',
-        payloadKeys: Object.keys(payload || {}),
-        used: verification.used || null,
-        received: verification.received || null,
-        expected: verification.expected || null,
-      });
+      logger.warn(
+        {
+          event: 'fiuu_signature_verification_failed',
+          source,
+          reason: verification.reason || 'bad_skey',
+          payloadKeys: Object.keys(payload || {}),
+          used: verification.used || null,
+          received: verification.received || null,
+          expected: verification.expected || null,
+        },
+        'fiuu signature verification failed'
+      );
     }
     const err = new Error('Invalid signature');
     err.status = 400;
@@ -145,6 +149,15 @@ function processPaymentPayload(payload, source) {
       note: `Fiuu ${source} confirmed tranID=${tranID}`,
     });
 
+    if (result && result.stockDeducted === false) {
+      logger.error(
+        { event: 'payment_paid_but_stock_insufficient', orderId, stockError: result.stockError || null, tranID, source },
+        'payment succeeded but stock deduction failed'
+      );
+    } else {
+      logger.info({ event: 'payment_confirmed', orderId, tranID, source }, 'payment confirmed');
+    }
+
     // In-app admin notification + customer email (best-effort; skip duplicates)
     try {
       if (!isDuplicate && previousPaymentStatus !== 'PAID') {
@@ -183,6 +196,7 @@ function processPaymentPayload(payload, source) {
 
   if (statusCode === '22') {
     orderRepo.updatePaymentStatus(orderId, 'PENDING', `Fiuu ${source} pending tranID=${tranID}`);
+    logger.warn({ event: 'payment_pending', orderId, tranID, source }, 'payment pending');
     return { orderId, statusCode, isDuplicate, outcome: 'PENDING' };
   }
 
@@ -191,6 +205,8 @@ function processPaymentPayload(payload, source) {
     orderRepo.updatePaymentStatus(orderId, 'FAILED', `Fiuu ${source} failed tranID=${tranID} status=${statusCode}`);
     orderRepo.updateFulfilmentStatus(orderId, 'CANCELLED', 'Payment failed/cancelled');
   }
+
+  logger.warn({ event: 'payment_failed', orderId, tranID, source, statusCode }, 'payment failed');
 
   return { orderId, statusCode, isDuplicate, outcome: 'FAILED' };
 }
@@ -214,6 +230,7 @@ router.post('/payment/callback', (req, res) => {
     // Always 200 to prevent retries storm once processed.
     return res.status(200).send('OK');
   } catch (e) {
+    logger.warn({ event: 'payment_callback_rejected', err: e }, 'payment callback rejected');
     // Signature failures should be 400 so gateway knows it was rejected.
     const status = Number(e.status || 400);
     return res.status(status).send('ERROR');

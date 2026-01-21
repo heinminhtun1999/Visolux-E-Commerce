@@ -10,6 +10,7 @@ const { validate } = require('../middleware/validate');
 const { env } = require('../config/env');
 const emailService = require('../services/emailService');
 const { MALAYSIA_STATES, buildMalaysiaFullAddress } = require('../utils/malaysia');
+const { logger } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -25,6 +26,17 @@ const forgotPasswordLimiter = rateLimit({
   handler: (req, res) => {
     req.session.flash = { type: 'error', message: 'Too many reset attempts. Please try again later.' };
     return res.redirect('/forgot-password');
+  },
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  handler: (req, res) => {
+    req.session.flash = { type: 'error', message: 'Too many login attempts. Please try again later.' };
+    return res.redirect('/login');
   },
 });
 
@@ -93,7 +105,14 @@ router.post(
             ttlMinutes,
           });
         } catch (_) {
-          // ignore
+          logger.warn(
+            {
+              event: 'password_reset_email_failed',
+              userId: user.user_id,
+              ip: req.ip,
+            },
+            'failed to send password reset email'
+          );
         }
       }
 
@@ -201,6 +220,12 @@ router.post(
     try {
       const { username, email, password, phone, address_line1, address_line2, city, state, postcode } = req.validated.body;
 
+      // Security: prevent users from self-assigning admin identity via allowlisted username/email.
+      if (computeIsAdmin({ username, email })) {
+        req.session.flash = { type: 'error', message: 'Username or email already in use.' };
+        return res.redirect('/register');
+      }
+
       const existingU = userRepo.findByUsernameOrEmail(username);
       const existingE = userRepo.findByUsernameOrEmail(email);
       if (existingU || existingE) {
@@ -247,6 +272,7 @@ router.post(
 
 router.post(
   '/login',
+  loginLimiter,
   validate(
     z.object({
       body: z.object({
@@ -262,12 +288,17 @@ router.post(
       const { identifier, password } = req.validated.body;
       const user = userRepo.findByUsernameOrEmail(identifier);
       if (!user) {
+        logger.warn({ event: 'login_failed', reason: 'user_not_found', identifier, ip: req.ip }, 'login failed');
         req.session.flash = { type: 'error', message: 'Invalid credentials.' };
         return res.redirect('/login');
       }
 
       const ok = await bcrypt.compare(password, user.password_hash);
       if (!ok) {
+        logger.warn(
+          { event: 'login_failed', reason: 'bad_password', userId: user.user_id, identifier, ip: req.ip },
+          'login failed'
+        );
         req.session.flash = { type: 'error', message: 'Invalid credentials.' };
         return res.redirect('/login');
       }
@@ -280,6 +311,11 @@ router.post(
         email: user.email,
         isAdmin: computeIsAdmin(user),
       };
+
+      logger.info(
+        { event: 'login_success', userId: user.user_id, isAdmin: computeIsAdmin(user), ip: req.ip },
+        'login success'
+      );
 
       req.session.flash = { type: 'success', message: 'Signed in.' };
       return res.redirect('/');
@@ -331,6 +367,12 @@ router.post(
       if (!req.session.user) return res.redirect('/login');
 
       const { email, phone, address_line1, address_line2, city, state, postcode } = req.validated.body;
+
+      // Security: do not allow non-admins to become admin by changing their email.
+      if (!req.session.user.isAdmin && computeIsAdmin({ username: req.session.user.username, email })) {
+        req.session.flash = { type: 'error', message: 'Email update is not allowed.' };
+        return res.redirect('/account');
+      }
       const hasFullAddress = Boolean(address_line1 && city && state && postcode);
       const address = hasFullAddress
         ? buildMalaysiaFullAddress({ line1: address_line1, line2: address_line2, city, state, postcode })
@@ -347,7 +389,8 @@ router.post(
         postcode: postcode || null,
       });
       req.session.user.email = updated.email;
-      req.session.user.isAdmin = computeIsAdmin(updated);
+      // Do not allow privilege escalation via mutable fields.
+      req.session.user.isAdmin = Boolean(req.session.user.isAdmin);
       req.session.flash = { type: 'success', message: 'Profile updated.' };
       return res.redirect('/account');
     } catch (e) {

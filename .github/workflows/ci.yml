@@ -24,4 +24,4 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
       - name: Smoke boot (no listen)
-        run: node -e "process.env.SESSION_SECRET='ci'; process.env.NODE_ENV='test'; require('./src/app'); console.log('ok')"
+        run: node -e "process.env.SESSION_SECRET='ci'; process.env.NODE_ENV='test'; require('./src/app').createApp(); console.log('ok')"

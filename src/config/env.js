@@ -13,6 +13,18 @@ const env = {
   port: Number(process.env.PORT || 3000),
   appBaseUrl: process.env.APP_BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
 
+  logging: {
+    level: process.env.LOG_LEVEL || ((process.env.NODE_ENV || 'development') === 'production' ? 'info' : 'debug'),
+    dir: process.env.LOG_DIR || 'storage/logs',
+    toFile: (() => {
+      const raw = String(process.env.LOG_TO_FILE || '').trim().toLowerCase();
+      // Prefer logging to stdout and let PM2 handle log files + rotation.
+      // Only enable direct file logging when explicitly requested.
+      if (!raw) return false;
+      return raw === 'true' || raw === '1' || raw === 'yes';
+    })(),
+  },
+
   trustProxy: (() => {
     const raw = String(process.env.TRUST_PROXY || '').trim().toLowerCase();
     if (!raw) return (process.env.NODE_ENV || 'development') === 'production' ? 1 : 0;

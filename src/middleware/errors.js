@@ -1,4 +1,5 @@
 const { env } = require('../config/env');
+const { logger } = require('../utils/logger');
 
 function notFoundHandler(req, res) {
   res.status(404);
@@ -18,8 +19,18 @@ function errorHandler(err, req, res, next) {
       }
     : undefined;
 
-  // eslint-disable-next-line no-console
-  console.error(err);
+  logger.error(
+    {
+      err,
+      status,
+      req: {
+        method: req.method,
+        url: req.originalUrl,
+        ip: req.ip,
+      },
+    },
+    'request failed'
+  );
 
   res.status(status);
   if (req.accepts('html')) return res.render('shared/error', { title: 'Error', message, details });

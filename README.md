@@ -136,6 +136,13 @@ Install Node.js (20 LTS) and PM2:
 - `sudo apt-get install -y nodejs`
 - `sudo npm i -g pm2`
 
+Optional (recommended): enable PM2 log rotation (prevents logs growing forever):
+
+- `pm2 install pm2-logrotate`
+- `pm2 set pm2-logrotate:max_size 10M`
+- `pm2 set pm2-logrotate:retain 10`
+- `pm2 set pm2-logrotate:compress true`
+
 Create an app folder (example):
 
 - `sudo mkdir -p /var/www/visolux/app`
@@ -188,6 +195,11 @@ Push to `main`. The workflow will rsync the code to the VPS and run:
 
 - `npm ci --omit=dev`
 - `pm2 startOrReload ecosystem.config.cjs --env production`
+
+Logs:
+
+- PM2 captures stdout/stderr to `storage/logs/pm2-out.log` and `storage/logs/pm2-error.log`.
+- You can also enable app-managed file logs with `LOG_TO_FILE=true` (writes to `storage/logs/app.log` and `storage/logs/error.log`).
 
 
 ## Scripts

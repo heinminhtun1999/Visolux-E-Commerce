@@ -5,6 +5,7 @@ const orderRefundRepo = require('../repositories/orderRefundRepo');
 const orderRefundExtraRepo = require('../repositories/orderRefundExtraRepo');
 const paymentEventRepo = require('../repositories/paymentEventRepo');
 const fiuu = require('./payments/fiuu');
+const { logger } = require('../utils/logger');
 
 function allocateDiscountAcrossItems({ items, discountAmount }) {
   const discount = Math.max(0, Number(discountAmount || 0));
@@ -100,6 +101,10 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
     }
 
     if (isFpxOnlineOrder(order)) {
+      logger.warn(
+        { event: 'refund_blocked_fpx', orderId, paymentChannel: order.payment_channel || null },
+        'refund blocked for FPX online order'
+      );
       const err = new Error('Refund via Fiuu is disabled for FPX payments. Please refund manually using the customer bank credentials.');
       err.status = 400;
       throw err;
@@ -188,7 +193,15 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
       notifyUrl: prepared.notifyUrl,
       mdrFlag: 0,
     });
+    logger.info(
+      { event: 'refund_requested', orderId, orderItemId: prepared.item.id, amountCents: prepared.amount, qty: prepared.qty },
+      'refund requested'
+    );
   } catch (e) {
+    logger.error(
+      { event: 'refund_request_failed', err: e, orderId, orderItemId: prepared.item.id, amountCents: prepared.amount },
+      'refund request failed'
+    );
     // Record a failed attempt so admins can see it and optionally mark refund manually.
     try {
       db.transaction(() => {
