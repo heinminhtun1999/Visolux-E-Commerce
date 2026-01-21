@@ -1,223 +1,281 @@
-# Visolux E‑Commerce — Developer Guide
+# Visolux E‑Commerce — Developer Guide (Architecture + API)
 
-**Audience:** Developers maintaining/deploying the app
+**Audience:** Developers / maintainers
 
-**Purpose:** Architecture + flows + APIs + operational guidance for ongoing development.
-
----
-
-## 1) Architecture overview
-
-- **Runtime:** Node.js + Express 5
-- **Rendering:** EJS (`views/`)
-- **DB:** SQLite via `better-sqlite3`
-- **Sessions:** `express-session` + `connect-sqlite3` store
-- **Payments:** Fiuu hosted payment flow + callback/return verification + idempotency
-- **Uploads:** `multer` temp + `sharp` optimization
-
-Entry points:
-- `src/server.js` boots the process.
-- `src/app.js` wires middleware/routes.
+This guide documents the system structure, runtime behavior, database model, HTTP routes (“API”), payment flows, and operational practices.
 
 ---
 
-## 2) Repository structure
-
-- `src/`
-  - `app.js`: express app wiring + middleware
-  - `server.js`: server boot + crash logging
-  - `config/env.js`: environment parsing and defaults
-  - `db/db.js`: DB open, schema creation, lightweight migrations
-  - `db/schema.sql`: canonical schema
-  - `middleware/`: auth, csrf, errors, locals, uploads, validate
-  - `repositories/`: DB access layer (SQL)
-  - `services/`: business logic
-  - `routes/`: HTTP controllers
-  - `utils/`: helpers (money, markdown, order code, pagination, logging)
-- `views/`: EJS templates
-- `public/`: static assets
-- `storage/`:
-  - `data/`: SQLite DB files
-  - `uploads/`: product/site images
-  - `logs/`: PM2/app logs
-- `scripts/`: maintenance scripts (seed, create-admin, docs)
+## 1) Tech stack
+- Node.js + Express 5
+- EJS server-rendered views
+- SQLite (`better-sqlite3`)
+- Sessions: `express-session` + `connect-sqlite3`
+- Validation: `zod`
+- Security: `helmet` CSP + custom CSRF
+- Payments: Fiuu hosted payment + callbacks
+- Logging: structured JSON via `pino`
 
 ---
 
-## 3) Configuration (.env)
-
-See `.env.example` for all settings.
-
-Critical production settings:
-- `NODE_ENV=production`
-- `APP_BASE_URL=https://store.visolux.com.my`
-- `TRUST_PROXY=1` (behind Nginx)
-- `SECURE_COOKIES=true` (HTTPS)
-- `SESSION_SECRET=<long random>`
-
-Payments:
-- FIUU vars: `FIUU_MERCHANT_ID`, `FIUU_VERIFY_KEY`, `FIUU_SECRET_KEY`, `FIUU_GATEWAY_URL`
+## 2) Code layout
+- `src/server.js`: process boot, crash logging, starts HTTP listener
+- `src/app.js`: middleware wiring, routes registration, `/healthz`
+- `src/config/env.js`: env parsing/defaults
+- `src/db/db.js`: SQLite open + schema load + migration-safe adjustments
+- `src/db/schema.sql`: canonical schema
+- `src/middleware/*`: auth, csrf, locals, errors, uploads, validate
+- `src/repositories/*`: SQL layer (reads/writes)
+- `src/services/*`: business logic (orders, refunds, payments)
+- `src/routes/*`: controllers
 
 ---
 
-## 4) Database model
+## 3) Runtime behavior
 
-Schema lives in `src/db/schema.sql`.
+### 3.1 App initialization
+- `src/server.js` loads env, initializes DB, creates app via `createApp()`.
+- Global crash logging for `unhandledRejection` and `uncaughtException`.
 
-Key tables:
-- Catalog: `inventory`, `categories`, `category_sections`
-- Users: `users`
-- Orders: `orders`, `order_items`, `order_status_history`
-- Offline slips: `offline_bank_transfers`
-- Promos: `promo_codes`, `order_promos`
-- Idempotency: `payment_events`
-- Refunds: `order_refunds`, `order_item_refunds`
-- Settings: `site_settings`
+### 3.2 Health endpoint
+- `GET /healthz` is registered early (before session/CSRF).
+- Performs a lightweight DB query (`SELECT 1`).
+- Returns `200` if OK; otherwise `503`.
 
-Cents convention:
-- Money values stored as integers in cents.
+Response example:
+```json
+{ "ok": true, "status": "ok", "uptimeSec": 123 }
+```
 
 ---
 
-## 5) HTTP routes / API surface
+## 4) Security model
 
-### 5.1 Public storefront (`src/routes/shop.js`)
-- `GET /` (home)
-- `GET /products` (search/filter/pagination)
-- `GET /products/:id`
-- `GET /cart`
-- `POST /cart/add`
-- `POST /cart/update`
-- `POST /cart/remove`
-- `POST /cart/clear`
-- Site pages:
-  - `GET /privacy`
-  - `GET /terms`
-  - `GET /how-to-order`
+### 4.1 Admin authorization
+- Admin routes are guarded by `requireAdmin`.
+- Admin “role” is derived from allowlists (env-configured) and session state.
 
-### 5.2 Auth (`src/routes/auth.js`)
-- `GET /login`, `POST /login`
-- `GET /register`, `POST /register`
-- `POST /logout`
-- `GET /account`
-- `POST /account/profile`
-- `POST /account/password`
-- Password reset:
-  - `GET /forgot-password`, `POST /forgot-password`
-  - `GET /reset-password`, `POST /reset-password`
+### 4.2 CSRF
+- Enabled site-wide for state-changing requests.
+- Exempt endpoints for payment gateway callbacks/returns:
+  - `/payment/callback`
+  - `/payment/return`
+  - `/payment/refund/notify`
 
-### 5.3 Orders (`src/routes/orders.js`)
-- `GET /checkout`
-- `POST /checkout/promo-check`
-- `POST /checkout`
-- `GET /orders/:id`
-- `GET /orders/:id/confirmation`
-- `GET /orders/history`
-- Offline transfer:
-  - `GET /orders/:id/offline-transfer`
-  - `POST /orders/:id/offline-transfer` (slip upload)
+### 4.3 Rate limiting
+- Configurable via env.
+- Skips:
+  - `/healthz`
+  - gateway endpoints above
 
-### 5.4 Payments (`src/routes/payments.js`)
-- `POST /payment/callback`
-- `GET|POST /payment/return`
-- `GET /payment/cancel`
-- Refund notify:
-  - `POST /payment/refund/notify`
+---
 
-### 5.5 Uploads (`src/routes/uploads.js`)
-- Product and site uploads used by admin tooling.
+## 5) Database schema (high level)
 
-### 5.6 Admin (`src/routes/admin.js`)
-- `GET /admin/products` + CRUD
-- `GET /admin/orders` + order management
-- Slips queue + approve/reject
+Reference: `src/db/schema.sql`
+
+### 5.1 Key tables
+- `inventory`: product catalog (price in cents)
+- `categories`, `category_sections`: category model + markdown sections
+- `users`: accounts
+- `site_settings`: key/value config (logo, pages, shipping fees, promos)
+- `orders`: order header
+- `order_items`: snapshot line items
+- `order_status_history`: status transitions
+- `offline_bank_transfers`: slip uploads and verification
+- `payment_events`: payment idempotency (provider + txn id uniqueness)
+- `order_refunds`, `order_item_refunds`: refunds
+
+### 5.2 Money convention
+All money is stored as integer cents in DB.
+
+---
+
+## 6) HTTP routes (API) — by module
+
+This app is server-rendered, but these routes are still the primary HTTP contract.
+
+### 6.1 Storefront — `src/routes/shop.js`
+
+#### `GET /`
+- Purpose: home page (categories)
+- Auth: none
+- Response: HTML
+
+#### `GET /products`
+- Purpose: list products
+- Query params:
+  - `q` (string)
+  - `category` (category slug)
+  - `availability` (`IN_STOCK` | `OUT_OF_STOCK`)
+  - `min_price`, `max_price` (RM string, parsed server-side)
+  - `sort` (`NEWEST|PRICE_ASC|PRICE_DESC|NAME_ASC|NAME_DESC`)
+  - `page`, `pageSize`
+- Auth: none
+- Response: HTML
+
+#### `GET /products/:id`
+- Params: `id` numeric
+- Auth: none
+- Response: HTML (404 if hidden/archived)
+
+#### `GET /cart`
+- Auth: normal users only (admins blocked)
+- Response: HTML
+
+#### `POST /cart/add`
+- Body:
+  - `product_id` (string/number)
+  - `quantity` (optional)
+  - `return_to` (optional relative path)
+- Side effects: updates session cart
+- Response: redirect
+
+#### `POST /cart/update`
+- Body: product quantities map (see view form)
+- Side effects: updates session cart
+- Response: redirect
+
+---
+
+### 6.2 Orders & checkout — `src/routes/orders.js`
+
+#### `GET /checkout`
+- Auth: normal users only (admins blocked)
+- Response: HTML
+
+#### `POST /checkout/promo-check`
+- Auth: normal users only
+- CSRF: required
+- Body:
+  - `promo_code` (string)
+  - `state` (Malaysia state enum)
+- Response: JSON
+```json
+{ "ok": true, "discountCents": 100, "shippingCents": 800, "grandTotalCents": 12345 }
+```
+
+#### `POST /checkout`
+- Auth: normal users only
+- CSRF: required
+- Body:
+  - customer fields (name/phone/email/address)
+  - `promo_code` (optional)
+  - `payment_method` (`ONLINE`|`OFFLINE_TRANSFER`)
+- Behavior:
+  - Creates order + items
+  - Clears cart
+  - If offline: redirect to slip page
+  - If online: redirects to payment gateway (GET redirect or auto-post form)
+
+#### `GET /orders/:id`
+- Auth: order owner, or guest session for last guest order
+- Response: HTML
+
+#### `GET /orders/history`
+- Auth: logged-in user
+- Response: HTML
+
+#### Offline slip upload
+- `GET /orders/:id/offline-transfer`
+- `POST /orders/:id/offline-transfer` (multipart)
+
+---
+
+### 6.3 Payments — `src/routes/payments.js`
+
+#### `POST /payment/callback`
+- Called by payment gateway (server-to-server)
+- CSRF: exempt
+- Validates:
+  - signature
+  - currency/amount rules
+  - idempotency via `payment_events`
+- Response: `200` on accepted, `4xx` on rejected
+
+#### `GET|POST /payment/return`
+- Called by user browser returning from gateway
+- CSRF: exempt
+- Similar validation + idempotency
+- Response: redirect to confirmation or error page
+
+#### `POST /payment/refund/notify`
+- Called by gateway to update refund status
+- CSRF: exempt
+
+---
+
+### 6.4 Admin — `src/routes/admin.js`
+
+All routes below require `requireAdmin`.
+
+Main areas:
+- Products CRUD
+- Orders management
+- Slip queue approve/reject
 - Refund initiation
-- `GET /admin/categories` + CRUD and home layout
-- `GET /admin/settings` (branding, shipping, promos, footer/pages)
-- `GET /admin/notifications`
-- `GET /admin/reports/sales` (+ CSV)
+- Categories and content blocks
+- Settings:
+  - branding (`site.logo.image`)
+  - shipping fees
+  - promos
+  - footer/pages
+- Reports:
+  - `GET /admin/reports/sales`
+  - `GET /admin/reports/sales.csv`
 
 ---
 
-## 6) Core flows (implementation notes)
+## 7) Core business flows
 
-### 6.1 Order placement
+### 7.1 Order placement → payment confirmation
 - Order is created first.
-- Payment is confirmed later (online callback/return OR offline slip approval).
+- Payment confirmation changes payment status and triggers stock deduction.
 
-### 6.2 Payment idempotency
-- Incoming gateway events are recorded into `payment_events`.
-- Unique constraints prevent double-processing.
+### 7.2 Idempotency
+- Gateway callback/return events are deduplicated using `payment_events` uniqueness.
 
-### 6.3 Stock deduction
-- Deduct stock only when payment is confirmed.
-- Done inside a SQLite transaction with conditional updates.
+### 7.3 Stock deduction
+- Must be atomic and guarded against negative stock.
+- If payment is confirmed but stock is insufficient, fulfilment is cancelled with a note for manual handling.
 
-### 6.4 Refunds
-- Refund records are created first; later notify callback may update status.
-- FPX refunds are blocked by business rules.
-
----
-
-## 7) Security middleware
-
-- `helmet` CSP configured for iframe embedding (`frame-ancestors`).
-- Custom CSRF:
-  - Sets token cookie
-  - Exempts payment callback/return endpoints
-- Rate limiting:
-  - configurable via env
-  - skips health check and gateway callbacks
+### 7.4 Refunds
+- Refund requests create refund records.
+- Notify callback updates status when provider confirms.
+- FPX refunds are blocked by rule.
 
 ---
 
-## 8) Logging & observability
+## 8) Observability & ops
 
-- Structured JSON logs via `pino` wrapper (`src/utils/logger.js`).
-- Express error handler logs request context.
-- Process crash logging for:
-  - `unhandledRejection`
-  - `uncaughtException`
-
-Operational endpoints:
-- `GET /healthz` checks DB reachability.
-
----
-
-## 9) Deployment
-
-### 9.1 Process manager
-- PM2 config: `ecosystem.config.cjs`
-- Logs:
+### 8.1 Logging
+- JSON logs via `pino` wrapper.
+- Error handler logs request metadata.
+- PM2 log files:
   - `storage/logs/pm2-out.log`
   - `storage/logs/pm2-error.log`
 
-### 9.2 GitHub Actions deploy
-Workflow: `.github/workflows/deploy-hostinger-vps.yml`
-
-Key behavior:
-- rsync deploy excludes:
+### 8.2 Deployment
+- GitHub Actions deploy workflow rsyncs code while preserving:
   - `.env`
-  - SQLite DB files
+  - SQLite DB
   - uploads
-- pre-deploy backup to `${VPS_PATH}/backups`
-- post-restart `/healthz` validation
-
-### 9.3 Nginx
-Nginx should proxy HTTPS to `127.0.0.1:$PORT` and forward headers.
+- Pre-deploy backup is created on VPS.
+- Post-restart `/healthz` check verifies service readiness.
 
 ---
 
-## 10) Development workflow
-
-- `npm run dev` for local development.
-- `npm run seed -- --reset` to create demo data.
-- `npm run create-admin -- ...` to create users.
+## 9) Developer workflow
+- `npm run dev`
+- `npm run seed -- --reset`
+- `npm run create-admin -- --username ... --email ... --password ...`
 
 ---
 
-## 11) Extension points
-
-- Add new pages via `site_settings` keys + rendering.
-- Add new admin modules under `/admin` with `requireAdmin`.
-- Add new payment channels by extending the payment service layer.
+## 10) Doc generation
+- Source manuals: `docs/manuals/*.md`
+- Generate docx:
+  - `npm run docs:docx`
+- Outputs (gitignored):
+  - `docs/generated/Visolux_Admin_Manual.docx`
+  - `docs/generated/Visolux_Developer_Guide.docx`

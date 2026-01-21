@@ -1,189 +1,226 @@
-# Visolux E‑Commerce — Admin Manual
+# Visolux Store — Admin User Manual
 
-**Audience:** Admin users (store operations staff)
+**For:** Store admins and staff (non‑technical)
 
-**Purpose:** This document explains how to operate the Visolux storefront + admin console safely in production.
-
----
-
-## 1) Quick start
-
-### 1.1 Admin access
-Admin rights are controlled by allowlists in the server `.env`:
-
-- `ADMIN_USERNAMES` (comma-separated)
-- `ADMIN_EMAILS` (comma-separated)
-
-Create your first admin user:
-
-- Run: `npm run create-admin -- --username admin --email admin@example.com --password "StrongPass123!"`
-- Add the username/email into the allowlist.
-
-### 1.2 Admin pages
-- Products: `/admin/products`
-- Orders: `/admin/orders`
-- Categories + home layout: `/admin/categories`
-- Settings (branding/shipping/promos/pages): `/admin/settings`
-- Notifications: `/admin/notifications`
-- Sales reports: `/admin/reports/sales`
+This manual explains what you can do in the Admin area, how the store works day‑to‑day, and what to be careful about.
 
 ---
 
-## 2) How the system works (flow)
+## 1) What this system does
 
-### 2.1 High-level order lifecycle
-The app creates an order first, then confirms payment later.
-
-- Customer browses products and adds items to cart.
-- Customer checks out.
-- The system creates:
-  - `orders`
-  - `order_items`
-  - `order_status_history`
-
-Stock is **deducted only when payment is confirmed**.
-
-### 2.2 Offline bank transfer flow
-1. Customer chooses **Offline transfer** at checkout.
-2. Order is created with `payment_status=AWAITING_VERIFICATION`.
-3. Customer uploads a payment slip.
-4. Admin approves or rejects the slip.
-5. If approved:
-   - order becomes `PAID`
-   - stock is deducted
-
-### 2.3 Online payment (Fiuu) flow
-1. Customer chooses **Online payment**.
-2. Order is created with `payment_status=PENDING`.
-3. Customer is redirected to Fiuu hosted payment.
-4. Fiuu will:
-   - call `/payment/callback` (server-to-server)
-   - redirect customer back via `/payment/return`
-
-Important: callbacks/returns can happen more than once; processing is idempotent.
+Visolux Store lets you:
+- Manage products (add/edit price, stock, photos)
+- Organize products into categories
+- Receive orders from customers
+- Confirm payments (online or bank transfer slip)
+- Prepare and fulfil orders (pack/ship)
+- Manage promotions (discount codes)
+- Update branding (logo) and basic site pages
 
 ---
 
-## 3) Daily operations
+## 2) Important concepts (simple terms)
 
-### 3.1 Products (create/update)
-Where: `/admin/products`
+### Order status (what it means)
+Every order has two types of statuses:
 
-- Keep names short and clear.
-- Ensure price is correct (minimum RM 1.00).
-- Set stock. If stock becomes 0, the product becomes “out of stock”.
-- Use **Visibility** to hide from storefront without deleting.
-- Use **Archive** when you no longer sell the item.
+1) **Payment status** (money side)
+- **Pending**: customer started payment, not confirmed yet
+- **Awaiting verification**: customer chose bank transfer and uploaded a slip (waiting for admin to approve)
+- **Paid**: payment confirmed
+- **Failed**: payment failed / cancelled
+- **Partially refunded / Refunded**: money has been returned to customer (partly or fully)
 
-**Images**
-- Use JPG/PNG/WEBP.
-- Uploads are re-encoded and optimized by the system.
+2) **Fulfilment status** (shipping side)
+- **New**: order just created
+- **Processing**: you’re preparing the order
+- **Shipped**: you shipped it
+- **Completed**: finished
+- **Cancelled**: cannot fulfil (example: stock problem)
 
-### 3.2 Categories and home layout
-Where: `/admin/categories`
+### Stock (inventory)
+- **Stock** is how many items you have.
+- If stock is **0**, the product becomes **out of stock**.
 
-- Categories appear on the home page.
-- Keep `slug` stable (changing slugs can break links).
-- Category sections (markdown content) appear on category product listing pages.
+### Online vs Offline payment
+- **Online**: customer pays through the payment gateway (Fiuu).
+- **Offline transfer**: customer transfers money and uploads a bank slip. Admin must approve/reject the slip.
 
-### 3.3 Orders management
-Where: `/admin/orders`
+---
 
-- Track `payment_status` and `fulfilment_status`.
-- Only ship when payment is confirmed.
+## 3) How an order works (Flow)
 
-**Statuses you will see**
-- `AWAITING_VERIFICATION`: waiting for slip review (offline transfer)
-- `PENDING`: waiting for gateway confirmation (online)
-- `PAID`: paid and ready for fulfilment processing
-- `FAILED`: payment failed or rejected
-- `REFUNDED` / `PARTIALLY_REFUNDED`: refunds recorded
+### 3.1 Online payment flow (Fiuu)
+1. Customer places an order and chooses **Online payment**.
+2. Customer is sent to the payment page.
+3. When the gateway confirms payment, the order becomes **Paid**.
+4. Then you can process and ship.
 
-### 3.4 Slip verification (offline transfer)
-Where: Admin slip queue (linked from admin screens)
+### 3.2 Bank transfer (slip) flow
+1. Customer places an order and chooses **Offline transfer**.
+2. Order becomes **Awaiting verification**.
+3. Customer uploads a bank slip.
+4. Admin reviews the slip:
+   - Approve → order becomes **Paid**
+   - Reject → customer must re-upload / pay correctly
 
-- **Approve** only if amount + reference look correct.
-- **Reject** and include a clear rejection reason for the customer.
+**Important:** Stock is deducted only when payment is confirmed.
 
-### 3.5 Refunds
-Refunds are initiated from admin order screens.
+---
 
-Cautions:
-- Refunds for **FPX online** are blocked by business rules.
-- Avoid over-refunding; always double-check remaining refundable amount/quantity.
+## 4) Where to do things (Admin menu)
 
-### 3.6 Notifications
+Main admin pages:
+- **Products:** `/admin/products`
+- **Orders:** `/admin/orders`
+- **Categories & home layout:** `/admin/categories`
+- **Settings (logo, shipping, promos, pages):** `/admin/settings`
+- **Notifications:** `/admin/notifications`
+- **Sales report:** `/admin/reports/sales`
+
+---
+
+## 5) Products (add / edit)
+
+### 5.1 Add a new product
+1. Go to **Admin → Products**
+2. Click **New product**
+3. Fill in:
+   - Name
+   - Description
+   - Category
+   - Price
+   - Stock
+4. Upload an image (optional but recommended)
+5. Save
+
+### 5.2 Edit a product
+Use this for price changes, stock updates, and photo changes.
+
+### 5.3 Hide vs Archive (don’t delete)
+- **Hide (visibility off):** temporarily not shown on the store
+- **Archive:** item is discontinued; also prevents stock deduction
+
+**Tip:** Archive old items instead of deleting.
+
+---
+
+## 6) Categories (store organization)
+
+### 6.1 Categories
+Categories control how products are grouped on the home page and filter lists.
+
+**Be careful:** Don’t frequently change category “slug” (it can break links).
+
+### 6.2 Category sections (extra content)
+Some categories can show extra content (text blocks) on the product listing page.
+
+Use this for:
+- Short notes
+- Delivery info
+- Simple promotions
+
+---
+
+## 7) Orders (day‑to‑day workflow)
+
+### 7.1 What to do when a new order arrives
+1. Open **Admin → Orders**
+2. Open the order
+3. Check:
+   - Payment status
+   - Customer details (name/phone/address)
+   - Items and quantities
+
+### 7.2 When payment is **Paid**
+1. Set fulfilment to **Processing**
+2. Pack items
+3. Ship items
+4. Set fulfilment to **Shipped**
+5. When completed, set to **Completed**
+
+### 7.3 Offline transfer: verify slips
+When you see **Awaiting verification**:
+1. Open the order and view the slip
+2. Check the slip details match the order
+3. Choose:
+   - **Approve**: only if you are confident the payment is correct
+   - **Reject**: add a clear reason (example: wrong amount / unclear slip)
+
+---
+
+## 8) Refunds (when needed)
+
+Refunds are used when:
+- Customer paid but item is unavailable
+- Customer cancelled after payment
+- Shipping adjustments
+
+**Cautions:**
+- Do not refund more than the order total.
+- Some payment channels (example: FPX) may not allow refunds by policy.
+- If you are unsure, check with a supervisor before refunding.
+
+---
+
+## 9) Promotions (discount codes)
+
+Where: **Admin → Settings → Promos**
+
+Best practices:
+- Create a promo with a clear name and dates (if needed)
+- Test the promo on a small order before announcing it
+- Avoid running many overlapping promos
+
+---
+
+## 10) Branding and site pages
+
+### 10.1 Logo
+Where: **Admin → Settings → Branding**
+
+- Upload your logo.
+- The same logo is used for the browser tab icon.
+
+### 10.2 Basic pages
+The store includes basic pages like Privacy/Terms/How to Order.
+Update them in admin settings.
+
+---
+
+## 11) Notifications
+
 Where: `/admin/notifications`
 
-- Notifications are created for operational events (new orders, payment confirmations, etc.).
-- Use notifications as a “to-do” list for the admin team.
+Notifications are reminders for important events.
+- Check this page daily.
+- Clear items after handling.
 
 ---
 
-## 4) Site settings
+## 12) Common problems (Troubleshooting)
 
-Where: `/admin/settings`
+### The product does not show on the store
+Check:
+- Visibility is on
+- Not archived
+- Category is visible
+- Stock is not zero (if you want it to show as available)
 
-### 4.1 Branding
-- Upload the header logo.
-- The same logo is used as the browser tab icon (favicon).
+### Customer says they paid but order is still pending
+- Online: payment confirmation can take a short time.
+- Refresh the order page and check notifications.
 
-### 4.2 Shipping fees
-The app supports courier fees by Malaysian region (West/East). Update these in Settings.
-
-### 4.3 Promos
-Promos are managed in Settings.
-
-Guidelines:
-- Avoid overlapping promos unless you understand how discounts apply.
-- Test a promo on a small basket first.
-
-### 4.4 Footer pages
-Settings also includes:
-- Technician support URL
-- Footer copyright
-
-Site pages like Privacy/Terms/How-to-Order can be edited via admin tools.
+### Slip upload issues
+- Ask customer to upload a clearer image.
+- Ensure image is not too large.
 
 ---
 
-## 5) Cautions & best practices
+## 13) Safety rules (must follow)
 
-### 5.1 Never use admin accounts for shopping
-Admin accounts cannot place orders or use carts.
-
-### 5.2 Security
-- Use a strong `SESSION_SECRET`.
-- Don’t share admin credentials.
-- Restrict `IFRAME_ANCESTORS` to trusted embed parents only.
-
-### 5.3 Operational safety
-- Make sure you have backups (SQLite DB + uploads).
-- After deployments, check:
-  - Home page loads
-  - Checkout works
-  - `/healthz` returns ok
-
-### 5.4 What to do when something looks wrong
-- Check `/admin/notifications`.
-- Check server logs (PM2 logs) for errors.
-- If payment is marked paid but fulfilment cancelled (stock issue), coordinate a refund or stock adjustment.
-
----
-
-## 6) Troubleshooting
-
-### 6.1 Common issues
-- Product missing from storefront: check `visibility`, `archived`, category visibility.
-- Customer cannot pay online: FIUU may not be configured or gateway issues.
-- Slip upload fails: file too large or invalid type.
-
-### 6.2 Health check
-- `/healthz` returns `200` if the app + DB are OK.
-
----
-
-## 7) Change management
-
-- For content changes (pages, branding), prefer doing it during low-traffic periods.
-- For price/stock updates, always double-check before saving.
+- Never share admin passwords.
+- Don’t use admin accounts to shop.
+- Double-check price changes before saving.
+- Approve slips only when you are sure.
+- Keep backups (DB + uploads) and verify after deployments.
