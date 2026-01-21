@@ -11,6 +11,7 @@ const { getDb } = require('./db/db');
 const { attachLocals } = require('./middleware/locals');
 const { ensureCsrfToken, csrfProtection } = require('./middleware/csrf');
 const { notFoundHandler, errorHandler } = require('./middleware/errors');
+const settingsRepo = require('./repositories/settingsRepo');
 
 const shopRoutes = require('./routes/shop');
 const authRoutes = require('./routes/auth');
@@ -60,6 +61,18 @@ function createApp() {
       now: new Date().toISOString(),
       ...(ok ? {} : { error: dbError }),
     });
+  });
+
+  // Use the configured branding logo as the site icon.
+  // Keep it before session/CSRF so it doesn't write cookies.
+  app.get('/favicon.ico', (req, res) => {
+    try {
+      const logoUrl = settingsRepo.get('site.logo.image', '');
+      if (logoUrl) return res.redirect(302, logoUrl);
+    } catch (_) {
+      // ignore
+    }
+    return res.status(204).end();
   });
 
   app.set('trust proxy', env.trustProxy);
