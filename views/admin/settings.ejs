@@ -61,6 +61,33 @@
   </form>
 </section>
 
+<section id="shipping" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Shipping</h2>
+  <div class="muted small">Configure courier charges for West/East Malaysia (RM). Used for checkout preview and final order totals.</div>
+
+  <form method="post" action="/admin/site/shipping" style="margin-top:12px; max-width:720px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="row" style="gap:14px; align-items:flex-start">
+      <div class="col" style="min-width:280px">
+        <label>West Malaysia (RM)</label>
+        <input class="input" name="west_fee_rm" inputmode="decimal" value="<%= westFeeRm %>" required />
+        <div class="muted small" style="margin-top:6px">Example: 8.00</div>
+      </div>
+
+      <div class="col" style="min-width:280px">
+        <label>East Malaysia (RM)</label>
+        <input class="input" name="east_fee_rm" inputmode="decimal" value="<%= eastFeeRm %>" required />
+        <div class="muted small" style="margin-top:6px">Example: 18.00</div>
+      </div>
+    </div>
+
+    <div class="row" style="justify-content:flex-end; margin-top:14px">
+      <button class="btn btn-primary" type="submit">Save Shipping</button>
+    </div>
+  </form>
+</section>
+
 <section id="security" class="card" style="padding:14px; margin-top:12px">
   <h2 class="h2" style="margin-top:0">Security</h2>
   <div class="muted small">Change the admin account password.</div>
