@@ -101,7 +101,10 @@ jobs:
               pm2 save
 
               # Post-restart health check (no external DNS/HTTPS required).
-              PORT="$(node -e "require('dotenv').config(); console.log(process.env.PORT || 3000)")"
+              PORT="$(grep -E '^PORT=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d '\r' | tr -d '"' | tr -d "'")"
+              case "$PORT" in
+                ''|*[!0-9]*) PORT=3000 ;;
+              esac
               echo "Checking /healthz on 127.0.0.1:${PORT}"
               ok=""
               for i in $(seq 1 20); do
