@@ -76,6 +76,34 @@
     badge.setAttribute('aria-label', `${count} unread`);
   }
 
+  function applyPollData(data) {
+    const unreadCount = data && data.unreadCount;
+    setCount(unreadCount);
+
+    const latest = data && data.latest;
+    if (!latest || !latest.id) return;
+    if (!canUseNotifications() || Notification.permission !== 'granted') return;
+
+    const lastNotified = getLastNotifiedId();
+    if (Number(latest.id) <= lastNotified) return;
+
+    const n = new Notification(latest.title || 'New notification', {
+      body: latest.body || '',
+    });
+
+    n.onclick = function () {
+      try {
+        window.focus();
+      } catch (_) {
+        // ignore
+      }
+      if (latest.openUrl) window.location.href = latest.openUrl;
+      else if (latest.link) window.location.href = latest.link;
+    };
+
+    setLastNotifiedId(Number(latest.id));
+  }
+
   async function refresh() {
     try {
       const res = await fetch('/admin/notifications/poll.json', {
@@ -84,39 +112,60 @@
       });
       if (!res.ok) return;
       const data = await res.json();
-
-      const unreadCount = data && data.unreadCount;
-      setCount(unreadCount);
-
-      const latest = data && data.latest;
-      if (!latest || !latest.id) return;
-      if (!canUseNotifications() || Notification.permission !== 'granted') return;
-
-      const lastNotified = getLastNotifiedId();
-      if (Number(latest.id) <= lastNotified) return;
-
-      const n = new Notification(latest.title || 'New notification', {
-        body: latest.body || '',
-      });
-
-      n.onclick = function () {
-        try {
-          window.focus();
-        } catch (_) {
-          // ignore
-        }
-        if (latest.openUrl) window.location.href = latest.openUrl;
-        else if (latest.link) window.location.href = latest.link;
-      };
-
-      setLastNotifiedId(Number(latest.id));
+      applyPollData(data);
     } catch (_) {
       // ignore
     }
   }
 
-  refresh();
-  window.setInterval(refresh, 15000);
+  let pollTimer = null;
+
+  function startPolling() {
+    if (pollTimer) return;
+    refresh();
+    pollTimer = window.setInterval(refresh, 15000);
+  }
+
+  function stopPolling() {
+    if (!pollTimer) return;
+    window.clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  function startLiveStream() {
+    if (typeof window.EventSource === 'undefined') return false;
+
+    try {
+      const es = new EventSource('/admin/notifications/stream');
+
+      es.onmessage = function (e) {
+        if (!e || !e.data) return;
+        try {
+          const data = JSON.parse(e.data);
+          applyPollData(data);
+        } catch (_) {
+          // ignore
+        }
+      };
+
+      es.onerror = function () {
+        try {
+          es.close();
+        } catch (_) {
+          // ignore
+        }
+        startPolling();
+      };
+
+      // Stream gives initial state; polling not needed.
+      stopPolling();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  if (!startLiveStream()) startPolling();
 
   if (enableBtn) {
     enableBtn.addEventListener('click', async function () {
