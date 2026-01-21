@@ -1,4 +1,12 @@
 const { getDb } = require('../db/db');
+const { EventEmitter } = require('events');
+
+const events = new EventEmitter();
+events.setMaxListeners(0);
+
+function emitChanged() {
+  events.emit('changed');
+}
 
 function create({ type, title, body, link }) {
   const db = getDb();
@@ -8,7 +16,9 @@ function create({ type, title, body, link }) {
        VALUES (?,?,?,?)`
     )
     .run(String(type), String(title), body ? String(body) : null, link ? String(link) : null);
-  return getById(res.lastInsertRowid);
+  const row = getById(res.lastInsertRowid);
+  emitChanged();
+  return row;
 }
 
 function getById(id) {
@@ -46,15 +56,19 @@ function getLatestUnread() {
 function markRead(id) {
   const db = getDb();
   db.prepare("UPDATE admin_notifications SET read_at = COALESCE(read_at, datetime('now')) WHERE id=?").run(id);
-  return getById(id);
+  const row = getById(id);
+  emitChanged();
+  return row;
 }
 
 function markAllRead() {
   const db = getDb();
   db.prepare("UPDATE admin_notifications SET read_at = COALESCE(read_at, datetime('now')) WHERE read_at IS NULL").run();
+  emitChanged();
 }
 
 module.exports = {
+  events,
   create,
   getById,
   list,

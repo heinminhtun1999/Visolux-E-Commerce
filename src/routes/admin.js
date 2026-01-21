@@ -2409,6 +2409,61 @@ router.get('/notifications/poll.json', (req, res) => {
   });
 });
 
+router.get('/notifications/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  function buildPayload() {
+    const unreadCount = adminNotificationRepo.countUnread();
+    const latest = adminNotificationRepo.getLatestUnread();
+    return {
+      unreadCount,
+      latest: latest
+        ? {
+            id: latest.id,
+            type: latest.type,
+            title: latest.title,
+            body: latest.body,
+            link: latest.link,
+            openUrl: `/admin/notifications/${latest.id}/open`,
+            created_at: latest.created_at,
+          }
+        : null,
+    };
+  }
+
+  function send(payload) {
+    try {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  // Initial state.
+  send(buildPayload());
+
+  const onChanged = () => send(buildPayload());
+  adminNotificationRepo.events.on('changed', onChanged);
+
+  // Keep-alive to prevent idle timeouts.
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(`event: ping\ndata: {}\n\n`);
+    } catch (_) {
+      // ignore
+    }
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    adminNotificationRepo.events.off('changed', onChanged);
+  });
+});
+
 router.post('/notifications/read-all', (req, res) => {
   adminNotificationRepo.markAllRead();
   req.session.flash = { type: 'success', message: 'All notifications marked as read.' };
