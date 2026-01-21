@@ -20,7 +20,7 @@ function main() {
 
   const app = createApp();
   app.listen(env.port, () => {
-    logger.info({ port: env.port }, `[visolux] listening on http://localhost:${env.port} (${env.nodeEnv})`);
+    logger.info({ port: env.port }, `[visolux|arvending] listening on http://localhost:${env.port} (${env.nodeEnv})`);
   });
 }
 
