@@ -65,7 +65,7 @@
   <h2 class="h2" style="margin-top:0">Shipping</h2>
   <div class="muted small">Configure courier charges for West/East Malaysia (RM). Used for checkout preview and final order totals.</div>
 
-  <form method="post" action="/admin/site/shipping" style="margin-top:12px; max-width:720px">
+  <form method="post" action="/admin/site/shipping" style="margin-top:12px; width:100%">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
 
     <div class="row" style="gap:14px; align-items:flex-start">
@@ -92,7 +92,7 @@
   <h2 class="h2" style="margin-top:0">Security</h2>
   <div class="muted small">Change the admin account password.</div>
 
-  <form method="post" action="/admin/account/password" style="margin-top:12px; max-width:520px">
+  <form method="post" action="/admin/account/password" style="margin-top:12px; width:100%">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
 
     <label>Current password</label>
