@@ -29,8 +29,17 @@ const { verifyOrderViewToken } = require('../utils/orderViewToken');
 
 const router = express.Router();
 
+function resolveOrderParamToId(param) {
+  const raw = String(param || '').trim();
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric) && numeric > 0) return numeric;
+  const byCode = raw ? orderRepo.getByCode(raw) : null;
+  return byCode?.order_id || null;
+}
+
 function canAccessOrder(req, order) {
   if (!order) return false;
+  if (req.session.user?.isAdmin) return true;
   if (req.session.user && order.user_id && req.session.user.user_id === order.user_id) return true;
   if (!order.user_id && req.session.lastGuestOrderId && Number(req.session.lastGuestOrderId) === order.order_id) return true;
   return false;
@@ -53,13 +62,30 @@ function canAccessOrderViaEmailToken(req, order) {
 }
 
 function requireOrderAccess(req, res, order) {
-  if (canAccessOrder(req, order) || canAccessOrderViaEmailToken(req, order)) return true;
+  if (!order) return false;
 
-  // Registered customers should sign in to view their orders.
-  if (order?.user_id && !req.session.user) {
-    req.session.flash = { type: 'error', message: 'Please sign in to view your order.' };
-    return res.redirect(`/login?returnTo=${encodeURIComponent(req.originalUrl || '/')}`);
+  // Admins can view any order.
+  if (req.session.user?.isAdmin) return true;
+
+  // Orders made with an account must be viewed by that same logged-in account.
+  if (order.user_id) {
+    if (!req.session.user) {
+      req.session.flash = { type: 'error', message: 'Please sign in to view your order.' };
+      return res.redirect(`/login?returnTo=${encodeURIComponent(req.originalUrl || '/')}`);
+    }
+
+    if (req.session.user.user_id !== order.user_id) {
+      return res.status(403).render('shared/error', {
+        title: 'Access Denied',
+        message: 'You do not have access to this order. Please sign in with the account used to place the order.',
+      });
+    }
+
+    return true;
   }
+
+  // Guest orders can be viewed via session access (checkout flow) or email token.
+  if (canAccessOrder(req, order) || canAccessOrderViaEmailToken(req, order)) return true;
 
   return false;
 }
@@ -299,8 +325,8 @@ router.post(
 );
 
 router.get('/orders/:id/confirmation', (req, res) => {
-  const id = Number(req.params.id);
-  const order = orderRepo.getWithItems(id);
+  const id = resolveOrderParamToId(req.params.id);
+  const order = id ? orderRepo.getWithItems(id) : null;
   if (!order) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
@@ -372,8 +398,8 @@ router.get('/orders/slips', requireUser, (req, res) => {
 });
 
 router.get('/orders/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const order = orderRepo.getWithItems(id);
+  const id = resolveOrderParamToId(req.params.id);
+  const order = id ? orderRepo.getWithItems(id) : null;
   if (!order) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
@@ -394,8 +420,8 @@ router.get('/orders/:id', (req, res) => {
 });
 
 router.get('/orders/:id/offline-transfer', (req, res) => {
-  const id = Number(req.params.id);
-  const order = orderRepo.getWithItems(id);
+  const id = resolveOrderParamToId(req.params.id);
+  const order = id ? orderRepo.getWithItems(id) : null;
   if (!order) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
@@ -430,8 +456,8 @@ router.post(
   ),
   async (req, res, next) => {
     try {
-      const id = Number(req.params.id);
-      const order = orderRepo.getWithItems(id);
+      const id = resolveOrderParamToId(req.params.id);
+      const order = id ? orderRepo.getWithItems(id) : null;
       if (!order) return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
       const ok = requireOrderAccess(req, res, order);
       if (ok !== true) {
