@@ -1,0 +1,67 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="card" style="padding:16px">
+  <h1 class="h1">Order <%= order.order_code || ('#' + order.order_id) %></h1>
+  <% const itemsSubtotal = (order.items_subtotal != null ? order.items_subtotal : (order.items || []).reduce((a, it) => a + Number(it.subtotal || 0), 0)); %>
+  <% const discountAmount = (order.discount_amount != null ? order.discount_amount : (promo ? promo.discount_amount : 0)); %>
+  <% const shippingFee = Number(order.shipping_fee || 0); %>
+  <div class="row" style="justify-content:space-between">
+    <div>
+      <div class="muted small">Payment</div>
+      <div style="font-weight:800"><%= order.payment_status %></div>
+    </div>
+    <div>
+      <div class="muted small">Fulfilment</div>
+      <div style="font-weight:800"><%= order.fulfilment_status %></div>
+    </div>
+    <div>
+      <div class="muted small">Total</div>
+      <div style="font-weight:800"><%= formatMoney(order.total_amount) %></div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px; margin-top:12px">
+    <div class="kv"><span class="muted">Items subtotal</span> <strong><%= formatMoney(itemsSubtotal) %></strong></div>
+    <% if (discountAmount > 0) { %>
+      <div class="kv" style="margin-top:6px"><span class="muted">Discount</span> <strong>-<%= formatMoney(discountAmount) %></strong></div>
+    <% } %>
+    <div class="kv" style="margin-top:6px"><span class="muted">Courier charge</span> <strong><%= formatMoney(shippingFee) %></strong></div>
+    <% if (order.delivery_region) { %>
+      <div class="muted small" style="margin-top:8px">Delivery region: <strong><%= order.delivery_region === 'EAST' ? 'East Malaysia' : 'West Malaysia' %></strong></div>
+    <% } %>
+  </div>
+
+  <% if (promo) { %>
+    <div class="muted small" style="margin-top:10px">
+      Promo applied: <strong><%= promo.code %></strong>
+      <% if (Number(promo.percent_off || 0) > 0) { %>
+        (-<%= promo.percent_off %>%)
+      <% } %>
+      <span class="muted">•</span> Discount: <strong><%= formatMoney(promo.discount_amount) %></strong>
+    </div>
+  <% } %>
+
+  <h2 class="h2" style="margin-top:14px">Items</h2>
+  <table class="table">
+    <thead><tr><th>Item</th><th>Qty</th><th>Subtotal</th></tr></thead>
+    <tbody>
+      <% order.items.forEach(it => { %>
+        <tr>
+          <td><%= it.product_name_snapshot %></td>
+          <td><%= it.quantity %></td>
+          <td><%= formatMoney(it.subtotal) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="actions" style="margin-top:12px">
+    <a class="btn" href="/orders/<%= order.order_id %>">View order</a>
+    <a class="btn" href="/">Continue shopping</a>
+    <% if (!currentUser) { %>
+      <a class="btn" href="/register">Create account</a>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../shared/bottom') %>

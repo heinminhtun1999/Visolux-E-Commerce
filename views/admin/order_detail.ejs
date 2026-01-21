@@ -1,0 +1,417 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="actions icon-row" style="margin-bottom:12px">
+  <a class="btn btn-icon icon-only" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+  <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+</div>
+
+<div class="card" style="padding:16px">
+  <h1 class="h1">Order <%= order.order_code || ('#' + order.order_id) %></h1>
+
+  <div class="row" style="gap:18px">
+    <div class="col">
+      <div class="muted small">Customer</div>
+      <div style="font-weight:700"><%= order.customer_name %></div>
+      <div class="muted small"><%= order.email %> • <%= order.phone %></div>
+      <div class="muted small" style="margin-top:6px"><%= order.address %></div>
+    </div>
+    <div style="min-width:240px">
+      <div class="muted small">Payment method</div>
+      <div style="font-weight:800"><%= order.payment_method %></div>
+      <div class="muted small" style="margin-top:8px">Payment status</div>
+      <div style="font-weight:800"><%= order.payment_status %></div>
+      <div class="muted small" style="margin-top:8px">Refund status</div>
+      <div style="font-weight:800">
+        <%= order.refund_status || 'NONE' %>
+        <% if ((order.refund_status || 'NONE') === 'FULL_REFUND') { %>
+          <span class="badge ok" style="margin-left:8px">Full refund</span>
+        <% } else if ((order.refund_status || 'NONE') === 'PARTIAL_REFUND') { %>
+          <span class="badge" style="margin-left:8px">Partial refund</span>
+        <% } %>
+      </div>
+      <div class="muted small" style="margin-top:8px">Fulfilment</div>
+      <div style="font-weight:800"><%= order.fulfilment_status %></div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px; margin-top:12px">
+    <h2 class="h2">Admin actions</h2>
+    <div class="row" style="gap:18px; align-items:flex-start">
+      <form method="post" action="/admin/orders/<%= order.order_id %>/payment-status" class="col" style="min-width:260px">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <label>Payment status</label>
+        <select name="payment_status" required>
+          <option value="PENDING" <%= order.payment_status==='PENDING' ? 'selected' : '' %>>PENDING</option>
+          <option value="PAID" <%= order.payment_status==='PAID' ? 'selected' : '' %>>PAID</option>
+          <option value="FAILED" <%= order.payment_status==='FAILED' ? 'selected' : '' %>>FAILED</option>
+          <option value="PARTIALLY_REFUNDED" <%= order.payment_status==='PARTIALLY_REFUNDED' ? 'selected' : '' %>>PARTIALLY_REFUNDED</option>
+          <option value="REFUNDED" <%= order.payment_status==='REFUNDED' ? 'selected' : '' %>>REFUNDED</option>
+          <option value="AWAITING_VERIFICATION" <%= order.payment_status==='AWAITING_VERIFICATION' ? 'selected' : '' %>>AWAITING_VERIFICATION</option>
+        </select>
+        <label class="muted small" style="margin-top:8px">Note (optional)</label>
+        <input class="input" name="note" maxlength="500" placeholder="Reason / note" />
+        <div class="actions" style="margin-top:10px">
+          <button class="btn btn-primary" type="submit">Update payment</button>
+        </div>
+        <div class="muted small" style="margin-top:8px">
+          Setting payment to <strong>PAID</strong> will attempt to deduct stock.
+        </div>
+      </form>
+
+      <form method="post" action="/admin/orders/<%= order.order_id %>/fulfilment-status" class="col" style="min-width:260px">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <label>Fulfilment status</label>
+        <select name="fulfilment_status" required>
+          <option value="NEW" <%= order.fulfilment_status==='NEW' ? 'selected' : '' %>>NEW</option>
+          <option value="PROCESSING" <%= order.fulfilment_status==='PROCESSING' ? 'selected' : '' %>>PROCESSING</option>
+          <option value="SHIPPED" <%= order.fulfilment_status==='SHIPPED' ? 'selected' : '' %>>SHIPPED</option>
+          <option value="COMPLETED" <%= order.fulfilment_status==='COMPLETED' ? 'selected' : '' %>>COMPLETED</option>
+          <option value="CANCELLED" <%= order.fulfilment_status==='CANCELLED' ? 'selected' : '' %>>CANCELLED</option>
+        </select>
+        <label class="muted small" style="margin-top:8px">Note (optional)</label>
+        <input class="input" name="note" maxlength="500" placeholder="Reason / note" />
+        <div class="actions" style="margin-top:10px">
+          <button class="btn btn-primary" type="submit">Update fulfilment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <% if (statusHistory && statusHistory.length) { %>
+    <div class="card" style="padding:12px; margin-top:12px">
+      <h2 class="h2">Status history</h2>
+      <div class="timeline">
+        <% statusHistory.forEach((h, idx) => { %>
+          <div class="timeline-item">
+            <div class="timeline-gutter">
+              <div class="timeline-dot"></div>
+              <% if (idx < statusHistory.length - 1) { %><div class="timeline-line"></div><% } %>
+            </div>
+            <div class="timeline-body">
+              <div class="timeline-top">
+                <div class="timeline-title">
+                  <span class="badge" style="margin-right:8px"><%= h.status_type %></span>
+                  <strong>
+                    <%= h.old_status ? (h.old_status + ' → ' + h.new_status) : h.new_status %>
+                  </strong>
+                </div>
+                <div class="timeline-time muted small"><%= formatDateTime(h.changed_at) %></div>
+              </div>
+              <% if (h.note) { %>
+                <div class="muted small" style="margin-top:4px"><%= h.note %></div>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (promo) { %>
+    <div class="muted small" style="margin-top:10px">
+      Promo: <strong><%= promo.code %></strong>
+      <% if (Number(promo.percent_off || 0) > 0) { %>
+        (-<%= promo.percent_off %>%)
+      <% } %>
+      <span class="muted">•</span> Discount: <strong><%= formatMoney(promo.discount_amount) %></strong>
+    </div>
+  <% } %>
+
+  <h2 class="h2" style="margin-top:14px">Items</h2>
+  <div class="muted small" style="margin-top:-6px; margin-bottom:10px">
+    <% if (order.payment_method === 'ONLINE') { %>
+      Refunds here send a partial refund request to Fiuu and are recorded in-app.
+    <% } else { %>
+      Offline bank transfer refunds are recorded as manual refunds (no gateway call).
+    <% } %>
+  </div>
+  <table class="table">
+    <thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Subtotal</th><th>Refunded</th><th></th></tr></thead>
+    <tbody>
+      <% const canOnlineRefund = order.payment_method === 'ONLINE' && (order.payment_status === 'PAID' || order.payment_status === 'PARTIALLY_REFUNDED' || order.payment_status === 'REFUNDED'); %>
+      <% const isFpxOnline = order.payment_method === 'ONLINE' && /^FPX/i.test(String(order.payment_channel || '')); %>
+      <% const canOnlineRefundViaGateway = canOnlineRefund && !isFpxOnline; %>
+      <% const canOfflineManualRefund = order.payment_method === 'OFFLINE_TRANSFER' && (order.payment_status === 'PAID' || order.payment_status === 'PARTIALLY_REFUNDED' || order.payment_status === 'REFUNDED'); %>
+      <% const latestRefundByItem = {}; %>
+      <% (refunds || []).forEach(r => { %>
+        <% const k = String(r.order_item_id); %>
+        <% if (!Object.prototype.hasOwnProperty.call(latestRefundByItem, k)) latestRefundByItem[k] = r; %>
+      <% }) %>
+      <% order.items.forEach(it => { %>
+        <% const rReq = (refundByItem && refundByItem[String(it.id)]) ? refundByItem[String(it.id)] : { quantity_refunded: 0, amount_refunded: 0 }; %>
+        <% const rOk = (refundByItemConfirmed && refundByItemConfirmed[String(it.id)]) ? refundByItemConfirmed[String(it.id)] : { quantity_refunded: 0, amount_refunded: 0 }; %>
+        <% const requestedQty = Number(rReq.quantity_refunded || 0); %>
+        <% const requestedAmt = Number(rReq.amount_refunded || 0); %>
+        <% const confirmedQty = Number(rOk.quantity_refunded || 0); %>
+        <% const confirmedAmt = Number(rOk.amount_refunded || 0); %>
+        <% const remainingQty = Math.max(0, Number(it.quantity || 0) - requestedQty); %>
+        <% const latest = latestRefundByItem[String(it.id)] || null; %>
+        <% const latestFiuuFailed = latest && String(latest.provider || '') === 'FIUU' && String(latest.provider_status || '') === 'FAILED'; %>
+        <tr>
+          <td><%= it.product_name_snapshot %></td>
+          <td><%= formatMoney(it.price_snapshot) %></td>
+          <td><%= it.quantity %></td>
+          <td><%= formatMoney(it.subtotal) %></td>
+          <td>
+            <div class="muted small">Requested: <%= requestedQty %>/<%= it.quantity %> qty</div>
+            <div class="muted small">Requested: RM <%= formatMoney(requestedAmt) %></div>
+            <% if (confirmedQty !== requestedQty || confirmedAmt !== requestedAmt) { %>
+              <div class="muted small" style="margin-top:4px">Confirmed: <%= confirmedQty %>/<%= it.quantity %> qty</div>
+              <div class="muted small">Confirmed: RM <%= formatMoney(confirmedAmt) %></div>
+            <% } %>
+          </td>
+          <td>
+            <% if (isFpxOnline) { %>
+              <div class="muted small" style="text-align:right">
+                Refund via Fiuu is disabled for <strong>FPX</strong> payments. Refund must be done manually using customer bank credentials.
+              </div>
+            <% } else if (canOnlineRefundViaGateway && remainingQty > 0) { %>
+              <form
+                method="post"
+                action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund"
+                class="actions icon-row"
+                style="gap:8px; justify-content:flex-end"
+                onsubmit="return confirm('Send a refund request to Fiuu for this item?');"
+              >
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input class="input" name="quantity" type="number" min="1" max="<%= remainingQty %>" value="1" style="width:70px" title="Qty" />
+                <input class="input" name="amount" placeholder="RM (optional)" style="width:140px" title="Refund amount (optional)" />
+                <input class="input" name="reason" placeholder="Reason (optional)" style="width:220px" title="Reason (optional)" />
+                <button class="btn btn-danger" type="submit">Refund via Fiuu</button>
+              </form>
+
+              <% if (latestFiuuFailed) { %>
+                <form
+                  method="post"
+                  action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund/mark"
+                  class="actions icon-row"
+                  style="gap:8px; justify-content:flex-end; margin-top:8px"
+                  onsubmit="return confirm('Mark this item as refunded manually? Only do this after you have refunded the customer outside Fiuu.');"
+                >
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <input type="hidden" name="quantity" value="<%= latest.quantity_refunded %>" />
+                  <input type="hidden" name="amount" value="<%= ((Number(latest.amount_refunded||0))/100).toFixed(2) %>" />
+                  <input class="input" name="note" placeholder="Manual note (optional)" style="width:220px" title="Manual note" />
+                  <button class="btn" type="submit">Mark refunded (manual)</button>
+                </form>
+                <div class="muted small" style="margin-top:6px; text-align:right">
+                  Last FIUU refund request failed. You can manually mark after external refund.
+                </div>
+              <% } %>
+            <% } else if (canOfflineManualRefund && remainingQty > 0) { %>
+              <form
+                method="post"
+                action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund/manual"
+                class="actions icon-row"
+                style="gap:8px; justify-content:flex-end"
+                onsubmit="return confirm('Record a manual refund for this offline transfer item?');"
+              >
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input class="input" name="quantity" type="number" min="1" max="<%= remainingQty %>" value="1" style="width:70px" title="Qty" />
+                <input class="input" name="amount" placeholder="RM (optional)" style="width:140px" title="Refund amount (optional)" />
+                <input class="input" name="note" placeholder="Note (optional)" style="width:220px" title="Note (optional)" />
+                <button class="btn btn-danger" type="submit">Refund (manual)</button>
+              </form>
+            <% } else if (order.payment_method !== 'ONLINE' && order.payment_method !== 'OFFLINE_TRANSFER') { %>
+              <span class="muted small">Refund not supported for this payment method</span>
+            <% } else if (order.payment_status !== 'PAID' && order.payment_status !== 'REFUNDED') { %>
+              <span class="muted small">Payment must be PAID to refund</span>
+            <% } else { %>
+              <span class="muted small">Fully refunded</span>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="row" style="justify-content:flex-end; margin-top:10px; gap:10px">
+    <div class="card" style="padding:12px; min-width:320px">
+      <div class="kv"><span class="muted">Items subtotal</span> <strong>RM <%= formatMoney(order.items_subtotal || 0) %></strong></div>
+      <div class="kv" style="margin-top:6px"><span class="muted">Shipping</span> <strong>RM <%= formatMoney(order.shipping_fee || 0) %></strong></div>
+      <div class="kv" style="margin-top:6px"><span class="muted">Discount (subtotal only)</span> <strong>- RM <%= formatMoney(order.discount_amount || 0) %></strong></div>
+      <div class="kv" style="margin-top:10px"><span class="muted">Grand total (paid)</span> <strong>RM <%= formatMoney(order.total_amount) %></strong></div>
+
+      <% const requestedAll = combinedRefundSummary ? Number(combinedRefundSummary.amount_refunded || 0) : 0; %>
+      <% const confirmedAll = combinedRefundSummaryConfirmed ? Number(combinedRefundSummaryConfirmed.amount_refunded || 0) : 0; %>
+      <% if (requestedAll > 0) { %>
+        <div class="kv" style="margin-top:10px"><span class="muted">Refund requested (total)</span> <strong>RM <%= formatMoney(requestedAll) %></strong></div>
+      <% } %>
+      <% if (confirmedAll > 0) { %>
+        <div class="kv" style="margin-top:6px"><span class="muted">Refund confirmed (total)</span> <strong>RM <%= formatMoney(confirmedAll) %></strong></div>
+      <% } %>
+      <div class="kv" style="margin-top:6px"><span class="muted">Refundable remaining</span> <strong>RM <%= formatMoney(refundableRemainingCents || 0) %></strong></div>
+    </div>
+
+    <div class="card" style="padding:12px; min-width:320px">
+      <div style="font-weight:800; margin-bottom:6px">Extra refund (shipping / manual)</div>
+      <div class="muted small" style="margin-bottom:10px">Use this to refund shipping or any remaining amount up to the grand total.</div>
+      <% if (isFpxOnline) { %>
+        <div class="muted small" style="text-align:right">
+          Refund via Fiuu is disabled for <strong>FPX</strong> payments. Refund must be done manually using customer bank credentials.
+        </div>
+      <% } else if (canOnlineRefundViaGateway && Number(refundableRemainingCents || 0) > 0) { %>
+        <form
+          method="post"
+          action="/admin/orders/<%= order.order_id %>/refund"
+          class="actions icon-row"
+          style="gap:8px; justify-content:flex-end"
+          onsubmit="return confirm('Send a refund request to Fiuu for this amount?');"
+        >
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <input class="input" name="amount" placeholder="RM" style="width:140px" title="Refund amount" required />
+          <input class="input" name="reason" placeholder="Reason (optional)" style="width:220px" title="Reason (optional)" />
+          <button class="btn btn-danger" type="submit">Refund via Fiuu</button>
+        </form>
+      <% } else if (canOfflineManualRefund && Number(refundableRemainingCents || 0) > 0) { %>
+        <form
+          method="post"
+          action="/admin/orders/<%= order.order_id %>/refund/manual"
+          class="actions icon-row"
+          style="gap:8px; justify-content:flex-end"
+          onsubmit="return confirm('Record a manual refund for this offline transfer amount?');"
+        >
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <input class="input" name="amount" placeholder="RM" style="width:140px" title="Refund amount" required />
+          <input class="input" name="reason" placeholder="Reason (optional)" style="width:220px" title="Reason (optional)" />
+          <button class="btn btn-danger" type="submit">Refund (manual)</button>
+        </form>
+      <% } else if (!canOnlineRefund && !canOfflineManualRefund) { %>
+        <div class="muted small">Payment must be PAID to refund</div>
+      <% } else { %>
+        <div class="muted small">No remaining refundable amount</div>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (refunds && refunds.length) { %>
+    <div class="card" style="padding:12px; margin-top:12px">
+      <h2 class="h2">Refund history</h2>
+      <table class="table">
+        <thead><tr><th>When</th><th>Item</th><th>Qty</th><th>Amount</th><th>Provider</th><th>Status</th><th>Reason</th></tr></thead>
+        <tbody>
+          <% refunds.forEach(r => { %>
+            <% const it = (order.items || []).find(x => Number(x.id) === Number(r.order_item_id)); %>
+            <tr>
+              <td class="muted"><%= formatDateTime(r.created_at) %></td>
+              <td><%= it ? it.product_name_snapshot : ('Item #' + r.order_item_id) %></td>
+              <td><%= r.quantity_refunded %></td>
+              <td><%= formatMoney(r.amount_refunded) %></td>
+              <td class="muted"><%= r.provider || '-' %></td>
+              <td class="muted"><%= r.provider_status || '-' %></td>
+              <td class="muted"><%= r.reason || '' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+
+  <% if (extraRefunds && extraRefunds.length) { %>
+    <div class="card" style="padding:12px; margin-top:12px">
+      <h2 class="h2">Extra refund history</h2>
+      <table class="table">
+        <thead><tr><th>When</th><th>Amount</th><th>Provider</th><th>Status</th><th>Reason</th></tr></thead>
+        <tbody>
+          <% extraRefunds.forEach(r => { %>
+            <tr>
+              <td class="muted"><%= formatDateTime(r.created_at) %></td>
+              <td>RM <%= formatMoney(r.amount_refunded) %></td>
+              <td class="muted"><%= r.provider || '-' %></td>
+              <td class="muted"><%= r.provider_status || '-' %></td>
+              <td class="muted"><%= r.reason || '' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+
+  <% if (order.payment_method === 'OFFLINE_TRANSFER') { %>
+    <div style="margin-top:14px" class="card">
+      <div style="padding:12px">
+        <h2 class="h2">Bank transfer slip</h2>
+        <% if (offline) { %>
+          <div class="muted small">Bank: <%= offline.bank_name %> • Ref: <%= offline.reference_number %></div>
+          <div style="margin-top:10px" class="row">
+            <div style="flex:1">
+              <% if (offline.slip_deleted) { %>
+                <div class="muted" style="padding:12px; border:1px dashed var(--border); border-radius:10px">
+                  Slip image purged<% if (offline.slip_deleted_at) { %> on <%= formatDateTime(offline.slip_deleted_at) %><% } %>.
+                </div>
+              <% } else { %>
+                <button type="button" class="slip-thumb" data-slip-open data-slip-src="<%= offline.slip_image_path %>" aria-label="Open slip">
+                  <img class="product-img" style="height:220px" src="<%= offline.slip_image_path %>" alt="" />
+                </button>
+              <% } %>
+            </div>
+            <div style="min-width:240px">
+              <% if (offline.verified) { %>
+                <span class="badge ok">Verified</span>
+              <% } else { %>
+                <span class="badge">Pending review</span>
+              <% } %>
+
+              <div class="actions" style="margin-top:10px">
+                <% if (!offline.verified && !offline.slip_deleted) { %>
+                  <form method="post" action="/admin/orders/<%= order.order_id %>/offline/verify" style="display:inline" onsubmit="return confirm('Verify this bank transfer slip and mark payment as PAID? This will deduct stock.');">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                    <button class="btn btn-primary" type="submit">Verify payment</button>
+                  </form>
+                <% } %>
+                <% if (!offline.verified && !offline.slip_deleted) { %>
+                  <form method="post" action="/admin/orders/<%= order.order_id %>/offline/reject" style="display:inline" onsubmit="return confirm('Reject this slip? The customer will need to re-upload a new slip.');">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                    <input type="hidden" name="rejection_reason" value="" />
+                    <button class="btn btn-danger" type="submit">Reject slip</button>
+                  </form>
+                  <script>
+                    // Inline, page-local prompt so we don't need extra JS assets.
+                    (function () {
+                      var f = document.currentScript && document.currentScript.previousElementSibling;
+                      if (!f || f.tagName !== 'FORM') return;
+                      f.addEventListener('submit', function (e) {
+                        var input = f.querySelector('input[name="rejection_reason"]');
+                        if (!input) return;
+                        var r = prompt('Rejection reason (shown to customer):');
+                        if (r === null) {
+                          e.preventDefault();
+                          return;
+                        }
+                        input.value = String(r).trim();
+                      });
+                    })();
+                  </script>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        <% } else { %>
+          <div class="muted">No slip uploaded yet.</div>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<% if (order.payment_method === 'OFFLINE_TRANSFER' && offline && !offline.slip_deleted) { %>
+  <div class="modal" data-slip-modal aria-hidden="true">
+    <div class="modal__backdrop" data-modal-backdrop></div>
+    <div class="modal__panel" role="dialog" aria-modal="true" aria-label="Bank slip viewer">
+      <div class="modal__top">
+        <div class="modal__title">Bank transfer slip</div>
+        <button class="btn btn-icon icon-only" type="button" data-modal-close title="Close" aria-label="Close" data-label="Close"><%- icon('x') %></button>
+      </div>
+      <div class="modal__body">
+        <div class="zoom-pane" data-zoom-pane>
+          <img data-zoom-img data-slip-modal-img src="<%= offline.slip_image_path %>" alt="" />
+        </div>
+        <div class="muted small" style="margin-top:8px">Scroll/pinch to zoom, drag to pan, double-click to reset.</div>
+      </div>
+    </div>
+  </div>
+  <script src="/public/js/zoom-pan.js" defer></script>
+  <script src="/public/js/slip-viewer.js" defer></script>
+<% } %>
+
+<%- include('../shared/bottom') %>

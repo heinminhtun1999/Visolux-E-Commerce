@@ -1,0 +1,149 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Categories</h1>
+    <div class="muted small"><%= total %> categories</div>
+  </div>
+  <div class="actions icon-row">
+    <a class="btn btn-icon" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+    <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+    <a class="btn btn-icon" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <form method="get" action="/admin/categories" class="row" style="align-items:flex-end">
+    <div style="min-width:240px">
+      <label>View</label>
+      <select name="archived">
+        <option value="ACTIVE" <%= archived === 'ACTIVE' ? 'selected' : '' %>>Active only</option>
+        <option value="ARCHIVED" <%= archived === 'ARCHIVED' ? 'selected' : '' %>>Archived only</option>
+        <option value="ALL" <%= archived === 'ALL' ? 'selected' : '' %>>All</option>
+      </select>
+    </div>
+
+    <div class="actions" style="margin-left:auto">
+      <button class="btn btn-primary" type="submit">Apply</button>
+      <a class="btn" href="/admin/categories">Clear</a>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="padding:16px; margin-top:12px">
+  <h2 class="h2" style="margin-bottom:10px">Create category</h2>
+  <form method="post" action="/admin/categories" class="admin-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="field is-lg">
+      <label>Name</label>
+      <input class="input" name="name" required minlength="2" maxlength="80" placeholder="e.g. Water Filter Parts" />
+    </div>
+
+    <div class="field is-lg">
+      <label>Slug (optional)</label>
+      <input class="input" name="slug" maxlength="80" placeholder="e.g. water-filter-parts" />
+      <div class="muted small" style="margin-top:6px">Leave blank to auto-generate.</div>
+    </div>
+
+    <div class="field is-sm">
+      <label>Visibility</label>
+      <select name="visible">
+        <option value="1" selected>Visible</option>
+        <option value="0">Hidden</option>
+      </select>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary btn-icon" type="submit">Create</button>
+    </div>
+  </form>
+  <div class="muted small" style="margin-top:10px">After creating a category, you can upload an image in the table below (used for the Home page cards).</div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Slug</th>
+        <th>Image</th>
+        <th>Visible</th>
+        <th>Archived</th>
+        <th>Sections</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% categories.forEach(c => { %>
+        <tr>
+          <td>#<%= c.id %></td>
+          <td>
+            <input class="input" name="name" value="<%= c.name %>" required maxlength="80" form="catForm-<%= c.id %>" />
+          </td>
+          <td>
+            <input class="input" name="slug" value="<%= c.slug %>" required maxlength="80" form="catForm-<%= c.id %>" />
+          </td>
+          <td>
+            <div class="row" style="gap:10px; align-items:center; flex-wrap:wrap">
+              <div style="width:70px; height:46px; border-radius:10px; overflow:hidden; background:var(--border)">
+                <% if (c.image_url) { %>
+                  <img src="<%= c.image_url %>" alt="" style="width:70px; height:46px; object-fit:cover; display:block" loading="lazy" decoding="async" />
+                <% } else { %>
+                  <div style="width:70px; height:46px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, rgba(255,255,255,.15), rgba(0,0,0,.05))">
+                    <span class="muted" style="font-size:11px">No image</span>
+                  </div>
+                <% } %>
+              </div>
+
+              <form method="post" action="/admin/categories/<%= c.id %>/image" enctype="multipart/form-data" style="display:flex; gap:8px; align-items:center">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input class="input" type="file" name="category_image" accept="image/jpeg,image/png,image/webp" style="max-width:220px" />
+                <button class="btn" type="submit">Upload</button>
+              </form>
+
+              <% if (c.image_url) { %>
+                <form method="post" action="/admin/categories/<%= c.id %>/image/remove" style="display:inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <button class="btn" type="submit">Remove</button>
+                </form>
+              <% } %>
+            </div>
+          </td>
+          <td>
+            <form method="post" action="/admin/categories/<%= c.id %>/visibility" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <input type="hidden" name="visible" value="<%= c.visible ? '0' : '1' %>" />
+              <button class="btn" type="submit"><%= c.visible ? 'Visible' : 'Hidden' %></button>
+            </form>
+          </td>
+          <td>
+            <% if (!c.archived) { %>
+              <form method="post" action="/admin/categories/<%= c.id %>/archive" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button class="btn" type="submit">Archive</button>
+              </form>
+            <% } else { %>
+              <form method="post" action="/admin/categories/<%= c.id %>/restore" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button class="btn" type="submit">Restore</button>
+              </form>
+            <% } %>
+          </td>
+          <td>
+            <a class="btn" href="/admin/categories/<%= c.id %>/sections">Manage</a>
+          </td>
+          <td style="white-space:nowrap">
+            <form id="catForm-<%= c.id %>" method="post" action="/admin/categories/<%= c.id %>" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button class="btn btn-icon" type="submit" title="Save" aria-label="Save" data-label="Save"><%- icon('check') %></button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../shared/bottom') %>

@@ -1,0 +1,122 @@
+<%- include('../shared/top', { title }) %>
+
+<div>
+  <h1 class="h1">Products</h1>
+  <div class="muted small">Browse parts and components.</div>
+</div>
+
+<div class="card filters-panel" id="filters-panel" style="padding:14px; margin-top:12px" data-filters-panel>
+  <div class="filters-panel__top">
+    <div class="filters-panel__title">Filters</div>
+    <button class="btn btn-icon icon-only" type="button" data-filters-close title="Close filters" aria-label="Close filters" data-label="Close"><%- icon('x') %></button>
+  </div>
+  <form method="get" action="/products" class="row" style="align-items:flex-end">
+    <div class="col" style="min-width:220px">
+      <label>Search</label>
+      <input class="input" name="q" value="<%= q %>" placeholder="Search products" />
+    </div>
+    <div style="width:240px">
+      <label>Category</label>
+      <select name="category">
+        <option value="" <%= category ? '' : 'selected' %>>All</option>
+        <% (categories || []).forEach(c => { %>
+          <option value="<%= c.slug %>" <%= category === c.slug ? 'selected' : '' %>><%= c.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div style="width:220px">
+      <label>Availability</label>
+      <select name="availability">
+        <option value="" <%= availability ? '' : 'selected' %>>All</option>
+        <option value="IN_STOCK" <%= availability === 'IN_STOCK' ? 'selected' : '' %>>In stock</option>
+        <option value="OUT_OF_STOCK" <%= availability === 'OUT_OF_STOCK' ? 'selected' : '' %>>Out of stock</option>
+      </select>
+    </div>
+
+    <div style="width:160px">
+      <label>Min price</label>
+      <input class="input" name="min_price" inputmode="decimal" value="<%= min_price %>" placeholder="0.00" />
+    </div>
+    <div style="width:160px">
+      <label>Max price</label>
+      <input class="input" name="max_price" inputmode="decimal" value="<%= max_price %>" placeholder="9999.00" />
+    </div>
+
+    <div style="width:160px">
+      <label>Per page</label>
+      <select name="pageSize">
+        <option value="12" <%= String(pageSize || 12) === '12' ? 'selected' : '' %>>12</option>
+        <option value="24" <%= String(pageSize || 12) === '24' ? 'selected' : '' %>>24</option>
+        <option value="48" <%= String(pageSize || 12) === '48' ? 'selected' : '' %>>48</option>
+      </select>
+    </div>
+
+    <div class="actions" style="margin-left:auto">
+      <button class="btn btn-primary btn-icon icon-only" type="submit" title="Apply filters" aria-label="Apply filters" data-label="Apply"><%- icon('filter') %></button>
+      <a class="btn btn-icon icon-only" href="/products" title="Clear filters" aria-label="Clear filters" data-label="Clear"><%- icon('x') %></a>
+    </div>
+  </form>
+</div>
+
+<div style="margin-top:12px" class="grid">
+  <% products.forEach(p => { %>
+    <div class="card product-card">
+      <a href="/products/<%= p.product_id %>" style="text-decoration:none; color:inherit">
+        <img class="product-img" src="<%= p.product_image || '/public/placeholder.svg' %>" alt="" />
+        <div style="margin-top:10px; font-weight:700"><%= p.name %></div>
+        <div class="muted small" style="margin-top:4px"><%= p.category_name || p.category %></div>
+        <div class="kv">
+          <div><span class="muted">Price</span> <strong><%= formatMoney(p.price) %></strong></div>
+          <div>
+            <% if (p.stock > 0) { %>
+              <span class="badge ok">In stock</span>
+            <% } else { %>
+              <span class="badge no">Out of stock</span>
+            <% } %>
+          </div>
+        </div>
+      </a>
+
+      <div style="margin-top:12px" class="actions">
+        <% if (!isAdmin) { %>
+          <form method="post" action="/cart/add" style="flex:1">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <input type="hidden" name="product_id" value="<%= p.product_id %>" />
+            <input type="hidden" name="return_to" value="<%= currentUrl %>" />
+            <button class="btn btn-primary" type="submit" <%= p.stock > 0 ? '' : 'disabled' %>>Add to cart</button>
+          </form>
+        <% } %>
+        <a class="btn" href="/products/<%= p.product_id %>" style="flex:1">View</a>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<div class="pager">
+  <span class="muted small">Page <%= page %> / <%= pageCount %> • <%= total %> items</span>
+  <% if (page > 1) { %>
+    <a href="/products?<%= new URLSearchParams({ q, category, availability, min_price, max_price, sort, pageSize: String(pageSize || 12), page: String(page-1) }).toString() %>">Prev</a>
+  <% } %>
+  <% if (page < pageCount) { %>
+    <a href="/products?<%= new URLSearchParams({ q, category, availability, min_price, max_price, sort, pageSize: String(pageSize || 12), page: String(page+1) }).toString() %>">Next</a>
+  <% } %>
+</div>
+
+<% if (category && categorySections && categorySections.length) { %>
+  <div class="card" style="padding:16px; margin-top:12px">
+    <% const catObj = (categories || []).find(c => c.slug === category); %>
+    <h2 class="h2" style="margin-top:0">More about <%= (catObj && catObj.name) ? catObj.name : category %></h2>
+    <% categorySections.forEach(s => { %>
+      <div style="margin-top:14px">
+        <% if (String(s.title || '').trim()) { %>
+          <div style="font-weight:800; margin-bottom:6px"><%= s.title %></div>
+        <% } %>
+        <div class="md"><%- s.html %></div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+
+<script src="/public/js/filters-toggle.js" defer></script>
+
+<%- include('../shared/bottom') %>

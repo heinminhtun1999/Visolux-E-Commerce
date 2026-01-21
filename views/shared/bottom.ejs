@@ -1,0 +1,33 @@
+    <footer class="site-footer" style="margin-top:18px">
+      <div class="site-footer__grid">
+        <div class="site-footer__left muted small">
+          <% const cc = String(footerCopyright || '').trim(); %>
+          <% if (cc) { %>
+            <%= cc %>
+          <% } else { %>
+            © <%= new Date().getFullYear() %> <%= siteName || 'Visolux' %>. All rights reserved.
+          <% } %>
+        </div>
+
+        <div class="site-footer__links small">
+          <% const tech = String(footerTechnicianSupportUrl || '').trim(); %>
+          <% if (tech) { %>
+            <a href="<%= tech %>" class="site-footer__link" target="_blank" rel="noopener noreferrer">Request Technician Onsite Support</a>
+          <% } %>
+          <a href="/how-to-order" class="site-footer__link">How to Order</a>
+          <a href="/privacy" class="site-footer__link">Privacy</a>
+          <a href="/terms" class="site-footer__link">Terms</a>
+        </div>
+      </div>
+
+      <div class="site-footer__payments" aria-label="Supported payment methods">
+        <img class="pay-logo" src="/public/images/logo/visa.png" alt="VISA" loading="lazy" decoding="async" />
+        <img class="pay-logo" src="/public/images/logo/master.png" alt="Mastercard" loading="lazy" decoding="async" />
+        <img class="pay-logo" src="/public/images/logo/Bank%20Trasnfer.webp" alt="Bank Transfer" loading="lazy" decoding="async" />
+        <img class="pay-logo" src="/public/images/logo/Fiuu.png" alt="Fiuu" loading="lazy" decoding="async" />
+        <img class="pay-logo" src="/public/images/logo/SSL.jpg" alt="SSL Secured" loading="lazy" decoding="async" />
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

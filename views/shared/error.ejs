@@ -1,0 +1,41 @@
+<%- include('top', { title }) %>
+<div class="card" style="padding:16px">
+  <h1 class="h1"><%= title %></h1>
+  <p class="muted"><%= message %></p>
+
+  <% if (typeof details !== 'undefined' && details) { %>
+    <div class="card" style="padding:12px; margin-top:12px; background:#0b1220; border:1px solid rgba(255,255,255,0.08)">
+      <div class="muted small" style="margin-bottom:6px">Debug details (development only)</div>
+
+      <% if (details.stack) { %>
+        <div class="small" style="white-space:pre-wrap"><%= details.stack %></div>
+      <% } %>
+
+      <% if (!details.stack && details.issues && details.issues.length) { %>
+        <div class="small" style="white-space:pre-wrap">
+          <% details.issues.forEach((it) => { %>
+            <div><strong><%= it.path || '(root)' %></strong>: <%= it.message %></div>
+          <% }) %>
+        </div>
+      <% } else if (!details.stack && details.flattened) { %>
+        <% if (details.flattened.formErrors && details.flattened.formErrors.length) { %>
+          <div class="small" style="margin-bottom:8px">
+            <strong>Form</strong>: <%= details.flattened.formErrors.join(' • ') %>
+          </div>
+        <% } %>
+        <% if (details.flattened.fieldErrors) { %>
+          <div class="small" style="white-space:pre-wrap">
+            <% Object.entries(details.flattened.fieldErrors).forEach(([k, v]) => { %>
+              <% if (v && v.length) { %>
+                <div><strong><%= k %></strong>: <%= v.join(' • ') %></div>
+              <% } %>
+            <% }) %>
+          </div>
+        <% } %>
+      <% } %>
+    </div>
+  <% } %>
+
+  <div class="actions" style="margin-top:12px"></div>
+</div>
+<%- include('bottom') %>

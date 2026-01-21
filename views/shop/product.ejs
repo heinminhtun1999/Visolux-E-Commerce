@@ -1,0 +1,45 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="card" style="padding:16px">
+  <div class="row">
+    <div style="flex:1">
+      <div class="zoom-pane" data-zoom-pane>
+        <img data-zoom-img src="<%= product.product_image || '/public/placeholder.svg' %>" alt="" />
+      </div>
+      <div class="muted small" style="margin-top:8px">Scroll/pinch to zoom, drag to pan, double-click to reset.</div>
+    </div>
+    <div style="flex:1">
+      <h1 class="h1"><%= product.name %></h1>
+      <div class="muted"><%= product.category_name || product.category %></div>
+      <div style="margin-top:10px; font-size:18px; font-weight:800"><%= formatMoney(product.price) %></div>
+      <div style="margin-top:10px">
+        <% if (product.stock > 0) { %>
+          <span class="badge ok">In stock: <%= product.stock %></span>
+        <% } else { %>
+          <span class="badge no">Out of stock</span>
+        <% } %>
+      </div>
+      <p style="margin-top:12px" class="muted"><%= product.description %></p>
+
+      <% if (!isAdmin) { %>
+        <form method="post" action="/cart/add" style="margin-top:12px" class="row">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <input type="hidden" name="product_id" value="<%= product.product_id %>" />
+          <input type="hidden" name="return_to" value="<%= currentUrl %>" />
+          <div style="width:140px">
+            <label>Qty</label>
+            <input class="input" type="number" name="quantity" min="1" max="99" value="1" />
+          </div>
+          <div style="flex:1">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" type="submit" <%= product.stock > 0 ? '' : 'disabled' %>>Add to cart</button>
+          </div>
+        </form>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<script src="/public/js/zoom-pan.js" defer></script>
+
+<%- include('../shared/bottom') %>

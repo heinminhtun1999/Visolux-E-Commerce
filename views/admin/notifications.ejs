@@ -1,0 +1,68 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Notifications</h1>
+    <div class="muted small"><%= total %> notifications</div>
+  </div>
+  <div class="actions icon-row">
+    <a class="btn btn-icon icon-only" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
+    <a class="btn btn-icon icon-only" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+    <a class="btn btn-icon icon-only" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+
+    <button class="btn btn-icon icon-only" type="button" title="Enable desktop notifications" aria-label="Enable desktop notifications" data-label="Enable notifications" data-enable-desktop-notifications><%- icon('desktop-bell') %></button>
+
+    <form method="post" action="/admin/notifications/read-all" style="display:inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button class="btn btn-icon icon-only" type="submit" title="Mark all read" aria-label="Mark all read" data-label="Read all"><%- icon('check') %></button>
+    </form>
+
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <table class="table">
+    <thead>
+      <tr><th>When</th><th>Title</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% rows.forEach(n => { %>
+        <tr data-open-url="/admin/notifications/<%= n.id %>/open" style="cursor:pointer">
+          <td class="muted"><%= formatDateTime(n.created_at) %></td>
+          <td>
+            <strong><a href="/admin/notifications/<%= n.id %>/open"><%= n.title %></a></strong>
+            <% if (n.body) { %><div class="muted small"><%= n.body %></div><% } %>
+          </td>
+          <td>
+            <% if (n.read_at) { %><span class="badge">Read</span><% } else { %><span class="badge ok">Unread</span><% } %>
+          </td>
+          <td>
+            <div class="actions icon-row">
+              <% if (n.link) { %>
+                <a class="btn btn-icon icon-only" href="/admin/notifications/<%= n.id %>/open" title="Open" aria-label="Open" data-label="Open"><%- icon('view') %></a>
+              <% } %>
+              <% if (!n.read_at) { %>
+                <form method="post" action="/admin/notifications/<%= n.id %>/read" style="display:inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <button class="btn btn-icon icon-only" type="submit" title="Mark read" aria-label="Mark read" data-label="Read"><%- icon('check') %></button>
+                </form>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="pager">
+    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
+    <% if (page > 1) { %>
+      <a href="/admin/notifications?page=<%= page - 1 %>">Prev</a>
+    <% } %>
+    <% if (page < pageCount) { %>
+      <a href="/admin/notifications?page=<%= page + 1 %>">Next</a>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../shared/bottom') %>

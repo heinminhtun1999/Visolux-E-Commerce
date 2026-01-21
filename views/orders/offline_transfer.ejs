@@ -1,0 +1,82 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="card" style="padding:16px">
+  <h1 class="h1">Upload bank slip (Order <%= order.order_code || ('#' + order.order_id) %>)</h1>
+  <div class="muted small">After upload, an admin will verify and confirm payment.</div>
+
+  <% if (existing && !existing.verified && existing.slip_rejection_reason) { %>
+    <div class="card" style="padding:12px; margin-top:12px; border:1px solid rgba(220,53,69,.35); background:rgba(220,53,69,.06)">
+      <div style="font-weight:800">Previous slip was rejected</div>
+      <div class="muted small" style="margin-top:4px">
+        <%= existing.slip_rejection_reason %>
+        <% if (existing.slip_rejected_at) { %> • <%= formatDateTime(existing.slip_rejected_at) %><% } %>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="card" style="padding:12px; margin-top:12px">
+    <div class="muted small" style="font-weight:800; letter-spacing:.02em; text-transform:uppercase">Bank details</div>
+    <div style="margin-top:8px" class="small">
+      <div><strong>Bank Acc.</strong>: Public Bank Berhad</div>
+      <div><strong>Acc. No.</strong>: 3140814122</div>
+      <div><strong>Acc. Name</strong>: Visolux (M) Sdn Bhd</div>
+    </div>
+  </div>
+
+  <% if (existing && existing.verified) { %>
+    <div class="card" style="padding:12px; margin-top:12px">
+      <div style="font-weight:800">Slip verified</div>
+      <div class="muted small" style="margin-top:4px">This slip has already been verified. Re-upload is disabled.</div>
+      <div class="actions" style="margin-top:10px">
+        <a class="btn" href="/orders/<%= order.order_id %>">Back to order</a>
+      </div>
+    </div>
+  <% } else { %>
+  <form method="post" action="/orders/<%= order.order_id %>/offline-transfer" enctype="multipart/form-data" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label>Bank name</label>
+    <input class="input" name="bank_name" value="<%= existing ? existing.bank_name : '' %>" required />
+
+    <label>Reference number</label>
+    <input class="input" name="reference_number" value="<%= existing ? existing.reference_number : '' %>" required />
+
+    <label>Slip image (JPG/PNG/WEBP)</label>
+    <input class="input" type="file" name="slip_image" accept="image/*" required />
+
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-primary" type="submit">Upload</button>
+      <a class="btn" href="/orders/<%= order.order_id %>">Cancel</a>
+    </div>
+  </form>
+  <% } %>
+
+  <% if (existing) { %>
+    <div style="margin-top:14px" class="row">
+      <div style="flex:1">
+        <button type="button" class="slip-thumb" data-slip-open data-slip-src="<%= existing.slip_image_path %>" aria-label="Open slip">
+          <img class="product-img" style="height:220px" src="<%= existing.slip_image_path %>" alt="" />
+        </button>
+      </div>
+    </div>
+
+    <div class="modal" data-slip-modal aria-hidden="true">
+      <div class="modal__backdrop" data-modal-backdrop></div>
+      <div class="modal__panel" role="dialog" aria-modal="true" aria-label="Bank slip viewer">
+        <div class="modal__top">
+          <div class="modal__title">Bank transfer slip</div>
+          <button class="btn btn-icon icon-only" type="button" data-modal-close title="Close" aria-label="Close" data-label="Close"><%- icon('x') %></button>
+        </div>
+        <div class="modal__body">
+          <div class="zoom-pane" data-zoom-pane>
+            <img data-zoom-img data-slip-modal-img src="<%= existing.slip_image_path %>" alt="" />
+          </div>
+          <div class="muted small" style="margin-top:8px">Scroll/pinch to zoom, drag to pan, double-click to reset.</div>
+        </div>
+      </div>
+    </div>
+    <script src="/public/js/zoom-pan.js" defer></script>
+    <script src="/public/js/slip-viewer.js" defer></script>
+  <% } %>
+</div>
+
+<%- include('../shared/bottom') %>

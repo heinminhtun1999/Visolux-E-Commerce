@@ -1,0 +1,75 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="actions icon-row" style="margin-bottom:12px">
+  <a class="btn btn-icon" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+  <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+  <a class="btn btn-icon" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+</div>
+
+<div class="card" style="padding:16px; width:100%">
+  <h1 class="h1"><%= product ? ('Edit #' + product.product_id) : 'New product' %></h1>
+
+  <form method="post" action="<%= product ? ('/admin/products/' + product.product_id + '/edit') : '/admin/products/new' %>" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label>Name</label>
+    <input class="input" name="name" value="<%= product ? product.name : '' %>" required />
+
+    <label>Description</label>
+    <textarea class="input" name="description" rows="5"><%= product ? product.description : '' %></textarea>
+
+    <label>Category</label>
+    <select name="category" required>
+      <% if (!categories || !categories.length) { %>
+        <option value="" disabled selected>No categories yet</option>
+      <% } else { %>
+        <% categories.forEach(c => { %>
+          <option value="<%= c.slug %>" <%= product && product.category===c.slug ? 'selected' : '' %>><%= c.name %></option>
+        <% }) %>
+      <% } %>
+    </select>
+
+    <div class="row">
+      <div class="col" style="min-width:220px">
+        <label>Price (e.g. 12.50)</label>
+        <input class="input" name="price" type="number" min="1" step="0.01" value="<%= product ? (product.price/100).toFixed(2) : '1.00' %>" required />
+      </div>
+      <div class="col" style="min-width:220px">
+        <label>Stock</label>
+        <input class="input" name="stock" type="number" min="0" value="<%= product ? product.stock : 0 %>" required />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col" style="min-width:220px">
+        <label>Visibility</label>
+        <select name="visibility">
+          <option value="1" <%= !product || product.visibility ? 'selected' : '' %>>Visible</option>
+          <option value="0" <%= product && !product.visibility ? 'selected' : '' %>>Hidden</option>
+        </select>
+      </div>
+      <div class="col" style="min-width:220px">
+        <label>Archived</label>
+        <select name="archived">
+          <option value="0" <%= !product || !product.archived ? 'selected' : '' %>>No</option>
+          <option value="1" <%= product && product.archived ? 'selected' : '' %>>Yes</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Product image (optional)</label>
+    <input class="input" type="file" name="product_image" accept="image/*" />
+
+    <% if (product && product.product_image) { %>
+      <div style="margin-top:12px">
+        <img class="product-img" style="height:220px" src="<%= product.product_image %>" alt="" />
+      </div>
+    <% } %>
+
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-primary btn-icon" type="submit" title="Save" aria-label="Save" data-label="Save"><%- icon('check') %></button>
+      <a class="btn btn-icon" href="/admin/products" title="Cancel" aria-label="Cancel" data-label="Cancel"><%- icon('x') %></a>
+    </div>
+  </form>
+</div>
+
+<%- include('../shared/bottom') %>

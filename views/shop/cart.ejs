@@ -1,0 +1,66 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="align-items:flex-end; justify-content:space-between">
+  <div>
+    <h1 class="h1">Cart</h1>
+    <div class="muted small"><%= cart.items.length %> items</div>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <% if (cart.items.length === 0) { %>
+    <div class="muted">Your cart is empty.</div>
+    <div class="actions" style="margin-top:12px">
+      <a class="btn btn-primary" href="/">Browse categories</a>
+    </div>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Price</th>
+          <th style="width:160px">Qty</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% cart.items.forEach(line => { %>
+          <tr>
+            <td>
+              <div style="font-weight:700"><a href="/products/<%= line.product.product_id %>"><%= line.product.name %></a></div>
+              <div class="muted small"><%= line.product.category_name || line.product.category %></div>
+            </td>
+            <td><%= formatMoney(line.product.price) %></td>
+            <td>
+              <form method="post" action="/cart/update" class="row" style="gap:8px">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input type="hidden" name="product_id" value="<%= line.product.product_id %>" />
+                <input class="input" type="number" min="0" max="99" name="quantity" value="<%= line.quantity %>" inputmode="numeric" />
+              </form>
+              <div class="muted small" style="margin-top:6px">Auto-updates</div>
+            </td>
+            <td><%= formatMoney(line.subtotal) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<% if (cart.items.length > 0) { %>
+  <div class="row" style="justify-content:flex-end; margin-top:12px">
+    <div class="card" style="padding:12px; min-width:320px">
+      <div class="kv"><span class="muted">Total</span> <strong><%= formatMoney(cart.total) %></strong></div>
+      <div class="actions" style="margin-top:10px">
+        <form method="post" action="/cart/clear" style="flex:1">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button class="btn btn-danger" type="submit" style="width:100%">Clear cart</button>
+        </form>
+        <a class="btn btn-primary" href="/checkout" style="flex:1; width:100%; justify-content:center">Checkout</a>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<script src="/public/js/cart-auto-update.js" defer></script>
+<%- include('../shared/bottom') %>

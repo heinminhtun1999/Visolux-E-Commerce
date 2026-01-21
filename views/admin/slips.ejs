@@ -1,0 +1,117 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Bank slips</h1>
+    <div class="muted small"><%= total %> slips</div>
+  </div>
+  <div class="actions icon-row">
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/orders') ? 'is-active' : '' %>" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/products') ? 'is-active' : '' %>" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/slips') ? 'is-active' : '' %>" href="/admin/slips" title="Bank slips" aria-label="Bank slips" data-label="Bank slips"><%- icon('slip') %></a>
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+    <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <form method="get" action="/admin/slips" class="admin-form">
+    <div class="field is-lg">
+      <label>Search</label>
+      <input class="input" name="q" value="<%= q || '' %>" placeholder="Order / customer / email / reference" />
+    </div>
+
+    <div class="field is-md">
+      <label>Status</label>
+      <select name="status">
+        <option value="" <%= status ? '' : 'selected' %>>All</option>
+        <option value="PENDING" <%= String(status).toUpperCase()==='PENDING' ? 'selected' : '' %>>Pending</option>
+        <option value="VERIFIED" <%= String(status).toUpperCase()==='VERIFIED' ? 'selected' : '' %>>Verified</option>
+        <option value="PURGED" <%= String(status).toUpperCase()==='PURGED' ? 'selected' : '' %>>Purged</option>
+      </select>
+      <div class="muted small" style="margin-top:6px">Purged slips are deleted from storage.</div>
+    </div>
+
+    <div class="field is-sm">
+      <label>From</label>
+      <input class="input" type="date" name="date_from" value="<%= date_from || '' %>" />
+    </div>
+
+    <div class="field is-sm">
+      <label>To</label>
+      <input class="input" type="date" name="date_to" value="<%= date_to || '' %>" />
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Apply</button>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <table class="table">
+    <thead>
+      <tr><th>Order</th><th>Uploaded</th><th>Status</th><th>Bank</th><th>Reference</th><th>Customer</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% rows.forEach(r => { %>
+        <tr>
+          <td><%= r.order.order_code || ('#' + r.order.order_id) %></td>
+          <td class="muted"><%= r.slip.uploaded_at %></td>
+          <td>
+            <% if (r.slip.slip_deleted) { %>
+              <span class="badge">Purged</span>
+            <% } else if (r.slip.verified) { %>
+              <span class="badge ok">Verified</span>
+            <% } else { %>
+              <span class="badge">Pending</span>
+            <% } %>
+          </td>
+          <td><%= r.slip.bank_name %></td>
+          <td><%= r.slip.reference_number %></td>
+          <td><strong><%= r.order.customer_name %></strong><div class="muted small"><%= r.order.email %></div></td>
+          <td>
+            <div class="actions icon-row">
+              <a class="btn btn-icon icon-only" href="/admin/orders/<%= r.order.order_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></a>
+              <% if (!r.slip.verified && !r.slip.slip_deleted) { %>
+                <form method="post" action="/admin/slips/<%= r.order.order_id %>/approve" style="display:inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <button class="btn btn-primary btn-icon icon-only" type="submit" title="Approve" aria-label="Approve" data-label="Approve"><%- icon('check') %></button>
+                </form>
+                <form
+                  method="post"
+                  action="/admin/slips/<%= r.order.order_id %>/reject"
+                  style="display:inline"
+                  onsubmit="var r = prompt('Rejection reason (shown to customer):'); if (r === null) return false; this.querySelector('input[name=\'rejection_reason\']').value = String(r).trim(); return confirm('Reject this slip? The customer will need to re-upload a new slip.');"
+                >
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <input type="hidden" name="rejection_reason" value="" />
+                  <button class="btn btn-danger btn-icon icon-only" type="submit" title="Reject" aria-label="Reject" data-label="Reject"><%- icon('x') %></button>
+                </form>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="pager">
+    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
+    <% const qs = new URLSearchParams(); %>
+    <% if (q) qs.set('q', q); %>
+    <% if (status) qs.set('status', String(status)); %>
+    <% if (date_from) qs.set('date_from', date_from); %>
+    <% if (date_to) qs.set('date_to', date_to); %>
+    <% if (page > 1) { %>
+      <% qs.set('page', String(page - 1)); %>
+      <a href="/admin/slips?<%= qs.toString() %>">Prev</a>
+    <% } %>
+    <% if (page < pageCount) { %>
+      <% qs.set('page', String(page + 1)); %>
+      <a href="/admin/slips?<%= qs.toString() %>">Next</a>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../shared/bottom') %>

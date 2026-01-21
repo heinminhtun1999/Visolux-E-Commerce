@@ -1,0 +1,110 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="align-items:flex-end; justify-content:space-between">
+  <div>
+    <h1 class="h1">Order history</h1>
+    <div class="muted small"><%= total %> orders</div>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/">Home</a>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <form method="get" action="/orders/history" class="row" style="gap:12px; align-items:flex-end">
+    <div class="col" style="min-width:220px">
+      <label>Search</label>
+      <input class="input" name="q" value="<%= q || '' %>" placeholder="Order code / name / email" />
+    </div>
+
+    <div style="min-width:200px">
+      <label>Payment status</label>
+      <select name="payment_status">
+        <option value="" <%= payment_status ? '' : 'selected' %>>All</option>
+        <option value="PENDING" <%= payment_status==='PENDING' ? 'selected' : '' %>>PENDING</option>
+        <option value="PAID" <%= payment_status==='PAID' ? 'selected' : '' %>>PAID</option>
+        <option value="FAILED" <%= payment_status==='FAILED' ? 'selected' : '' %>>FAILED</option>
+        <option value="PARTIALLY_REFUNDED" <%= payment_status==='PARTIALLY_REFUNDED' ? 'selected' : '' %>>PARTIALLY_REFUNDED</option>
+        <option value="REFUNDED" <%= payment_status==='REFUNDED' ? 'selected' : '' %>>REFUNDED</option>
+        <option value="AWAITING_VERIFICATION" <%= payment_status==='AWAITING_VERIFICATION' ? 'selected' : '' %>>AWAITING_VERIFICATION</option>
+      </select>
+    </div>
+
+    <div style="min-width:220px">
+      <label>Payment method</label>
+      <select name="payment_method">
+        <option value="" <%= payment_method ? '' : 'selected' %>>All</option>
+        <option value="ONLINE" <%= payment_method==='ONLINE' ? 'selected' : '' %>>ONLINE</option>
+        <option value="OFFLINE_TRANSFER" <%= payment_method==='OFFLINE_TRANSFER' ? 'selected' : '' %>>OFFLINE_TRANSFER</option>
+      </select>
+    </div>
+
+    <div style="min-width:220px">
+      <label>Fulfilment status</label>
+      <select name="fulfilment_status">
+        <option value="" <%= fulfilment_status ? '' : 'selected' %>>All</option>
+        <option value="NEW" <%= fulfilment_status==='NEW' ? 'selected' : '' %>>NEW</option>
+        <option value="PROCESSING" <%= fulfilment_status==='PROCESSING' ? 'selected' : '' %>>PROCESSING</option>
+        <option value="SHIPPED" <%= fulfilment_status==='SHIPPED' ? 'selected' : '' %>>SHIPPED</option>
+        <option value="COMPLETED" <%= fulfilment_status==='COMPLETED' ? 'selected' : '' %>>COMPLETED</option>
+        <option value="CANCELLED" <%= fulfilment_status==='CANCELLED' ? 'selected' : '' %>>CANCELLED</option>
+      </select>
+    </div>
+
+    <div style="min-width:180px">
+      <label>From</label>
+      <input class="input" type="date" name="date_from" value="<%= date_from || '' %>" />
+    </div>
+
+    <div style="min-width:180px">
+      <label>To</label>
+      <input class="input" type="date" name="date_to" value="<%= date_to || '' %>" />
+    </div>
+
+    <div style="width:140px">
+      <label>&nbsp;</label>
+      <button class="btn btn-primary" type="submit">Apply</button>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <table class="table">
+    <thead>
+      <tr><th>Order</th><th>Created</th><th>Payment</th><th>Fulfilment</th><th>Total</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% orders.forEach(o => { %>
+        <tr>
+          <td><%= o.order_code || ('#' + o.order_id) %></td>
+          <td class="muted"><%= formatDateTime(o.created_at) %></td>
+          <td><%= o.payment_status %></td>
+          <td><%= o.fulfilment_status %></td>
+          <td><%= formatMoney(o.total_amount) %></td>
+          <td><a class="btn" href="/orders/<%= o.order_id %>">View</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="pager">
+    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
+    <% const qs = new URLSearchParams(); %>
+    <% if (q) qs.set('q', q); %>
+    <% if (payment_status) qs.set('payment_status', payment_status); %>
+    <% if (payment_method) qs.set('payment_method', payment_method); %>
+    <% if (fulfilment_status) qs.set('fulfilment_status', fulfilment_status); %>
+    <% if (date_from) qs.set('date_from', date_from); %>
+    <% if (date_to) qs.set('date_to', date_to); %>
+    <% if (page > 1) { %>
+      <% qs.set('page', String(page - 1)); %>
+      <a href="/orders/history?<%= qs.toString() %>">Prev</a>
+    <% } %>
+    <% if (page < pageCount) { %>
+      <% qs.set('page', String(page + 1)); %>
+      <a href="/orders/history?<%= qs.toString() %>">Next</a>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../shared/bottom') %>

@@ -1,0 +1,67 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1"><%= pageTitle %></h1>
+    <div class="muted small">Rich text editor with image upload.</div>
+  </div>
+  <div class="actions icon-row">
+    <a class="btn" href="/admin/settings#footer-pages">Back to Settings</a>
+    <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <form method="post" action="<%= action %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <textarea id="editor" name="content_html"><%- contentHtml || '' %></textarea>
+
+    <div class="row" style="justify-content:flex-end; margin-top:14px">
+      <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
+<script>
+  (function(){
+    const csrfEl = document.querySelector('input[name="_csrf"]');
+    const csrf = csrfEl ? String(csrfEl.value || '') : '';
+
+    tinymce.init({
+      selector: '#editor',
+      height: 560,
+      menubar: false,
+      branding: false,
+      plugins: 'lists link image table code',
+      toolbar: 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright | bullist numlist | link image table | code',
+      block_formats: 'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Heading 4=h4',
+      images_title: true,
+      automatic_uploads: true,
+      paste_data_images: true,
+      images_upload_handler: async function (blobInfo, progress) {
+        const form = new FormData();
+        form.append('_csrf', csrf);
+        form.append('file', blobInfo.blob(), blobInfo.filename());
+
+        const resp = await fetch('/admin/pages/upload-image', {
+          method: 'POST',
+          body: form,
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '');
+          throw new Error(text || 'Upload failed');
+        }
+
+        const json = await resp.json();
+        if (!json || !json.location) throw new Error('Invalid upload response');
+        return json.location;
+      },
+      content_style: 'body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size:14px; color:#0f172a} img{max-width:100%; height:auto}',
+    });
+  })();
+</script>
+
+<%- include('../shared/bottom') %>

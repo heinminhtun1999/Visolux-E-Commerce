@@ -1,0 +1,30 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="card" style="padding:16px">
+  <h1 class="h1">Redirecting to payment…</h1>
+  <p class="muted">If you are not redirected automatically, click Continue.</p>
+
+  <% if ((gatewayMethod || 'POST') === 'GET' && gatewayFullUrl) { %>
+    <form id="payForm" method="get" action="<%= gatewayUrl %>" target="_top" data-auto-submit-delay="0" data-payment-redirect data-method="GET" data-url="<%= gatewayFullUrl %>">
+      <% Object.entries(fields).forEach(([k,v]) => { %>
+        <input type="hidden" name="<%= k %>" value="<%= String(v) %>" />
+      <% }) %>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn btn-primary" type="submit" formtarget="_top">Continue to payment</button>
+      </div>
+    </form>
+  <% } else { %>
+    <form id="payForm" method="post" action="<%= gatewayUrl %>" target="_top" data-auto-submit-delay="0" data-payment-redirect data-method="POST">
+      <% Object.entries(fields).forEach(([k,v]) => { %>
+        <input type="hidden" name="<%= k %>" value="<%= String(v) %>" />
+      <% }) %>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn btn-primary" type="submit" formtarget="_top">Continue to payment</button>
+      </div>
+    </form>
+  <% } %>
+</div>
+
+<script src="/public/js/auto-submit.js" defer></script>
+
+<%- include('../shared/bottom') %>

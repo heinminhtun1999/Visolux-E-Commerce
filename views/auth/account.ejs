@@ -1,0 +1,76 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Account</h1>
+    <div class="muted small">Manage contact details and password</div>
+  </div>
+  <div class="actions">
+    <a class="btn" href="/">Home</a>
+    <% if (!isAdmin) { %>
+      <a class="btn" href="/orders/history">Orders</a>
+    <% } %>
+  </div>
+</div>
+
+<div class="row" style="margin-top:12px">
+  <div class="col" style="min-width:320px">
+    <div class="card" style="padding:16px">
+      <h2 class="h2">Profile</h2>
+      <form method="post" action="/account/profile">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <label>Email</label>
+        <input class="input" type="email" name="email" value="<%= user.email %>" required />
+
+        <label>Phone</label>
+        <input class="input" name="phone" value="<%= user.phone || '' %>" />
+
+        <h3 class="h2" style="margin-top:10px">Address (Malaysia)</h3>
+
+        <label>Address line 1</label>
+        <input class="input" name="address_line1" value="<%= user.address_line1 || user.address || '' %>" />
+
+        <label>Address line 2 (optional)</label>
+        <input class="input" name="address_line2" value="<%= user.address_line2 || '' %>" />
+
+        <label>City</label>
+        <input class="input" name="city" value="<%= user.city || '' %>" />
+
+        <label>State</label>
+        <select class="input" name="state">
+          <option value="">Select state</option>
+          <% (malaysiaStates || []).forEach(s => { %>
+            <option value="<%= s %>" <%= (user.state === s ? 'selected' : '') %>><%= s %></option>
+          <% }) %>
+        </select>
+
+        <label>Postcode</label>
+        <input class="input" name="postcode" inputmode="numeric" pattern="\d{5}" value="<%= user.postcode || '' %>" />
+
+        <div class="actions" style="margin-top:12px">
+          <button class="btn btn-primary" type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="col" style="min-width:320px">
+    <div class="card" style="padding:16px">
+      <h2 class="h2">Change password</h2>
+      <form method="post" action="/account/password">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <label>Current password</label>
+        <input class="input" type="password" name="current_password" required />
+
+        <label>New password</label>
+        <input class="input" type="password" name="new_password" required />
+
+        <div class="actions" style="margin-top:12px">
+          <button class="btn btn-primary" type="submit">Update</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<%- include('../shared/bottom') %>

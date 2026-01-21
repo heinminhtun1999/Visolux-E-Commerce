@@ -1,0 +1,3885 @@
+{
+  "chars": 277717,
+  "sample": "API SPECIFICATIONS\nFOR\nHOSTED PAYMENT PAGE\n+\n3 ENDPOINTS\n+\nGENERAL OPERATIONAL FUNCTIONS\nINTEGRATION\n(Version 13.90)\nLast updated on 11 June 2025\n\n-- 1 of 167 --\n\nFiuu ^ Powering Future Payments\nRAZER MERCHANT SERVICES\nJ-39-1, Block J, Persiaran Multimedia, i-City,\n40000 Shah Alam, Selangor, Malaysia.\n+(603) - 5521 8438\nsupport@Fiuu.com\nFiuu.com\nSocial Networks\nhttps://twitter.com/FiuuPayment\nhttps://facebook.com/FiuuPayment\nhttps://youtube.com/@FiuuPayment\nhttps://instagram.com/FiuuPayment\nhttps://linkedin.com/company/FiuuPayment\nDeveloper Platforms\nhttps://t.me/FiuuDeveloperForum (for tech support)\nhttps://github.com/FiuuPayment\nMobile XDK, seamless and in-page checkout, and many shopping\ncarts payment plugin/module/addon/extension are available\n© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)\nPCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified\nAll rights reserved. All trademarks are the property of their respective owners.\n1\n\n-- 2 of 167 --\n\nFiuu ^ Powering Future Payments\nChangeLogs\nDate \tVersion Description\n2014/05/16 \tv11.0 \tFormalize the document\n2014/06/14 \tv12.0 \tSimplified and consolidating API documents\n2016/10/24 \tv13.0 \tDeclare EOL of inactive channels\n2016/12/03 \tv13.3 \tIntroduce secret key and changed of some critical APIs hashing based on secret key\n2017/09/08 \tv13.6 \tRemoval of obsoleted channels\n2017/10/10 \tv13.7 \tSplitting payment and non-payment request endpoint FQDN, adding sandbox URL\n2018/05/31 \tv13.8 \tAdding Pick-n-Pay APIs\n2018/08/20 \tv13.9 \tAdding card BIN info API\n2019/01/04 \tv13.9 \tUpdate value of channel in return URL, withdraw Pay-n-Pick from this document\n2019/04/30 \tv13.9 \tRebranding to Razer Merchant Services\n2019/05/07 \tv13.10 Withdrawal of escrow and mass payout APIs\n2019/06/17 \tv13.11 Adding currency & error code/desc to requery APIs response\n2019/09/20 \tv13.12 Transfering predefined bank and FTT list to Razer Escrow & Mass Payout API\n2019/11/29 \tv13.13 Adding Taiwan payment channels, removing EOL channels table\n20"
+}
+
+--- HIT: checksum (1) ---
+
+requested:
+● AlipaySQR - Alipay Static QR
+● WeChatPaySQR - WeChat Pay Static QR
+● DuitNowSQR - DuitNow Static QR
+● PayNowSQR- PayNow Static QR
+orderid 	Alphanumeric, 40 chars 	M Items ID. E.g: S001
+currency 	Alphabet, 3 chars 	M ISO-4217 currency code.
+amount 	Numeric 	C 	The total amount to be paid in one purchase order. 2 decimal points
+and comma( , ) is not allowed.
+Mandatory except DuitNowSQR and PayNowSQR
+bill_name 	Alphanumeric, 128 chars M Items name.
+bill_desc 	Text 	M Item description.
+checksum 	Alphanumeric, 32 chars 	M This is a request integrity protection hash string.
+Checksum = md5( {merchantID}{channel}{orderid}{currency}{amount}{verify_key} )
+Response
+PG responds JSON format to merchant upon a successful request
+Field Name 	Data Type(Size) 	M/O Description
+status 	Boolean 	M true/false
+qrcode_data 	URL 	M QR-Code data. Available for status true.
+qrcode_link 	URL 	M Link to view QR-Code image. Available for status true.
+error_code 	Alphanumeric 	M Error code when status is false.
+error_mesg 	Text 	M Error description when status is false.
+error_code 	error_mesg
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+108
+
+-- 109 of 167 --
+
+Fiuu ^ Powering Future Payments
+SQ001 	Missing required parameter (<FieldName>).
+SQ002 	System is busy now, temporarily out of service. Please try again later.
+SQ003 	Merchant info not found.
+SQ005 	Invalid checksum value.
+SQ004 	Currency not supported.
+SQ006 	Your account doesn't subscribe to this channel. Please contact our support teams to enable this.
+© 2005 - 2025 Fiuu (Formerly
+
+--- HIT: checksum (2) ---
+
+wSQR - DuitNow Static QR
+● PayNowSQR- PayNow Static QR
+orderid 	Alphanumeric, 40 chars 	M Items ID. E.g: S001
+currency 	Alphabet, 3 chars 	M ISO-4217 currency code.
+amount 	Numeric 	C 	The total amount to be paid in one purchase order. 2 decimal points
+and comma( , ) is not allowed.
+Mandatory except DuitNowSQR and PayNowSQR
+bill_name 	Alphanumeric, 128 chars M Items name.
+bill_desc 	Text 	M Item description.
+checksum 	Alphanumeric, 32 chars 	M This is a request integrity protection hash string.
+Checksum = md5( {merchantID}{channel}{orderid}{currency}{amount}{verify_key} )
+Response
+PG responds JSON format to merchant upon a successful request
+Field Name 	Data Type(Size) 	M/O Description
+status 	Boolean 	M true/false
+qrcode_data 	URL 	M QR-Code data. Available for status true.
+qrcode_link 	URL 	M Link to view QR-Code image. Available for status true.
+error_code 	Alphanumeric 	M Error code when status is false.
+error_mesg 	Text 	M Error description when status is false.
+error_code 	error_mesg
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+108
+
+-- 109 of 167 --
+
+Fiuu ^ Powering Future Payments
+SQ001 	Missing required parameter (<FieldName>).
+SQ002 	System is busy now, temporarily out of service. Please try again later.
+SQ003 	Merchant info not found.
+SQ005 	Invalid checksum value.
+SQ004 	Currency not supported.
+SQ006 	Your account doesn't subscribe to this channel. Please contact our support teams to enable this.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+
+--- HIT: checksum (3) ---
+
+	Text 	M Error description when status is false.
+error_code 	error_mesg
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+108
+
+-- 109 of 167 --
+
+Fiuu ^ Powering Future Payments
+SQ001 	Missing required parameter (<FieldName>).
+SQ002 	System is busy now, temporarily out of service. Please try again later.
+SQ003 	Merchant info not found.
+SQ005 	Invalid checksum value.
+SQ004 	Currency not supported.
+SQ006 	Your account doesn't subscribe to this channel. Please contact our support teams to enable this.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+109
+
+-- 110 of 167 --
+
+Fiuu ^ Powering Future Payments
+Channel Status API
+This API returns the availability of all channels enabled for a particular merchantID
+Request
+URL: https://pay.fiuu.com/RMS/API/chkstat/channel_status.php
+Method: POST
+Variable / Parameter Type Format / Max Length 	Description / Example
+merchantID 	Alphanumeric, 32 chars 	Merchant ID in PG system.
+datetime 	YYYYMMDDHHmmss 	Request date & time, e.g. 20161202153423
+skey 	Alphanumeric 	For merchant access verification purpose
+Response (JSON format)
+Variable / Parameter Type Format / Max Length 	Description / Example
+status 	Boolean 	true/false
+result 	Object 	[...]
+title 	Alphanumeric 	Display name of the payment method
+status 	Boolean 	True = Bank/Channel is online or available
+False = Bank/Channel is temporary offline/down for
+maintenance
+currency 	Object 	List of cur
+
+--- HIT: checksum (4) ---
+
+re Payments
+Void Pending-Cash API
+For merchants to cancel and void the cash payment request order, before getting paid or the
+expiry time, and force-to-expired.
+Request
+URL: https://api.fiuu.com/RMS/API/VoidPendingCash/index.php
+Method: POST or GET
+Field Name 	Data Type(Size) 	M/O 	Description
+tranID 	n{1..20} 	M PG Transaction ID
+amount 	n{10,2} 	M The total amount to be paid in one purchase order. 2 decimal
+points, comma( , ) is not allowed.
+merchantID 	an{1..32} 	M Merchant ID provided by PG
+checksum 	an{32} 	M This is request integrity protection hash string.
+Formula of checksum
+checksum = md5( {tranID}{amount}{merchantID}{verify_key} )
+Response
+PG responds JSON format to merchant upon a successful request
+Field Name 	Data Type(Size) 	M/O 	Description
+StatCode 	n{2} 	M 00 = Success (voided)
+11 = Missing required parameter (<FieldName>).
+12 = Merchant info not found
+13 = Invalid checksum value.
+14 = Transaction not found
+15 = Transaction not Pending
+99 = System is busy now, temporary out of services. Please try
+again later.
+tranID 	n{1..20} 	O 	PG Transaction ID
+orderid 	an{1..40} 	O 	Merchant order
+amount 	n{10,2} 	O 	The total amount to be paid in one purchase order
+merchantID 	an{1..32} 	O 	Merchant ID provided by PG
+channel 	an{1..32} 	O 	Channel references for the merchant system
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+117
+
+-- 118 of 167 --
+
+Fiuu ^ Powering Future Payments
+Void Pending Non-Cash API
+For merchants to cancel and void the non-cash payment request order (generated from direct
+server API), before g
+
+--- HIT: checksum (5) ---
+
+nt request order, before getting paid or the
+expiry time, and force-to-expired.
+Request
+URL: https://api.fiuu.com/RMS/API/VoidPendingCash/index.php
+Method: POST or GET
+Field Name 	Data Type(Size) 	M/O 	Description
+tranID 	n{1..20} 	M PG Transaction ID
+amount 	n{10,2} 	M The total amount to be paid in one purchase order. 2 decimal
+points, comma( , ) is not allowed.
+merchantID 	an{1..32} 	M Merchant ID provided by PG
+checksum 	an{32} 	M This is request integrity protection hash string.
+Formula of checksum
+checksum = md5( {tranID}{amount}{merchantID}{verify_key} )
+Response
+PG responds JSON format to merchant upon a successful request
+Field Name 	Data Type(Size) 	M/O 	Description
+StatCode 	n{2} 	M 00 = Success (voided)
+11 = Missing required parameter (<FieldName>).
+12 = Merchant info not found
+13 = Invalid checksum value.
+14 = Transaction not found
+15 = Transaction not Pending
+99 = System is busy now, temporary out of services. Please try
+again later.
+tranID 	n{1..20} 	O 	PG Transaction ID
+orderid 	an{1..40} 	O 	Merchant order
+amount 	n{10,2} 	O 	The total amount to be paid in one purchase order
+merchantID 	an{1..32} 	O 	Merchant ID provided by PG
+channel 	an{1..32} 	O 	Channel references for the merchant system
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+117
+
+-- 118 of 167 --
+
+Fiuu ^ Powering Future Payments
+Void Pending Non-Cash API
+For merchants to cancel and void the non-cash payment request order (generated from direct
+server API), before getting paid within the expiry time, and force-to-expired.
+Request
+URL: https://ap
+
+--- HIT: signature (1) ---
+
+fID 	ans{1..100} 	M Unique reference ID for tracking purpose sent by merchant
+TxnID 	n{1..20} 	M PG Transaction ID
+Amount 	n{10,2} 	M eg. ‘5.00’ Amount to be refunded
+BankCode 	an{8} 	C 	Applicable for Online Banking only. (Refer to predefined bank
+lists)
+BankCountry 	a{2} 	C 	Applicable for Online Banking only. Two letters country ISO code.
+(Default value: MY)
+BeneficiaryName as{1..100} 	C 	Applicable for Online Banking only.
+BeneficiaryAccNo ans{1..100} 	C 	Applicable for Online Banking only.
+Signature 	an{32} 	M This is the data integrity protection hash string.
+mdr_flag 	n{1} 	O 	This is to include or exclude MDR refund to the buyer if the
+amount is same as bill amount.
+Available value is as below:
+0 - Include MDR/Full Refund (Default)
+1 - Exclude/Reserved MDR
+notify_url 	as 	O 	This is the URL for merchant to receive refund status (same
+format as the response of this API), either 00 (Success) or 11
+(Rejected)
+Signature = md5( {RefundType}{MerchantID}{RefID}{TxnID}{Amount}{secret_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+103
+
+-- 104 of 167 --
+
+Fiuu ^ Powering Future Payments
+Response
+PG responds JSON format to merchant upon a successful request (positive result)
+Field Name 	Data Type(Size) 	M/O Description
+RefundType 	a{1} 	M Echo of merchant request
+MerchantID 	an{1..32} 	M Echo of merchant request
+RefID 	ans{1..100} 	M Echo of merchant request
+RefundID 	n{1..11} 	M Refund ID provided by PG
+TxnID 	n{1..20} 	M Echo of merchant request
+Amount 	n{10,2} 	M Echo of merchant request
+Status 	a{2} [00, 11, 22] 	M 2
+
+--- HIT: signature (2) ---
+
+y.
+BeneficiaryAccNo ans{1..100} 	C 	Applicable for Online Banking only.
+Signature 	an{32} 	M This is the data integrity protection hash string.
+mdr_flag 	n{1} 	O 	This is to include or exclude MDR refund to the buyer if the
+amount is same as bill amount.
+Available value is as below:
+0 - Include MDR/Full Refund (Default)
+1 - Exclude/Reserved MDR
+notify_url 	as 	O 	This is the URL for merchant to receive refund status (same
+format as the response of this API), either 00 (Success) or 11
+(Rejected)
+Signature = md5( {RefundType}{MerchantID}{RefID}{TxnID}{Amount}{secret_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+103
+
+-- 104 of 167 --
+
+Fiuu ^ Powering Future Payments
+Response
+PG responds JSON format to merchant upon a successful request (positive result)
+Field Name 	Data Type(Size) 	M/O Description
+RefundType 	a{1} 	M Echo of merchant request
+MerchantID 	an{1..32} 	M Echo of merchant request
+RefID 	ans{1..100} 	M Echo of merchant request
+RefundID 	n{1..11} 	M Refund ID provided by PG
+TxnID 	n{1..20} 	M Echo of merchant request
+Amount 	n{10,2} 	M Echo of merchant request
+Status 	a{2} [00, 11, 22] 	M 22 for ‘Pending’ (Upon Request)
+11 for ‘Rejected’ (via notify_url)
+00 for ‘Success’ (Refunded, via notify_url)
+Signature 	a{32} 	M This is data integrity protection hash string.
+reason 	ans{1..255} 	O 	Reason for rejected status
+FPXTxnID 	ans{1..100} 	O 	FPX channel Transaction ID
+Signature = md5( {RefundType}{MerchantID}{RefID}{RefundID}{TxnID}{Amount}{Status}{secret_key} )
+PG will respond the following in JSON format once e
+
+--- HIT: signature (3) ---
+
+ successful request (positive result)
+Field Name 	Data Type(Size) 	M/O Description
+RefundType 	a{1} 	M Echo of merchant request
+MerchantID 	an{1..32} 	M Echo of merchant request
+RefID 	ans{1..100} 	M Echo of merchant request
+RefundID 	n{1..11} 	M Refund ID provided by PG
+TxnID 	n{1..20} 	M Echo of merchant request
+Amount 	n{10,2} 	M Echo of merchant request
+Status 	a{2} [00, 11, 22] 	M 22 for ‘Pending’ (Upon Request)
+11 for ‘Rejected’ (via notify_url)
+00 for ‘Success’ (Refunded, via notify_url)
+Signature 	a{32} 	M This is data integrity protection hash string.
+reason 	ans{1..255} 	O 	Reason for rejected status
+FPXTxnID 	ans{1..100} 	O 	FPX channel Transaction ID
+Signature = md5( {RefundType}{MerchantID}{RefID}{RefundID}{TxnID}{Amount}{Status}{secret_key} )
+PG will respond the following in JSON format once error occurs (negative result)
+Field Name 	Data Type(Size) 	Description
+error_code 	an{5} 	Refer to Appendix C
+error_desc 	ans{1..255} 	Refer to Appendix C
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+104
+
+-- 105 of 167 --
+
+Fiuu ^ Powering Future Payments
+Partial Refund Status Inquiry by TxnID/RefID
+Merchant is able to do a status inquiry for a refund transaction.
+Request Type 1
+URL: https://api.fiuu.com/RMS/API/refundAPI/q_by_txn.php
+Method: POST or GET
+Field Name 	Data Type(Size) 	M/O Description
+TxnID 	n{1..20} 	M PG Transaction ID
+MerchantID 	a{1..32} 	M Merchant ID provided by PG
+Signature 	n{1..32} 	M This is the data integrity protection hash string.
+Signature = md5( {TxnID}{MerchantID}{verify_key} )
+Request Type 
+
+--- HIT: signature (4) ---
+
+equest
+RefID 	ans{1..100} 	M Echo of merchant request
+RefundID 	n{1..11} 	M Refund ID provided by PG
+TxnID 	n{1..20} 	M Echo of merchant request
+Amount 	n{10,2} 	M Echo of merchant request
+Status 	a{2} [00, 11, 22] 	M 22 for ‘Pending’ (Upon Request)
+11 for ‘Rejected’ (via notify_url)
+00 for ‘Success’ (Refunded, via notify_url)
+Signature 	a{32} 	M This is data integrity protection hash string.
+reason 	ans{1..255} 	O 	Reason for rejected status
+FPXTxnID 	ans{1..100} 	O 	FPX channel Transaction ID
+Signature = md5( {RefundType}{MerchantID}{RefID}{RefundID}{TxnID}{Amount}{Status}{secret_key} )
+PG will respond the following in JSON format once error occurs (negative result)
+Field Name 	Data Type(Size) 	Description
+error_code 	an{5} 	Refer to Appendix C
+error_desc 	ans{1..255} 	Refer to Appendix C
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+104
+
+-- 105 of 167 --
+
+Fiuu ^ Powering Future Payments
+Partial Refund Status Inquiry by TxnID/RefID
+Merchant is able to do a status inquiry for a refund transaction.
+Request Type 1
+URL: https://api.fiuu.com/RMS/API/refundAPI/q_by_txn.php
+Method: POST or GET
+Field Name 	Data Type(Size) 	M/O Description
+TxnID 	n{1..20} 	M PG Transaction ID
+MerchantID 	a{1..32} 	M Merchant ID provided by PG
+Signature 	n{1..32} 	M This is the data integrity protection hash string.
+Signature = md5( {TxnID}{MerchantID}{verify_key} )
+Request Type 2
+URL: https://api.fiuu.com/RMS/API/refundAPI/q_by_refID.php
+Method: POST or GET
+Field Name 	Data Type(Size) 	M/O Description
+RefID 	ans{1..100} 	M Unique tracking/referen
+
+--- HIT: signature (5) ---
+
+SO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+104
+
+-- 105 of 167 --
+
+Fiuu ^ Powering Future Payments
+Partial Refund Status Inquiry by TxnID/RefID
+Merchant is able to do a status inquiry for a refund transaction.
+Request Type 1
+URL: https://api.fiuu.com/RMS/API/refundAPI/q_by_txn.php
+Method: POST or GET
+Field Name 	Data Type(Size) 	M/O Description
+TxnID 	n{1..20} 	M PG Transaction ID
+MerchantID 	a{1..32} 	M Merchant ID provided by PG
+Signature 	n{1..32} 	M This is the data integrity protection hash string.
+Signature = md5( {TxnID}{MerchantID}{verify_key} )
+Request Type 2
+URL: https://api.fiuu.com/RMS/API/refundAPI/q_by_refID.php
+Method: POST or GET
+Field Name 	Data Type(Size) 	M/O Description
+RefID 	ans{1..100} 	M Unique tracking/references ID from merchant
+MerchantID 	a{1..32} 	M Merchant ID provided by PG
+Signature 	n{1..32} 	M This is the data integrity protection hash string.
+Signature = md5( {RefID}{MerchantID}{verify_key} )
+Response
+PG responds JSON format to merchant upon a successful request (positive result)
+Field Name 	Data Type(Size) 	M/O Description
+TxnID 	n{1..20} 	M Echo of merchant request
+RefID 	ans{1..100} 	M Unique tracking/references ID from merchant
+RefundID 	n{1..11} 	M Refund ID provided by PG
+Status 	enum 	M ‘pending’ ,’processing’ , ’rejected’, ‘success’
+LastUpdate 	ans{1..255} 	M Last update timestamp.
+FPXTxnID 	ans{1..100} 	O 	FPX channel Transaction ID
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+105
+
+-- 106 of 167 --
+
+Fiuu ^ Powering
+
+--- HIT: vcode (1) ---
+
+nt & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+5
+
+-- 6 of 167 --
+
+Fiuu ^ Powering Future Payments
+2025/03/03 	v13.85 - Update token data type
+2025/03/06 	v13.86 - Add Fiuu-Cash via Cosway
+2025/03/13 	v13.87 - Add card related error messages
+2025/05/21 	v13.88 - Add q4master_oid and q4master_tid API
+2025/05/30 	v13.89 - Update q4master_oid and q4master_tid API
+2025/06/11 	v13.90 - Add sample code to include currency hashing (ext-vcode)
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+6
+
+-- 7 of 167 --
+
+Fiuu ^ Powering Future Payments
+Table of Contents
+INTRODUCTION
+PAYMENT FLOW OVERVIEW
+SECURITY & DATA INTEGRITY
+Verify Key [Confidential]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS
+
+--- HIT: vcode (2) ---
+
+9 - Update q4master_oid and q4master_tid API
+2025/06/11 	v13.90 - Add sample code to include currency hashing (ext-vcode)
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+6
+
+-- 7 of 167 --
+
+Fiuu ^ Powering Future Payments
+Table of Contents
+INTRODUCTION
+PAYMENT FLOW OVERVIEW
+SECURITY & DATA INTEGRITY
+Verify Key [Confidential]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Revers
+
+--- HIT: vcode (3) ---
+
+All trademarks are the property of their respective owners.
+15
+
+-- 16 of 167 --
+
+Fiuu ^ Powering Future Payments
+SECURITY & DATA INTEGRITY
+For online payment. The system uses “merchant ID”, “Verify Key” and “Secret Key” to generate
+encrypted hash string to ensure data integrity in the payment process.
+Verify Key [Confidential]
+Verify Key is unique shared secret for PG merchants to generate request to the payment
+gateway. It is a key or seed for generating one-time hash data, which are known as “vcode”
+(merchant’s payment request to the gateway) or some of the “skey” (APIs’ request from
+merchant to the gateway).
+How to get the verify key?
+1. Logon to PG Merchant Portal
+2. Open up the “Transaction” drop down list in “MAIN NAVIGATION”.
+3. Clink on “Settings” option
+4. “Verify Key” will be listed at “Integration” tab
+5. Clink on Eye Icon to show the “Verify Key”
+•••••• is Merchant’s Verify Key provided by the payment gateway. Please make sure it is at least
+32 characters. Merchant may request to change the key when necessary.
+Secret Key [Top Secret]
+Secret Key is a unique shared secret for the payment gateway to generate responses to
+merchants. It is a key or seed for generating one-time hash data, which are known as “skey” (in
+the payment response) or some of the “VrfKey” (APIs’ response from payment gateway).
+Merchant or developer MUST NOT disclose this secret key to the public. Once the key is
+suspected to be compromised, please contact PG customer service immediately to reset the
+key.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective 
+
+--- HIT: vcode (4) ---
+
+y to reset the
+key.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+16
+
+-- 17 of 167 --
+
+Fiuu ^ Powering Future Payments
+Merchants who are using PG mobile xdk MUST use different strings for “Verify Key”(treat it as
+public key) and “Secret Key”(treat it like private key), respectively. Contact PG customer service
+to reset your keys whenever needed.
+vcode (in payment request)
+vcode is to ensure the data integrity passed from merchant-end (either website or mobile APP)
+to the payment page to avoid man-in-the-middle (MITM) attack. It uses “Verify Key”(like a public
+key) in combination with the data string for hashing purposes.
+It becomes mandatory for each transaction if “Enable Verify Payment” is activated in merchant
+profile as shown:-
+vcode was generated using MD5 encryption hash function and consists of the following
+information (must be set in the following orders) :
+1. Transaction amount
+2. Merchant ID
+3. Order ID
+4. Verify Key
+Extra parameters which are COMPULSORY for merchants accepting multi currency channels.
+To have these values calculated in the hash. Kindly enable it from Merchant Portal
+(Transactions -> Settings). Enable the option “Use extended format for Verify Payment” to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are t
+
+--- HIT: vcode (5) ---
+
+- 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+16
+
+-- 17 of 167 --
+
+Fiuu ^ Powering Future Payments
+Merchants who are using PG mobile xdk MUST use different strings for “Verify Key”(treat it as
+public key) and “Secret Key”(treat it like private key), respectively. Contact PG customer service
+to reset your keys whenever needed.
+vcode (in payment request)
+vcode is to ensure the data integrity passed from merchant-end (either website or mobile APP)
+to the payment page to avoid man-in-the-middle (MITM) attack. It uses “Verify Key”(like a public
+key) in combination with the data string for hashing purposes.
+It becomes mandatory for each transaction if “Enable Verify Payment” is activated in merchant
+profile as shown:-
+vcode was generated using MD5 encryption hash function and consists of the following
+information (must be set in the following orders) :
+1. Transaction amount
+2. Merchant ID
+3. Order ID
+4. Verify Key
+Extra parameters which are COMPULSORY for merchants accepting multi currency channels.
+To have these values calculated in the hash. Kindly enable it from Merchant Portal
+(Transactions -> Settings). Enable the option “Use extended format for Verify Payment” to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respec
+
+--- HIT: skey validation (1) ---
+
+iuu.com
+2021/08/27 	v13.26 Adding installment channels
+2021/10/15 	v13.26 - Rectified the key used in FOREX API
+- Adding KBank PayPlus error codes
+- Releasing channel value in callback and notification messages
+2021/10/28 	v13.26 - Adding KTB_IB & SCB_IB error codes
+2021/11/03 	v13.26 - Adding Crypto_tripleA
+2021/11/23 	v13.27 - Adding IOUPay
+- Adding Doku
+2021/12/14 	v13.28 Adding RPP DuitNow and Alipay+
+2022/02/15 	v13.29 - Renaming “Notification URL” to “Notify URL”
+- Rewrite sample code for skey validation
+2022/02/22 	v13.30 Adding LinePay TH
+2022/03/11 	v13.31 Adding Atome
+2022/03/18 	v13.32 Adding Token API
+2022/04/11 	v13.33 - Add channel status API
+- Revamp the request parameter and response of token API
+- Change the existing channel status API to channel success rate API
+2022/04/26 	v13.34 - Adding GCash
+- Adding Pace
+2022/05/05 	v13.35 Adding 9PAY
+2022/05/19 	v13.36 Adding waittime and cancelurl in request parameter
+Adding creditAN
+2022/06/10 	v13.37 - Adding note for direct status requery API
+- Changing the data type of token API
+2022/07/25 	v13.38 Adding creditAI
+2022/08/09 	v13.39 Adding Maya channel
+2022/10/28 	v13.40 Adding PromptPay RTP
+2022/11/09 	v13.41 Adding BPI Channel
+2022/11/15 	v13.42 Adding ESUN COD Family Mart
+2023/01/25 	v13.43 - Isolating extraP to a new section
+- Adding Void non-cash payment API
+2023/02/15 	v13.44 Adding hide_biller_info and hide_merchant_header_details in request parameter
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+3
+
+-- 4 of 167 --
+
+Fiuu ^ Powering Future Payments
+2023/04/
+
+--- HIT: verify payment (1) ---
+
+s for “Verify Key”(treat it as
+public key) and “Secret Key”(treat it like private key), respectively. Contact PG customer service
+to reset your keys whenever needed.
+vcode (in payment request)
+vcode is to ensure the data integrity passed from merchant-end (either website or mobile APP)
+to the payment page to avoid man-in-the-middle (MITM) attack. It uses “Verify Key”(like a public
+key) in combination with the data string for hashing purposes.
+It becomes mandatory for each transaction if “Enable Verify Payment” is activated in merchant
+profile as shown:-
+vcode was generated using MD5 encryption hash function and consists of the following
+information (must be set in the following orders) :
+1. Transaction amount
+2. Merchant ID
+3. Order ID
+4. Verify Key
+Extra parameters which are COMPULSORY for merchants accepting multi currency channels.
+To have these values calculated in the hash. Kindly enable it from Merchant Portal
+(Transactions -> Settings). Enable the option “Use extended format for Verify Payment” to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$ver
+
+--- HIT: verify payment (2) ---
+
+erify Payment” is activated in merchant
+profile as shown:-
+vcode was generated using MD5 encryption hash function and consists of the following
+information (must be set in the following orders) :
+1. Transaction amount
+2. Merchant ID
+3. Order ID
+4. Verify Key
+Extra parameters which are COMPULSORY for merchants accepting multi currency channels.
+To have these values calculated in the hash. Kindly enable it from Merchant Portal
+(Transactions -> Settings). Enable the option “Use extended format for Verify Payment” to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+ht
+
+--- HIT: skey (1) ---
+
+iuu.com
+2021/08/27 	v13.26 Adding installment channels
+2021/10/15 	v13.26 - Rectified the key used in FOREX API
+- Adding KBank PayPlus error codes
+- Releasing channel value in callback and notification messages
+2021/10/28 	v13.26 - Adding KTB_IB & SCB_IB error codes
+2021/11/03 	v13.26 - Adding Crypto_tripleA
+2021/11/23 	v13.27 - Adding IOUPay
+- Adding Doku
+2021/12/14 	v13.28 Adding RPP DuitNow and Alipay+
+2022/02/15 	v13.29 - Renaming “Notification URL” to “Notify URL”
+- Rewrite sample code for skey validation
+2022/02/22 	v13.30 Adding LinePay TH
+2022/03/11 	v13.31 Adding Atome
+2022/03/18 	v13.32 Adding Token API
+2022/04/11 	v13.33 - Add channel status API
+- Revamp the request parameter and response of token API
+- Change the existing channel status API to channel success rate API
+2022/04/26 	v13.34 - Adding GCash
+- Adding Pace
+2022/05/05 	v13.35 Adding 9PAY
+2022/05/19 	v13.36 Adding waittime and cancelurl in request parameter
+Adding creditAN
+2022/06/10 	v13.37 - Adding note for direct status requery API
+- Changing the data type of token API
+2022/07/25 	v13.38 Adding creditAI
+2022/08/09 	v13.39 Adding Maya channel
+2022/10/28 	v13.40 Adding PromptPay RTP
+2022/11/09 	v13.41 Adding BPI Channel
+2022/11/15 	v13.42 Adding ESUN COD Family Mart
+2023/01/25 	v13.43 - Isolating extraP to a new section
+- Adding Void non-cash payment API
+2023/02/15 	v13.44 Adding hide_biller_info and hide_merchant_header_details in request parameter
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+3
+
+-- 4 of 167 --
+
+Fiuu ^ Powering Future Payments
+2023/04/
+
+--- HIT: skey (2) ---
+
+ q4master_tid API
+2025/06/11 	v13.90 - Add sample code to include currency hashing (ext-vcode)
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+6
+
+-- 7 of 167 --
+
+Fiuu ^ Powering Future Payments
+Table of Contents
+INTRODUCTION
+PAYMENT FLOW OVERVIEW
+SECURITY & DATA INTEGRITY
+Verify Key [Confidential]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+Advanced Full/Pa
+
+--- HIT: skey (3) ---
+
+16 of 167 --
+
+Fiuu ^ Powering Future Payments
+SECURITY & DATA INTEGRITY
+For online payment. The system uses “merchant ID”, “Verify Key” and “Secret Key” to generate
+encrypted hash string to ensure data integrity in the payment process.
+Verify Key [Confidential]
+Verify Key is unique shared secret for PG merchants to generate request to the payment
+gateway. It is a key or seed for generating one-time hash data, which are known as “vcode”
+(merchant’s payment request to the gateway) or some of the “skey” (APIs’ request from
+merchant to the gateway).
+How to get the verify key?
+1. Logon to PG Merchant Portal
+2. Open up the “Transaction” drop down list in “MAIN NAVIGATION”.
+3. Clink on “Settings” option
+4. “Verify Key” will be listed at “Integration” tab
+5. Clink on Eye Icon to show the “Verify Key”
+•••••• is Merchant’s Verify Key provided by the payment gateway. Please make sure it is at least
+32 characters. Merchant may request to change the key when necessary.
+Secret Key [Top Secret]
+Secret Key is a unique shared secret for the payment gateway to generate responses to
+merchants. It is a key or seed for generating one-time hash data, which are known as “skey” (in
+the payment response) or some of the “VrfKey” (APIs’ response from payment gateway).
+Merchant or developer MUST NOT disclose this secret key to the public. Once the key is
+suspected to be compromised, please contact PG customer service immediately to reset the
+key.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+16
+
+-- 17 of 167 --
+
+Fiuu ^ Powering Future Payments
+Mercha
+
+--- HIT: skey (4) ---
+
+GATION”.
+3. Clink on “Settings” option
+4. “Verify Key” will be listed at “Integration” tab
+5. Clink on Eye Icon to show the “Verify Key”
+•••••• is Merchant’s Verify Key provided by the payment gateway. Please make sure it is at least
+32 characters. Merchant may request to change the key when necessary.
+Secret Key [Top Secret]
+Secret Key is a unique shared secret for the payment gateway to generate responses to
+merchants. It is a key or seed for generating one-time hash data, which are known as “skey” (in
+the payment response) or some of the “VrfKey” (APIs’ response from payment gateway).
+Merchant or developer MUST NOT disclose this secret key to the public. Once the key is
+suspected to be compromised, please contact PG customer service immediately to reset the
+key.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+16
+
+-- 17 of 167 --
+
+Fiuu ^ Powering Future Payments
+Merchants who are using PG mobile xdk MUST use different strings for “Verify Key”(treat it as
+public key) and “Secret Key”(treat it like private key), respectively. Contact PG customer service
+to reset your keys whenever needed.
+vcode (in payment request)
+vcode is to ensure the data integrity passed from merchant-end (either website or mobile APP)
+to the payment page to avoid man-in-the-middle (MITM) attack. It uses “Verify Key”(like a public
+key) in combination with the data string for hashing purposes.
+It becomes mandatory for each transaction if “Enable Verify Payment” is activated in merchant
+profile as shown:-
+vcode was generated using MD5 encryption hash func
+
+--- HIT: skey (5) ---
+
+for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment result data
+integrity that passed to the merchant system. Merchants or developers MUST verify this hash
+string properly and compare the order ID, currency, amount, and also the payment date/time, to
+protect self interest from being cheated by a fraudster/hacker. It uses a “Secret Key”(like a
+private key) in combination with a data string for the hashing process.
+Please note that there are other “skey” with different formulas in Merchant Request APIs’
+parameters. Try not to confuse yourself with this payment response “skey”.
+skey was encrypted twice using MD5 encryption hash function and consists of the following
+information (must be set in the following orders) :
+First hash string
+1. Transaction ID
+2. Order ID
+3. Status
+4. Merchant ID (domain)
+5. Amount
+6. Currency
+Final hash string
+1. Payment Date/Time
+2. Merchant ID (domain)
+3. First hash string
+4. Approval Code
+5. Secret Key
+Formula to generate skey
+pre_skey = md5( {txnID}{orderID}{status}{merchantID}{amount}{currency} )
+skey = md5( {paydate}{merchantID}{pre_skey}{appcode}{secret_key} )
+Example to generate skey for PHP deve
+
+--- HIT: verify (1) ---
+
+nts
+2023/04/05 	v13.45 - Change StatCode capture API from 22 to 23 to avoid confusion from “Pending” status code
+- Add description for MerchantAdviceCode & ProcessorCVVResponse at ExtraP
+2023/05/18 	v13.46 - Adding ADD_TOKEN, EDIT_TOKEN_DETAILS action type into payment token API
+- Add new error code (33 , 34)
+2023/06/02 	v13.46 - Add new error code Q00008 for PSQ API
+2023/06/13 	v13.46 - Remove DOKU IB channels
+2023/06/26 	v13.46 - Add ShopeePay for PH
+2023/06/28 	v13.47 - Rectify the key used (verify_key) for Settlement Report API
+2023/07/11 	v13.48 - Add Installment Channel HLB-MPGS, RHB-MPGS
+2023/07/13 	v13.49 - Add new FPX Bank Of China
+- Change of hash string formula presentation
+2023/08/02 	v13.50 - Update extraP description in Callback URL with IPN
+2023/08/04 	v13.51 - Add DuitNow QR into Static QR Generator
+2023/08/09 	v13.52 - Add LocalCardScheme in extraP
+- Add installment conditions
+2023/08/28 	v13.53 - Add ShopBack
+2023/09/08 	v13.54 - Rectify the key used (verify_key) for Settlement Refund Report API
+2023/09/14 	v13.55 - Remove hide_biller_info and hide_merchant_header_details in request parameter
+2023/10/05 	v13.55 - Add new error code 21 at reversal API.
+- Add new 3DS error codes.
+2023/10/17 	v13.56 - Add new parameter “custID” for token payment and token API
+2023/11/02 	v13.57 - Add new parameter “page” for Daily Transaction Report API
+2023/11/11 	v13.57 - Update credit card response code
+2023/11/23 	v13.58 - Add new parameter installment_info in Channel Status API
+2023/11/23 	v13.58 - Add new error code and description for P55
+2023/12/04 	v13.58 - Add new StatCode 16 for API VoidNonPendingCash API
+2024/01/23 	v13.59 - Adding COINS.PH
+2024/01/29 	v13.60 - 
+
+--- HIT: verify (2) ---
+
+y the key used (verify_key) for Settlement Report API
+2023/07/11 	v13.48 - Add Installment Channel HLB-MPGS, RHB-MPGS
+2023/07/13 	v13.49 - Add new FPX Bank Of China
+- Change of hash string formula presentation
+2023/08/02 	v13.50 - Update extraP description in Callback URL with IPN
+2023/08/04 	v13.51 - Add DuitNow QR into Static QR Generator
+2023/08/09 	v13.52 - Add LocalCardScheme in extraP
+- Add installment conditions
+2023/08/28 	v13.53 - Add ShopBack
+2023/09/08 	v13.54 - Rectify the key used (verify_key) for Settlement Refund Report API
+2023/09/14 	v13.55 - Remove hide_biller_info and hide_merchant_header_details in request parameter
+2023/10/05 	v13.55 - Add new error code 21 at reversal API.
+- Add new 3DS error codes.
+2023/10/17 	v13.56 - Add new parameter “custID” for token payment and token API
+2023/11/02 	v13.57 - Add new parameter “page” for Daily Transaction Report API
+2023/11/11 	v13.57 - Update credit card response code
+2023/11/23 	v13.58 - Add new parameter installment_info in Channel Status API
+2023/11/23 	v13.58 - Add new error code and description for P55
+2023/12/04 	v13.58 - Add new StatCode 16 for API VoidNonPendingCash API
+2024/01/23 	v13.59 - Adding COINS.PH
+2024/01/29 	v13.60 - Add PaymentExpirationTime
+2024/02/22 	v13.61 - Add new response parameters at Direct Status Requery & Indirect Status Requery API
+- ProcessorResponseCode
+- ProcessorCVVResponse
+- SchemeTransactionID
+- MerchantAdviceCode
+- ECI
+- 3DSVersion
+- ACSTransactionID
+- 3DSTransactionID
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+4
+
+-- 5 o
+
+--- HIT: verify (3) ---
+
+4master_oid and q4master_tid API
+2025/05/30 	v13.89 - Update q4master_oid and q4master_tid API
+2025/06/11 	v13.90 - Add sample code to include currency hashing (ext-vcode)
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+6
+
+-- 7 of 167 --
+
+Fiuu ^ Powering Future Payments
+Table of Contents
+INTRODUCTION
+PAYMENT FLOW OVERVIEW
+SECURITY & DATA INTEGRITY
+Verify Key [Confidential]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Reque
+
+--- HIT: verify (4) ---
+
+ct amount to be
+charged before the service or item is delivered. This feature can be enabled upon request by
+sending an email to support@fiuu.com. (Refer Capture Request)
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+15
+
+-- 16 of 167 --
+
+Fiuu ^ Powering Future Payments
+SECURITY & DATA INTEGRITY
+For online payment. The system uses “merchant ID”, “Verify Key” and “Secret Key” to generate
+encrypted hash string to ensure data integrity in the payment process.
+Verify Key [Confidential]
+Verify Key is unique shared secret for PG merchants to generate request to the payment
+gateway. It is a key or seed for generating one-time hash data, which are known as “vcode”
+(merchant’s payment request to the gateway) or some of the “skey” (APIs’ request from
+merchant to the gateway).
+How to get the verify key?
+1. Logon to PG Merchant Portal
+2. Open up the “Transaction” drop down list in “MAIN NAVIGATION”.
+3. Clink on “Settings” option
+4. “Verify Key” will be listed at “Integration” tab
+5. Clink on Eye Icon to show the “Verify Key”
+•••••• is Merchant’s Verify Key provided by the payment gateway. Please make sure it is at least
+32 characters. Merchant may request to change the key when necessary.
+Secret Key [Top Secret]
+Secret Key is a unique shared secret for the payment gateway to generate responses to
+merchants. It is a key or seed for generating one-time hash data, which are known as “skey” (in
+the payment response) or some of the “VrfKey” (APIs’ response from payment gateway).
+Merchant or developer MUST NOT disclose this secret key to the
+
+--- HIT: verify (5) ---
+
+ding an email to support@fiuu.com. (Refer Capture Request)
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+15
+
+-- 16 of 167 --
+
+Fiuu ^ Powering Future Payments
+SECURITY & DATA INTEGRITY
+For online payment. The system uses “merchant ID”, “Verify Key” and “Secret Key” to generate
+encrypted hash string to ensure data integrity in the payment process.
+Verify Key [Confidential]
+Verify Key is unique shared secret for PG merchants to generate request to the payment
+gateway. It is a key or seed for generating one-time hash data, which are known as “vcode”
+(merchant’s payment request to the gateway) or some of the “skey” (APIs’ request from
+merchant to the gateway).
+How to get the verify key?
+1. Logon to PG Merchant Portal
+2. Open up the “Transaction” drop down list in “MAIN NAVIGATION”.
+3. Clink on “Settings” option
+4. “Verify Key” will be listed at “Integration” tab
+5. Clink on Eye Icon to show the “Verify Key”
+•••••• is Merchant’s Verify Key provided by the payment gateway. Please make sure it is at least
+32 characters. Merchant may request to change the key when necessary.
+Secret Key [Top Secret]
+Secret Key is a unique shared secret for the payment gateway to generate responses to
+merchants. It is a key or seed for generating one-time hash data, which are known as “skey” (in
+the payment response) or some of the “VrfKey” (APIs’ response from payment gateway).
+Merchant or developer MUST NOT disclose this secret key to the public. Once the key is
+suspected to be compromised, please contact PG customer service immediately to reset th
+
+--- HIT: returnurl (1) ---
+
+r
+vcode section for details.
+currency 	mandatory, 3 chars ISO-4217 currency code 	Default payment currency from merchant site. E.g.
+MYR, USD, EUR, AUD, SGD, CNY, IDR
+channel 	optional, predefined string. Refer to the
+channel column in the Channel Lists.
+Default payment page will be displayed without
+channel specified.
+langcode 	optional, predefined string. Currently only en
+for English & cn for Simplified Chinese.
+Default language, i.e. English, will be displayed without
+the langcode specified.
+returnurl 	optional, URL 	For selected merchants only. Used for multiple return
+URLs. This will slow down your payment request.
+Note : If the domain differs from the company's
+website domain, it must be registered to ensure proper
+functionality.(for security & data integrity)
+callbackurl 	optional, URL 	Used for both multiple callback URL and Notification
+URL.
+Note : If the domain differs from the company's
+website domain, it must be registered to ensure proper
+functionality.(for security & data integrity)
+cancelurl 	optional, URL 	Buyer will redirect to this URL if the buyer clicks the
+“Cancel” button to abandon payment before
+proceeding. No transaction will be created.
+Note : If the domain differs from the company's
+website domain, it must be registered to ensure proper
+functionality.(for security & data integrity)
+s_name 	optional, mandatory for specific channel 	Receiver name
+s_addr1 	optional, mandatory for specific channel 	Delivery address line 1
+s_addr2 	optional, mandatory for specific channel 	Delivery address line 2
+s_zipcode 	optional, mandatory for specific channel 	Delivery destination zipcode
+s_city 	optional, mandatory for specific channel 	Delivery destination city
+
+--- HIT: callback (1) ---
+
+022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+2
+
+-- 3 of 167 --
+
+Fiuu ^ Powering Future Payments
+2021/07/13 	v13.24 Adding Singapore PayNow
+2021/07/28 	v13.24 Adding eNets Debit error code & removing Razer Pay
+2021/08/24 	v13.25 Changing all www.onlinepayment.com.my to pay.fiuu.com
+2021/08/27 	v13.26 Adding installment channels
+2021/10/15 	v13.26 - Rectified the key used in FOREX API
+- Adding KBank PayPlus error codes
+- Releasing channel value in callback and notification messages
+2021/10/28 	v13.26 - Adding KTB_IB & SCB_IB error codes
+2021/11/03 	v13.26 - Adding Crypto_tripleA
+2021/11/23 	v13.27 - Adding IOUPay
+- Adding Doku
+2021/12/14 	v13.28 Adding RPP DuitNow and Alipay+
+2022/02/15 	v13.29 - Renaming “Notification URL” to “Notify URL”
+- Rewrite sample code for skey validation
+2022/02/22 	v13.30 Adding LinePay TH
+2022/03/11 	v13.31 Adding Atome
+2022/03/18 	v13.32 Adding Token API
+2022/04/11 	v13.33 - Add channel status API
+- Revamp the request parameter and response of token API
+- Change the existing channel status API to channel success rate API
+2022/04/26 	v13.34 - Adding GCash
+- Adding Pace
+2022/05/05 	v13.35 Adding 9PAY
+2022/05/19 	v13.36 Adding waittime and cancelurl in request parameter
+Adding creditAN
+2022/06/10 	v13.37 - Adding note for direct status requery API
+- Changing the data type of token API
+2022/07/25 	v13.38 Adding creditAI
+2022/08/09 	v13.39 Adding Maya channel
+2022/10/28 	v13.40 Adding PromptPay RTP
+2022/11/09 	v13.41 Adding BPI Channel
+2022/11/15 	v13.42 Adding ESUN COD Family Mart
+2023/01/25 	v13.43 - Isolating extraP to a new section
+- Adding Void non-cash payment API
+2023/02/15 	v13.44 Adding hide
+
+--- HIT: callback (2) ---
+
+ action type into payment token API
+- Add new error code (33 , 34)
+2023/06/02 	v13.46 - Add new error code Q00008 for PSQ API
+2023/06/13 	v13.46 - Remove DOKU IB channels
+2023/06/26 	v13.46 - Add ShopeePay for PH
+2023/06/28 	v13.47 - Rectify the key used (verify_key) for Settlement Report API
+2023/07/11 	v13.48 - Add Installment Channel HLB-MPGS, RHB-MPGS
+2023/07/13 	v13.49 - Add new FPX Bank Of China
+- Change of hash string formula presentation
+2023/08/02 	v13.50 - Update extraP description in Callback URL with IPN
+2023/08/04 	v13.51 - Add DuitNow QR into Static QR Generator
+2023/08/09 	v13.52 - Add LocalCardScheme in extraP
+- Add installment conditions
+2023/08/28 	v13.53 - Add ShopBack
+2023/09/08 	v13.54 - Rectify the key used (verify_key) for Settlement Refund Report API
+2023/09/14 	v13.55 - Remove hide_biller_info and hide_merchant_header_details in request parameter
+2023/10/05 	v13.55 - Add new error code 21 at reversal API.
+- Add new 3DS error codes.
+2023/10/17 	v13.56 - Add new parameter “custID” for token payment and token API
+2023/11/02 	v13.57 - Add new parameter “page” for Daily Transaction Report API
+2023/11/11 	v13.57 - Update credit card response code
+2023/11/23 	v13.58 - Add new parameter installment_info in Channel Status API
+2023/11/23 	v13.58 - Add new error code and description for P55
+2023/12/04 	v13.58 - Add new StatCode 16 for API VoidNonPendingCash API
+2024/01/23 	v13.59 - Adding COINS.PH
+2024/01/29 	v13.60 - Add PaymentExpirationTime
+2024/02/22 	v13.61 - Add new response parameters at Direct Status Requery & Indirect Status Requery API
+- ProcessorResponseCode
+- ProcessorCVVResponse
+- SchemeTransactionID
+- MerchantAdviceCode
+- ECI
+- 3DSVersion
+- ACS
+
+--- HIT: callback (3) ---
+
+]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+Advanced Full/Partial Refund
+Partial Refund Status Inquiry by TxnID/RefID
+Static QR-Code Generator
+Channel Status API
+Channel Success Rate API
+Card BIN information API
+Foreign Exchange Rate API
+Void Pending-Cash API
+Void Pending Non-Cash API
+Recurring Plan API
+Payment Token API
+Idempotence Request
+Jump App Integration
+DuitNow QR Account Enquiry Notify
+ExtraP
+ERROR CODES
+Payment Page
+3DS Error
+Payment Status Query (PSQ) Error
+Error in Merchant Admin
+Error Codes from Payment Channel
+R
+
+--- HIT: callback (4) ---
+
+to popup bank login page immediately
+○ In-page checkout similar to Stripe and airbnb checkout flow that can seamlessly
+integrated with merchant system
+○ Mobile XDK allows app developers to implement in-app payments
+○ Channel switching is available for same currency channels
+○ Fiuu Cash which allows over-the-counter (OTC) payment acceptance
+○ Common shopping carts payment module, plugin, addon, or extension supported
+● Back-end
+○ Server-to-server Notification to ensure no missing status update
+○ Callback to update merchant system on deferred status change
+○ Merchant can login to control panel to track payment status
+○ Scheduled report on daily/weekly/monthly basis to update merchant via email
+○ Real-time visualized reports
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+9
+
+-- 10 of 167 --
+
+Fiuu ^ Powering Future Payments
+PAYMENT FLOW OVERVIEW
+PG provides hosted payment page service, so that merchants do not require costly and
+tech-savvy PCI-DSS compliance at merchant websites or systems. The integration is as simple
+as passing parameters via HTTPS POST or GET method from merchant to PG payment page.
+Buyer will proceed their transaction on internet banking or any payment channel. Once
+completed, PG will redirect the buyer's front-end back to the merchant system, using the POST
+method.
+IPN (instant payment notification) or ACK from merchants could be implemented to confirm the
+receiving of payment status updates.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+
+--- HIT: callback (5) ---
+
+
+Merchant needs to prepare 3 simple and similar payment endpoint scripts to handle the
+payment notification from the payment gateway:
+1. Return URL: front-end or browser redirection notification, which are normally not a 100%
+reliable and robust channel due to unexpected network connectivity issue or client-side
+behavior, such as browser application crashes;
+2. Notification URL (webhook): a server-to-server back-end webhook which is more robust
+and crucial for payment status or order update;
+3. Callback URL (webhook): a special handler webhook to get notified on non-realtime
+payment status, such as “deferred status update”, change of payment status, or Fiuu
+Cash, which is not a realtime payment naturally.
+After the normal payment flow, merchants can always send payment status query requests,
+which is defined in reQuery APIs (a.k.a PSQ, Payment Status Query).
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+12
+
+-- 13 of 167 --
+
+Fiuu ^ Powering Future Payments
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+13
+
+-- 14 of 167 --
+
+Fiuu ^ Powering Future Payments
+Payment Status Flow
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+14
+
+-- 15 of 167 --
+
+Fiuu ^ Powering Future Payments
+Pre authorization workflow is suitable for business with
+
+--- HIT: callback url (1) ---
+
+ action type into payment token API
+- Add new error code (33 , 34)
+2023/06/02 	v13.46 - Add new error code Q00008 for PSQ API
+2023/06/13 	v13.46 - Remove DOKU IB channels
+2023/06/26 	v13.46 - Add ShopeePay for PH
+2023/06/28 	v13.47 - Rectify the key used (verify_key) for Settlement Report API
+2023/07/11 	v13.48 - Add Installment Channel HLB-MPGS, RHB-MPGS
+2023/07/13 	v13.49 - Add new FPX Bank Of China
+- Change of hash string formula presentation
+2023/08/02 	v13.50 - Update extraP description in Callback URL with IPN
+2023/08/04 	v13.51 - Add DuitNow QR into Static QR Generator
+2023/08/09 	v13.52 - Add LocalCardScheme in extraP
+- Add installment conditions
+2023/08/28 	v13.53 - Add ShopBack
+2023/09/08 	v13.54 - Rectify the key used (verify_key) for Settlement Refund Report API
+2023/09/14 	v13.55 - Remove hide_biller_info and hide_merchant_header_details in request parameter
+2023/10/05 	v13.55 - Add new error code 21 at reversal API.
+- Add new 3DS error codes.
+2023/10/17 	v13.56 - Add new parameter “custID” for token payment and token API
+2023/11/02 	v13.57 - Add new parameter “page” for Daily Transaction Report API
+2023/11/11 	v13.57 - Update credit card response code
+2023/11/23 	v13.58 - Add new parameter installment_info in Channel Status API
+2023/11/23 	v13.58 - Add new error code and description for P55
+2023/12/04 	v13.58 - Add new StatCode 16 for API VoidNonPendingCash API
+2024/01/23 	v13.59 - Adding COINS.PH
+2024/01/29 	v13.60 - Add PaymentExpirationTime
+2024/02/22 	v13.61 - Add new response parameters at Direct Status Requery & Indirect Status Requery API
+- ProcessorResponseCode
+- ProcessorCVVResponse
+- SchemeTransactionID
+- MerchantAdviceCode
+- ECI
+- 3DSVersion
+- ACS
+
+--- HIT: callback url (2) ---
+
+]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+Advanced Full/Partial Refund
+Partial Refund Status Inquiry by TxnID/RefID
+Static QR-Code Generator
+Channel Status API
+Channel Success Rate API
+Card BIN information API
+Foreign Exchange Rate API
+Void Pending-Cash API
+Void Pending Non-Cash API
+Recurring Plan API
+Payment Token API
+Idempotence Request
+Jump App Integration
+DuitNow QR Account Enquiry Notify
+ExtraP
+ERROR CODES
+Payment Page
+3DS Error
+Payment Status Query (PSQ) Error
+Error in Merchant Admin
+Error Codes from Payment Channel
+R
+
+--- HIT: callback url (3) ---
+
+
+Merchant needs to prepare 3 simple and similar payment endpoint scripts to handle the
+payment notification from the payment gateway:
+1. Return URL: front-end or browser redirection notification, which are normally not a 100%
+reliable and robust channel due to unexpected network connectivity issue or client-side
+behavior, such as browser application crashes;
+2. Notification URL (webhook): a server-to-server back-end webhook which is more robust
+and crucial for payment status or order update;
+3. Callback URL (webhook): a special handler webhook to get notified on non-realtime
+payment status, such as “deferred status update”, change of payment status, or Fiuu
+Cash, which is not a realtime payment naturally.
+After the normal payment flow, merchants can always send payment status query requests,
+which is defined in reQuery APIs (a.k.a PSQ, Payment Status Query).
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+12
+
+-- 13 of 167 --
+
+Fiuu ^ Powering Future Payments
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+13
+
+-- 14 of 167 --
+
+Fiuu ^ Powering Future Payments
+Payment Status Flow
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+14
+
+-- 15 of 167 --
+
+Fiuu ^ Powering Future Payments
+Pre authorization workflow is suitable for business with
+
+--- HIT: callback url (4) ---
+
+nmatched, reject the order or merchant might send query to
+// PG using Merchant requery to double check payment status
+// for that particular order.
+} else {
+// error or exception case
+}
+?>
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+20
+
+-- 21 of 167 --
+
+Fiuu ^ Powering Future Payments
+Domain Registration for Merchant Endpoints
+The Return URL, Callback URL, Notify URL and including the Cancel URL are the endpoints
+that need to be registered. It is important that a merchant register the domain if their endpoints
+are different from the main website of the business. Failure to do so may result in the merchant
+not receiving transaction statuses or customers not being redirected to the website when they
+click the cancel button.
+Steps to Register Your Domain:
+1. Login to merchant portal
+Navigate to https://portal.fiuu.com
+2. Go to the Domain Registration Page
+Navigate to the domain registration page in your merchant dashboard (UI will be
+provided).
+3. Enter Your Domain
+Input the domain you wish to use for payment requests. Ensure it is properly formatted
+and matches the domain you plan to use.
+4. Submit for Verification
+Once entered, submit the domain for verification by our support team.
+5. Verification by Support Team
+Our support team will review your domain. If everything is in order, the domain will be
+approved. If there are any issues, the registration will be rejected, and you will receive
+feedback on what needs to be corrected.
+6. Approval and Use
+Once the domain is approved, it will be available for use in payment requ
+
+--- HIT: callback url (5) ---
+
+ 	optional, predefined string. Currently only en
+for English & cn for Simplified Chinese.
+Default language, i.e. English, will be displayed without
+the langcode specified.
+returnurl 	optional, URL 	For selected merchants only. Used for multiple return
+URLs. This will slow down your payment request.
+Note : If the domain differs from the company's
+website domain, it must be registered to ensure proper
+functionality.(for security & data integrity)
+callbackurl 	optional, URL 	Used for both multiple callback URL and Notification
+URL.
+Note : If the domain differs from the company's
+website domain, it must be registered to ensure proper
+functionality.(for security & data integrity)
+cancelurl 	optional, URL 	Buyer will redirect to this URL if the buyer clicks the
+“Cancel” button to abandon payment before
+proceeding. No transaction will be created.
+Note : If the domain differs from the company's
+website domain, it must be registered to ensure proper
+functionality.(for security & data integrity)
+s_name 	optional, mandatory for specific channel 	Receiver name
+s_addr1 	optional, mandatory for specific channel 	Delivery address line 1
+s_addr2 	optional, mandatory for specific channel 	Delivery address line 2
+s_zipcode 	optional, mandatory for specific channel 	Delivery destination zipcode
+s_city 	optional, mandatory for specific channel 	Delivery destination city
+s_state 	optional, mandatory for specific channel 	Delivery destination state
+s_country 	optional, mandatory for specific channel 	Delivery destination country
+s_merchantID 	conditional for partner 	Partner’s sub-merchant MID
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001
+
+--- HIT: return url (1) ---
+
+ocument
+2014/06/14 	v12.0 	Simplified and consolidating API documents
+2016/10/24 	v13.0 	Declare EOL of inactive channels
+2016/12/03 	v13.3 	Introduce secret key and changed of some critical APIs hashing based on secret key
+2017/09/08 	v13.6 	Removal of obsoleted channels
+2017/10/10 	v13.7 	Splitting payment and non-payment request endpoint FQDN, adding sandbox URL
+2018/05/31 	v13.8 	Adding Pick-n-Pay APIs
+2018/08/20 	v13.9 	Adding card BIN info API
+2019/01/04 	v13.9 	Update value of channel in return URL, withdraw Pay-n-Pick from this document
+2019/04/30 	v13.9 	Rebranding to Razer Merchant Services
+2019/05/07 	v13.10 Withdrawal of escrow and mass payout APIs
+2019/06/17 	v13.11 Adding currency & error code/desc to requery APIs response
+2019/09/20 	v13.12 Transfering predefined bank and FTT list to Razer Escrow & Mass Payout API
+2019/11/29 	v13.13 Adding Taiwan payment channels, removing EOL channels table
+2020/01/09 	v13.14 Adding eWallet channel (GrabPay, Maybank QRPay), 51 currencies supported for multi-currency
+card acceptance
+2020/03/24 	v13.14 Update Settlement Report API version 3.0 to 4.0 that includes refund and chargeback records
+2020/08/27 	v13.15 Adding Thailand credit card channel.
+2020/09/18 	v13.16 Changing all API FQDN to Razer domain; Enhanced settlement report API to support duration in
+seconds from a specific time
+2020/10/02 	v13.16 Minor enhancement on the daily transaction report API to include all optional fields
+2020/11/06 	v13.17 Adding Cash-TH channel
+2020/11/24 	v13.18 Adding Cash-KKMart channel
+2021/01/07 	v13.19 Adding ShopeePay channel
+2021/01/14 	V13.20 Adding new FPX B2C & B2B channels (Agrobank, Citibank, UOB, Bank Rakyat, Affin, and etc.)
+
+
+--- HIT: return url (2) ---
+
+EW
+SECURITY & DATA INTEGRITY
+Verify Key [Confidential]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+Advanced Full/Partial Refund
+Partial Refund Status Inquiry by TxnID/RefID
+Static QR-Code Generator
+Channel Status API
+Channel Success Rate API
+Card BIN information API
+Foreign Exchange Rate API
+Void Pending-Cash API
+Void Pending Non-Cash API
+Recurring Plan API
+Payment Token API
+Idempotence Request
+Jump App Integration
+DuitNow QR Account Enquiry Notify
+ExtraP
+ERROR CODES
+Payment Page
+3DS Error
+Payment Status
+
+--- HIT: return url (3) ---
+
+ners.
+10
+
+-- 11 of 167 --
+
+Fiuu ^ Powering Future Payments
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+11
+
+-- 12 of 167 --
+
+Fiuu ^ Powering Future Payments
+How to identify and report tech-related issues to PG?
+Merchant needs to prepare 3 simple and similar payment endpoint scripts to handle the
+payment notification from the payment gateway:
+1. Return URL: front-end or browser redirection notification, which are normally not a 100%
+reliable and robust channel due to unexpected network connectivity issue or client-side
+behavior, such as browser application crashes;
+2. Notification URL (webhook): a server-to-server back-end webhook which is more robust
+and crucial for payment status or order update;
+3. Callback URL (webhook): a special handler webhook to get notified on non-realtime
+payment status, such as “deferred status update”, change of payment status, or Fiuu
+Cash, which is not a realtime payment naturally.
+After the normal payment flow, merchants can always send payment status query requests,
+which is defined in reQuery APIs (a.k.a PSQ, Payment Status Query).
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+12
+
+-- 13 of 167 --
+
+Fiuu ^ Powering Future Payments
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+13
+
+-- 14 of 167 
+
+--- HIT: return url (4) ---
+
+1 ){
+// If unmatched, reject the order or merchant might send query to
+// PG using Merchant requery to double check payment status
+// for that particular order.
+} else {
+// error or exception case
+}
+?>
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+20
+
+-- 21 of 167 --
+
+Fiuu ^ Powering Future Payments
+Domain Registration for Merchant Endpoints
+The Return URL, Callback URL, Notify URL and including the Cancel URL are the endpoints
+that need to be registered. It is important that a merchant register the domain if their endpoints
+are different from the main website of the business. Failure to do so may result in the merchant
+not receiving transaction statuses or customers not being redirected to the website when they
+click the cancel button.
+Steps to Register Your Domain:
+1. Login to merchant portal
+Navigate to https://portal.fiuu.com
+2. Go to the Domain Registration Page
+Navigate to the domain registration page in your merchant dashboard (UI will be
+provided).
+3. Enter Your Domain
+Input the domain you wish to use for payment requests. Ensure it is properly formatted
+and matches the domain you plan to use.
+4. Submit for Verification
+Once entered, submit the domain for verification by our support team.
+5. Verification by Support Team
+Our support team will review your domain. If everything is in order, the domain will be
+approved. If there are any issues, the registration will be rejected, and you will receive
+feedback on what needs to be corrected.
+6. Approval and Use
+Once the domain is approved, it will be available for use in 
+
+--- HIT: return url (5) ---
+
+ite(“</form>”)
+%>
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+42
+
+-- 43 of 167 --
+
+Fiuu ^ Powering Future Payments
+Getting Payment Result
+Payment results will be returned to the merchant system once payment is done or the user
+abandons the payment process. HTTP POST is the only method that payment gateway returns
+all parameters to a merchant's return URL for real-time status update, which the merchant can
+configure in merchant admin. Merchant system should block all other methods or parameters
+from an untrusted source.
+Response Parameters
+Variable /
+Parameter
+Type Format / Max Length 	Description / Example
+amount 	2 decimal points numeric value 	The total amount paid or to be paid in Razer Cash
+payment request.
+orderid 	alphanumeric, 40 characters 	Invoice or order number from merchant system.
+tranID* 	integer, 10-20 digits 	Unique transaction ID for tracking purpose. This is an
+auto-incremental positive value, your DB structure has
+to be future-proof in case the maximum threshold is
+reached.
+domain 	alphanumeric, 32 chars 	Merchant ID in PG system.
+status 	string in 2-digit numeric 	00 for Successful payment, 11 for failed status, 22 if
+pending.
+appcode 	alphanumeric, 16 chars 	Bank approval code. Mandatory for card payment.
+Certain channels return empty value.
+error_code 	alphanumeric 	Refer to the Error Codes section.
+error_desc 	text 	Error message or description.
+skey 	32 chars hexadecimal string 	This is the data integrity protection hash string. Refer
+skey section for details.
+currency 	2 or 3 chars (ISO-4217) cur
+
+--- HIT: notification url (1) ---
+
+08/24 	v13.25 Changing all www.onlinepayment.com.my to pay.fiuu.com
+2021/08/27 	v13.26 Adding installment channels
+2021/10/15 	v13.26 - Rectified the key used in FOREX API
+- Adding KBank PayPlus error codes
+- Releasing channel value in callback and notification messages
+2021/10/28 	v13.26 - Adding KTB_IB & SCB_IB error codes
+2021/11/03 	v13.26 - Adding Crypto_tripleA
+2021/11/23 	v13.27 - Adding IOUPay
+- Adding Doku
+2021/12/14 	v13.28 Adding RPP DuitNow and Alipay+
+2022/02/15 	v13.29 - Renaming “Notification URL” to “Notify URL”
+- Rewrite sample code for skey validation
+2022/02/22 	v13.30 Adding LinePay TH
+2022/03/11 	v13.31 Adding Atome
+2022/03/18 	v13.32 Adding Token API
+2022/04/11 	v13.33 - Add channel status API
+- Revamp the request parameter and response of token API
+- Change the existing channel status API to channel success rate API
+2022/04/26 	v13.34 - Adding GCash
+- Adding Pace
+2022/05/05 	v13.35 Adding 9PAY
+2022/05/19 	v13.36 Adding waittime and cancelurl in request parameter
+Adding creditAN
+2022/06/10 	v13.37 - Adding note for direct status requery API
+- Changing the data type of token API
+2022/07/25 	v13.38 Adding creditAI
+2022/08/09 	v13.39 Adding Maya channel
+2022/10/28 	v13.40 Adding PromptPay RTP
+2022/11/09 	v13.41 Adding BPI Channel
+2022/11/15 	v13.42 Adding ESUN COD Family Mart
+2023/01/25 	v13.43 - Isolating extraP to a new section
+- Adding Void non-cash payment API
+2023/02/15 	v13.44 Adding hide_biller_info and hide_merchant_header_details in request parameter
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+
+--- HIT: notification url (2) ---
+
+al]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+Advanced Full/Partial Refund
+Partial Refund Status Inquiry by TxnID/RefID
+Static QR-Code Generator
+Channel Status API
+Channel Success Rate API
+Card BIN information API
+Foreign Exchange Rate API
+Void Pending-Cash API
+Void Pending Non-Cash API
+Recurring Plan API
+Payment Token API
+Idempotence Request
+Jump App Integration
+DuitNow QR Account Enquiry Notify
+ExtraP
+ERROR CODES
+Payment Page
+3DS Error
+Payment Status Query (PSQ) Error
+Error in Merchant Admin
+Error Co
+
+--- HIT: notification url (3) ---
+
+y of their respective owners.
+11
+
+-- 12 of 167 --
+
+Fiuu ^ Powering Future Payments
+How to identify and report tech-related issues to PG?
+Merchant needs to prepare 3 simple and similar payment endpoint scripts to handle the
+payment notification from the payment gateway:
+1. Return URL: front-end or browser redirection notification, which are normally not a 100%
+reliable and robust channel due to unexpected network connectivity issue or client-side
+behavior, such as browser application crashes;
+2. Notification URL (webhook): a server-to-server back-end webhook which is more robust
+and crucial for payment status or order update;
+3. Callback URL (webhook): a special handler webhook to get notified on non-realtime
+payment status, such as “deferred status update”, change of payment status, or Fiuu
+Cash, which is not a realtime payment naturally.
+After the normal payment flow, merchants can always send payment status query requests,
+which is defined in reQuery APIs (a.k.a PSQ, Payment Status Query).
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+12
+
+-- 13 of 167 --
+
+Fiuu ^ Powering Future Payments
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+13
+
+-- 14 of 167 --
+
+Fiuu ^ Powering Future Payments
+Payment Status Flow
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property o
+
+--- HIT: notification url (4) ---
+
+/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+48
+
+-- 49 of 167 --
+
+Fiuu ^ Powering Future Payments
+Merchant is strongly recommended to implement IPN(instant payment notification) in order to
+acknowledge(ACK) on the receiving of payment status from the payment gateway. There are 2
+ways to implement IPN. Please refer to the IPN section for details.
+Examples of Payment Endpoint
+You may use the sample for all 3 endpoints, i.e. Return URL, Notification URL, and Callback URL by making
+little modification based on your own requirements.
+Sample return URL script for PHP
+<?php
+$sec_key ="xxxxxxxxxxxx"; //Replace xxxxxxxxxxxx with Secret_Key
+/********************************
+*Don't change below parameters
+********************************/
+$tranID = 	$_POST['tranID'];
+$orderid = 	$_POST['orderid'];
+$status = 	$_POST['status'];
+$domain = 	$_POST['domain'];
+$amount = 	$_POST['amount'];
+$currency 	= 	$_POST['currency'];
+$appcode 	= 	$_POST['appcode'];
+$paydate 	= 	$_POST['paydate'];
+$skey 	= 	$_POST['skey'];
+/***********************************************************
+* To verify the data integrity sending by PG
+************************************************************/
+$key0 = md5( $tranID.$orderid.$status.$domain.$amount.$currency );
+$key1 = md5( $paydate.$domain.$key0.$appcode.$sec_key );
+if( $skey != $key1 ) $status= -1; // Invalid transaction.
+// Merchant might issue a requery to PG to double check payment status
+if ( $status == "00" ) {
+if ( check_cart_amt($orderid, $amount) ) {
+/*** NOTE : this is a user-defined function which should be prepared by merchant ***/
+// action to change cart status or to accept order
+// 
+
+--- HIT: notification url (5) ---
+
+ack on receiving payment status.
+1. Simple front-end snippet: copy the Javascript (JS) code from merchant admin and paste
+it on the merchant receipt page (which shows payment success/failed), preferable in the
+HTML header, before </head> tag.
+2. Advanced back-end scripting: merchant is to echo back all the POST variables with one
+additional variable, i.e. “treq” with value 1. PHP sample code is provided below.
+URL: https://pay.fiuu.com/RMS/API/chkstat/returnipn.php
+Step 3: Merchant to prepare a Notification URL and Callback URL script, which is similar to
+return URL script but serves at the backend, in order to receive consequent payment notification
+in case the merchant system misses the first notification attempt from the payment gateway.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+51
+
+-- 52 of 167 --
+
+Fiuu ^ Powering Future Payments
+Example of back-end IPN script for PHP (combined with return URL script)
+<?php
+$sec_key ="xxxxxxxxxx"; //Replace xxxxxxxxxx with Secret_Key
+$_POST[treq] = 1; // Additional parameter for IPN
+// Value always 1. Do not change this value.
+$tranID = 	$_POST['tranID'];
+$orderid = 	$_POST['orderid'];
+$status = 	$_POST['status'];
+$domain = 	$_POST['domain'];
+$amount = 	$_POST['amount'];
+$currency 	= 	$_POST['currency'];
+$appcode 	= 	$_POST['appcode'];
+$paydate 	= 	$_POST['paydate'];
+$skey 	= 	$_POST['skey'];
+/***********************************************************
+* Snippet code in purple color is the enhancement required
+* by merchant to add into their return script in order to
+* implement ba
+
+--- HIT: notify url (1) ---
+
+ all www.onlinepayment.com.my to pay.fiuu.com
+2021/08/27 	v13.26 Adding installment channels
+2021/10/15 	v13.26 - Rectified the key used in FOREX API
+- Adding KBank PayPlus error codes
+- Releasing channel value in callback and notification messages
+2021/10/28 	v13.26 - Adding KTB_IB & SCB_IB error codes
+2021/11/03 	v13.26 - Adding Crypto_tripleA
+2021/11/23 	v13.27 - Adding IOUPay
+- Adding Doku
+2021/12/14 	v13.28 Adding RPP DuitNow and Alipay+
+2022/02/15 	v13.29 - Renaming “Notification URL” to “Notify URL”
+- Rewrite sample code for skey validation
+2022/02/22 	v13.30 Adding LinePay TH
+2022/03/11 	v13.31 Adding Atome
+2022/03/18 	v13.32 Adding Token API
+2022/04/11 	v13.33 - Add channel status API
+- Revamp the request parameter and response of token API
+- Change the existing channel status API to channel success rate API
+2022/04/26 	v13.34 - Adding GCash
+- Adding Pace
+2022/05/05 	v13.35 Adding 9PAY
+2022/05/19 	v13.36 Adding waittime and cancelurl in request parameter
+Adding creditAN
+2022/06/10 	v13.37 - Adding note for direct status requery API
+- Changing the data type of token API
+2022/07/25 	v13.38 Adding creditAI
+2022/08/09 	v13.39 Adding Maya channel
+2022/10/28 	v13.40 Adding PromptPay RTP
+2022/11/09 	v13.41 Adding BPI Channel
+2022/11/15 	v13.42 Adding ESUN COD Family Mart
+2023/01/25 	v13.43 - Isolating extraP to a new section
+- Adding Void non-cash payment API
+2023/02/15 	v13.44 Adding hide_biller_info and hide_merchant_header_details in request parameter
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+3
+
+-- 4 of 167 --
+
+Fi
+
+--- HIT: notify url (2) ---
+
+ct the order or merchant might send query to
+// PG using Merchant requery to double check payment status
+// for that particular order.
+} else {
+// error or exception case
+}
+?>
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+20
+
+-- 21 of 167 --
+
+Fiuu ^ Powering Future Payments
+Domain Registration for Merchant Endpoints
+The Return URL, Callback URL, Notify URL and including the Cancel URL are the endpoints
+that need to be registered. It is important that a merchant register the domain if their endpoints
+are different from the main website of the business. Failure to do so may result in the merchant
+not receiving transaction statuses or customers not being redirected to the website when they
+click the cancel button.
+Steps to Register Your Domain:
+1. Login to merchant portal
+Navigate to https://portal.fiuu.com
+2. Go to the Domain Registration Page
+Navigate to the domain registration page in your merchant dashboard (UI will be
+provided).
+3. Enter Your Domain
+Input the domain you wish to use for payment requests. Ensure it is properly formatted
+and matches the domain you plan to use.
+4. Submit for Verification
+Once entered, submit the domain for verification by our support team.
+5. Verification by Support Team
+Our support team will review your domain. If everything is in order, the domain will be
+approved. If there are any issues, the registration will be rejected, and you will receive
+feedback on what needs to be corrected.
+6. Approval and Use
+Once the domain is approved, it will be available for use in payment requests. Ensure
+t
+
+--- HIT: hosted payment page (1) ---
+
+API SPECIFICATIONS
+FOR
+HOSTED PAYMENT PAGE
++
+3 ENDPOINTS
++
+GENERAL OPERATIONAL FUNCTIONS
+INTEGRATION
+(Version 13.90)
+Last updated on 11 June 2025
+
+-- 1 of 167 --
+
+Fiuu ^ Powering Future Payments
+RAZER MERCHANT SERVICES
+J-39-1, Block J, Persiaran Multimedia, i-City,
+40000 Shah Alam, Selangor, Malaysia.
++(603) - 5521 8438
+support@Fiuu.com
+Fiuu.com
+Social Networks
+https://twitter.com/FiuuPayment
+https://facebook.com/FiuuPayment
+https://youtube.com/@FiuuPayment
+https://instagram.com/FiuuPayment
+https://linkedin.com/company/FiuuPayment
+Developer Platforms
+https://t.me/FiuuDeveloperForum (for tech support)
+https://github.com/FiuuPayment
+Mobile XDK, seamless and in-page checkout, and many shopping
+carts payment plugin/module/addon/extension are available
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+1
+
+-- 2 of 167 --
+
+Fiuu ^ Powering Future Payments
+ChangeLogs
+Date 	Version Description
+2014/05/16 	v11.0 	Formalize the document
+2014/06/14 	v12.0 	Simplified and consolidating API documents
+2016/10/24 	v13.0 	Declare EOL of inactive channels
+2016/12/03 	v13.3 	Intr
+
+--- HIT: hosted payment page (2) ---
+
+te merchant system on deferred status change
+○ Merchant can login to control panel to track payment status
+○ Scheduled report on daily/weekly/monthly basis to update merchant via email
+○ Real-time visualized reports
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+9
+
+-- 10 of 167 --
+
+Fiuu ^ Powering Future Payments
+PAYMENT FLOW OVERVIEW
+PG provides hosted payment page service, so that merchants do not require costly and
+tech-savvy PCI-DSS compliance at merchant websites or systems. The integration is as simple
+as passing parameters via HTTPS POST or GET method from merchant to PG payment page.
+Buyer will proceed their transaction on internet banking or any payment channel. Once
+completed, PG will redirect the buyer's front-end back to the merchant system, using the POST
+method.
+IPN (instant payment notification) or ACK from merchants could be implemented to confirm the
+receiving of payment status updates.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+10
+
+-- 11 of 167 --
+
+Fiuu ^ Powering Future Payments
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+11
+
+-- 12 of 167 --
+
+Fiuu ^ Powering Future Payments
+How to identify and report tech-related issues to PG?
+Merchant needs to prepare 3 simple and similar payment endpoint scripts to h
+
+--- HIT: hosted payment page (3) ---
+
+yout) for this type of account. Please make sure that your “Dev” account has the same
+configuration in the production merchant profile to guarantee the expected test results.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+22
+
+-- 23 of 167 --
+
+Fiuu ^ Powering Future Payments
+PAYMENT APIs
+Initiating Payment
+Passing parameters to the payment gateway hosted payment page using POST/GET method via
+HTTPS or SSL connection will initiate a payment request from the merchant system.
+REQUEST URL
+Production: https://pay.fiuu.com/RMS/pay/{MerchantID}/{Payment_Method}
+Sandbox: https://sandbox-payment.fiuu.com/RMS/pay/{MerchantID}/{Payment_Method}
+{MerchantID}: mandatory value to identify merchant;
+{Payment_Method}: optional value to identify payment channel, only required when channel selection at
+hosted payment page is disabled upon request by email; Payment channel can be identified by using
+channel filename, or pass the channel parameter to index.php using GET/POST method.
+The URL is an API to accept POST/GET parameters from the merchant site as well as the
+payment page for buyers. For merchants who use the POST method please include the “ / “ after
+{MerchantID} on the URL.
+WARNING: Loading the bank login page or authorization page into iframe is not recommended
+as most of the banks or channels will block all cross-origin requests and treat it as an XFS, XSS,
+and CSRF attack.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the p
+
+--- HIT: hosted payment page (4) ---
+
+ting Payment
+Passing parameters to the payment gateway hosted payment page using POST/GET method via
+HTTPS or SSL connection will initiate a payment request from the merchant system.
+REQUEST URL
+Production: https://pay.fiuu.com/RMS/pay/{MerchantID}/{Payment_Method}
+Sandbox: https://sandbox-payment.fiuu.com/RMS/pay/{MerchantID}/{Payment_Method}
+{MerchantID}: mandatory value to identify merchant;
+{Payment_Method}: optional value to identify payment channel, only required when channel selection at
+hosted payment page is disabled upon request by email; Payment channel can be identified by using
+channel filename, or pass the channel parameter to index.php using GET/POST method.
+The URL is an API to accept POST/GET parameters from the merchant site as well as the
+payment page for buyers. For merchants who use the POST method please include the “ / “ after
+{MerchantID} on the URL.
+WARNING: Loading the bank login page or authorization page into iframe is not recommended
+as most of the banks or channels will block all cross-origin requests and treat it as an XFS, XSS,
+and CSRF attack.
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+23
+
+-- 24 of 167 --
+
+Fiuu ^ Powering Future Payments
+Channel Lists
+Multi-Currency Payment
+Default currency: -
+Channel Name 	filename 	channel 	Payable
+Amount
+Range
+Extra Information
+Visa / MasterCard 	indexT.php 	creditT 	> 1.00 	51 currencies supported : AED, AUD, BND,
+BRL, CAD, CHF, CNY, COP, CZK, DKK, EGP,
+EUR, FJD, GBP, HKD, HUF, IDR, ILS, INR,
+IQD, IRR, ISK, JPY, KRW, KWD, LAK, LKR,
+MOP, MXN, MYR, NGN
+
+--- HIT: hosted payment page (5) ---
+
+shHiLife.php 	ESUN_CashHiLife 	>= 1.00 	OTC
+ESUN COD Family Mart ESUN_CODFamilyMart.php ESUN_CODFamilyMart >= 1.00 	OTC
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+37
+
+-- 38 of 167 --
+
+Fiuu ^ Powering Future Payments
+Payment Page Integration
+This is the traditional integration method which will send the buyer information to the payment
+gateway hosted payment page. You may want to explore seamless integration, Direct Server API,
+mobile xdk or supported shopping cart payment modules for better user experience beside this
+hosted payment page integration on github repositories. Recurring API is also available for card
+payment and DirectDebit.
+Request Parameters
+These parameters can be passed using either POST or GET method, or mixed of these methods.
+Please use UTF-8 encoding for all values.
+Variable /
+Parameter
+Type Format / Max Length 	Description / Example
+merchant_id 	optional, alphanumeric 	Merchant ID provided and it is on the request URL,
+otherwise need to pass this as parameter
+amount 	mandatory, integer or up to 2 decimal points
+numeric value
+The total amount to be paid in one purchase order.
+Configurable to lock this field (Read-only). E.g. 500,
+168.99, comma( , ) is not allowed
+orderid 	mandatory, alphanumeric up to 40 characters Invoice or order number from merchant system. Can
+be set to Read-only field. E.g. BH2018-09rev
+bill_name 	mandatory, alphanumeric, 128 chars 	Buyer’s full name. (Please do not pass in dummy data
+if you want to use the saved cards feature, as this info
+will be used to identify the ownershi
+
+--- HIT: payment request (1) ---
+
+All trademarks are the property of their respective owners.
+1
+
+-- 2 of 167 --
+
+Fiuu ^ Powering Future Payments
+ChangeLogs
+Date 	Version Description
+2014/05/16 	v11.0 	Formalize the document
+2014/06/14 	v12.0 	Simplified and consolidating API documents
+2016/10/24 	v13.0 	Declare EOL of inactive channels
+2016/12/03 	v13.3 	Introduce secret key and changed of some critical APIs hashing based on secret key
+2017/09/08 	v13.6 	Removal of obsoleted channels
+2017/10/10 	v13.7 	Splitting payment and non-payment request endpoint FQDN, adding sandbox URL
+2018/05/31 	v13.8 	Adding Pick-n-Pay APIs
+2018/08/20 	v13.9 	Adding card BIN info API
+2019/01/04 	v13.9 	Update value of channel in return URL, withdraw Pay-n-Pick from this document
+2019/04/30 	v13.9 	Rebranding to Razer Merchant Services
+2019/05/07 	v13.10 Withdrawal of escrow and mass payout APIs
+2019/06/17 	v13.11 Adding currency & error code/desc to requery APIs response
+2019/09/20 	v13.12 Transfering predefined bank and FTT list to Razer Escrow & Mass Payout API
+2019/11/29 	v13.13 Adding Taiwan payment channels, removing EOL channels table
+2020/01/09 	v13.14 Adding eWallet channel (GrabPay, Maybank QRPay), 51 currencies supported for multi-currency
+card acceptance
+2020/03/24 	v13.14 Update Settlement Report API version 3.0 to 4.0 that includes refund and chargeback records
+2020/08/27 	v13.15 Adding Thailand credit card channel.
+2020/09/18 	v13.16 Changing all API FQDN to Razer domain; Enhanced settlement report API to support duration in
+seconds from a specific time
+2020/10/02 	v13.16 Minor enhancement on the daily transaction report API to include all optional fields
+2020/11/06 	v13.17 Adding Cash-TH channel
+2020/11/24 	v13.1
+
+--- HIT: payment request (2) ---
+
+ng Cash-KKMart channel
+2021/01/07 	v13.19 Adding ShopeePay channel
+2021/01/14 	V13.20 Adding new FPX B2C & B2B channels (Agrobank, Citibank, UOB, Bank Rakyat, Affin, and etc.)
+2021/01/29 	V13.21 Minor enhancement on daily transaction report and Capture Request API
+2021/03/10 	v13.22 Adding/removing of payment channel’s error code table
+2021/06/09 	v13.23 Adding DuitNow group channel, additional optional billing info, and update Thailand channel
+2021/07/01 	v13.23 Adding AppDeeplink parameter to payment request
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+2
+
+-- 3 of 167 --
+
+Fiuu ^ Powering Future Payments
+2021/07/13 	v13.24 Adding Singapore PayNow
+2021/07/28 	v13.24 Adding eNets Debit error code & removing Razer Pay
+2021/08/24 	v13.25 Changing all www.onlinepayment.com.my to pay.fiuu.com
+2021/08/27 	v13.26 Adding installment channels
+2021/10/15 	v13.26 - Rectified the key used in FOREX API
+- Adding KBank PayPlus error codes
+- Releasing channel value in callback and notification messages
+2021/10/28 	v13.26 - Adding KTB_IB & SCB_IB error codes
+2021/11/03 	v13.26 - Adding Crypto_tripleA
+2021/11/23 	v13.27 - Adding IOUPay
+- Adding Doku
+2021/12/14 	v13.28 Adding RPP DuitNow and Alipay+
+2022/02/15 	v13.29 - Renaming “Notification URL” to “Notify URL”
+- Rewrite sample code for skey validation
+2022/02/22 	v13.30 Adding LinePay TH
+2022/03/11 	v13.31 Adding Atome
+2022/03/18 	v13.32 Adding Token API
+2022/04/11 	v13.33 - Add channel status API
+- Revamp the request parameter and response of token API
+- Change the existing channel statu
+
+--- HIT: payment request (3) ---
+
+SS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+4
+
+-- 5 of 167 --
+
+Fiuu ^ Powering Future Payments
+2024/02/22 	v13.62 - Add E2Pay channels and remove DOKU channels
+2024/03/26 	v13.63 - Remove ShopBack Pay Later
+2024/04/02 	v13.64 - WeChatPay CN e-wallet processing & settlement changed from USD to MYR
+2024/04/18 	v13.65 - Remove token parameter and add new parameter token_status
+2024/05/13 	v13.66 - Add metadata in payment request and 3 endpoints response
+2024/05/14 	v13.67 - Adding UPAY Channel
+- Adding UPAY_UBO Channel
+- Adding UPAY_PCHC Channel
+- Adding UPAY_INSTA Channel
+2024/05/17 	v13.68 - Correction of ProcessorCVVResponse, previously wrongly put as ProcessorCCVResponse in
+status requery and extraP
+2024/06/05 	v13.69 Update 3DS description for error code 5000, 6000 & 7000
+2024/06/07 	v13.70 Introducing API idempotency
+2024/06/14 	v13.71 Adding PNCO
+2024/06/18 	v13.72 Adding TW ESUN IcpMemberId in payment request and extraP
+2024/07/03 	v13.72 Add new error code E99
+2024/08/14 	v13.73 Adding type 3 for Foreign Exchange Rate API
+2024/08/27 	v13.74 - Add PayNowSQR in Static QR API
+2024/09/26 	v13.75 - Add ShopBack E-Wallet
+- Add domain registration for merchant endpoints
+2024/10/21 	v13.76 - Add QRPH channel
+2024/10/25 	v13.77 - Add Grab SG, PH
+2024/11/14 	v13.78 - Add req4terminal parameter in Indirect Status Requery
+- Add settlement report version 6.0
+- Add parameter for to display/hide saved card
+2024/12/19 	v13.79 - Add ShopBack in Jump App Integration
+2024/12/24 	v13.80 - Add new data in extraP for DuitNow QR channel
+- Add AmBank Visa card installment
+- Add error description from all 
+
+--- HIT: payment request (4) ---
+
+n payment request and 3 endpoints response
+2024/05/14 	v13.67 - Adding UPAY Channel
+- Adding UPAY_UBO Channel
+- Adding UPAY_PCHC Channel
+- Adding UPAY_INSTA Channel
+2024/05/17 	v13.68 - Correction of ProcessorCVVResponse, previously wrongly put as ProcessorCCVResponse in
+status requery and extraP
+2024/06/05 	v13.69 Update 3DS description for error code 5000, 6000 & 7000
+2024/06/07 	v13.70 Introducing API idempotency
+2024/06/14 	v13.71 Adding PNCO
+2024/06/18 	v13.72 Adding TW ESUN IcpMemberId in payment request and extraP
+2024/07/03 	v13.72 Add new error code E99
+2024/08/14 	v13.73 Adding type 3 for Foreign Exchange Rate API
+2024/08/27 	v13.74 - Add PayNowSQR in Static QR API
+2024/09/26 	v13.75 - Add ShopBack E-Wallet
+- Add domain registration for merchant endpoints
+2024/10/21 	v13.76 - Add QRPH channel
+2024/10/25 	v13.77 - Add Grab SG, PH
+2024/11/14 	v13.78 - Add req4terminal parameter in Indirect Status Requery
+- Add settlement report version 6.0
+- Add parameter for to display/hide saved card
+2024/12/19 	v13.79 - Add ShopBack in Jump App Integration
+2024/12/24 	v13.80 - Add new data in extraP for DuitNow QR channel
+- Add AmBank Visa card installment
+- Add error description from all card brands
+2025/01/07 	v13.81 - Add new token_status value
+2025/01/14 	v13.82 - Add TransactionGatewayFee and TransactionGatewayCurrency to reconciliation API
+2025/01/15 	v13.83 - Add DuitNow extra info in Indirect Status Requery API
+2025/02/05 	v13.84 - Add Channel extra info in Query by multiple transaction ID (batch output)
+- Add Channel extra info in Query by order ID (batch output)
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 
+
+--- HIT: payment request (5) ---
+
+ q4master_oid and q4master_tid API
+2025/06/11 	v13.90 - Add sample code to include currency hashing (ext-vcode)
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+6
+
+-- 7 of 167 --
+
+Fiuu ^ Powering Future Payments
+Table of Contents
+INTRODUCTION
+PAYMENT FLOW OVERVIEW
+SECURITY & DATA INTEGRITY
+Verify Key [Confidential]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+
+--- HIT: notification (1) ---
+
+
+All rights reserved. All trademarks are the property of their respective owners.
+2
+
+-- 3 of 167 --
+
+Fiuu ^ Powering Future Payments
+2021/07/13 	v13.24 Adding Singapore PayNow
+2021/07/28 	v13.24 Adding eNets Debit error code & removing Razer Pay
+2021/08/24 	v13.25 Changing all www.onlinepayment.com.my to pay.fiuu.com
+2021/08/27 	v13.26 Adding installment channels
+2021/10/15 	v13.26 - Rectified the key used in FOREX API
+- Adding KBank PayPlus error codes
+- Releasing channel value in callback and notification messages
+2021/10/28 	v13.26 - Adding KTB_IB & SCB_IB error codes
+2021/11/03 	v13.26 - Adding Crypto_tripleA
+2021/11/23 	v13.27 - Adding IOUPay
+- Adding Doku
+2021/12/14 	v13.28 Adding RPP DuitNow and Alipay+
+2022/02/15 	v13.29 - Renaming “Notification URL” to “Notify URL”
+- Rewrite sample code for skey validation
+2022/02/22 	v13.30 Adding LinePay TH
+2022/03/11 	v13.31 Adding Atome
+2022/03/18 	v13.32 Adding Token API
+2022/04/11 	v13.33 - Add channel status API
+- Revamp the request parameter and response of token API
+- Change the existing channel status API to channel success rate API
+2022/04/26 	v13.34 - Adding GCash
+- Adding Pace
+2022/05/05 	v13.35 Adding 9PAY
+2022/05/19 	v13.36 Adding waittime and cancelurl in request parameter
+Adding creditAN
+2022/06/10 	v13.37 - Adding note for direct status requery API
+- Changing the data type of token API
+2022/07/25 	v13.38 Adding creditAI
+2022/08/09 	v13.39 Adding Maya channel
+2022/10/28 	v13.40 Adding PromptPay RTP
+2022/11/09 	v13.41 Adding BPI Channel
+2022/11/15 	v13.42 Adding ESUN COD Family Mart
+2023/01/25 	v13.43 - Isolating extraP to a new section
+- Adding Void non-cash payment API
+2023/02/15 	v13.44 Adding hide_biller_info 
+
+--- HIT: notification (2) ---
+
+08/24 	v13.25 Changing all www.onlinepayment.com.my to pay.fiuu.com
+2021/08/27 	v13.26 Adding installment channels
+2021/10/15 	v13.26 - Rectified the key used in FOREX API
+- Adding KBank PayPlus error codes
+- Releasing channel value in callback and notification messages
+2021/10/28 	v13.26 - Adding KTB_IB & SCB_IB error codes
+2021/11/03 	v13.26 - Adding Crypto_tripleA
+2021/11/23 	v13.27 - Adding IOUPay
+- Adding Doku
+2021/12/14 	v13.28 Adding RPP DuitNow and Alipay+
+2022/02/15 	v13.29 - Renaming “Notification URL” to “Notify URL”
+- Rewrite sample code for skey validation
+2022/02/22 	v13.30 Adding LinePay TH
+2022/03/11 	v13.31 Adding Atome
+2022/03/18 	v13.32 Adding Token API
+2022/04/11 	v13.33 - Add channel status API
+- Revamp the request parameter and response of token API
+- Change the existing channel status API to channel success rate API
+2022/04/26 	v13.34 - Adding GCash
+- Adding Pace
+2022/05/05 	v13.35 Adding 9PAY
+2022/05/19 	v13.36 Adding waittime and cancelurl in request parameter
+Adding creditAN
+2022/06/10 	v13.37 - Adding note for direct status requery API
+- Changing the data type of token API
+2022/07/25 	v13.38 Adding creditAI
+2022/08/09 	v13.39 Adding Maya channel
+2022/10/28 	v13.40 Adding PromptPay RTP
+2022/11/09 	v13.41 Adding BPI Channel
+2022/11/15 	v13.42 Adding ESUN COD Family Mart
+2023/01/25 	v13.43 - Isolating extraP to a new section
+- Adding Void non-cash payment API
+2023/02/15 	v13.44 Adding hide_biller_info and hide_merchant_header_details in request parameter
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+
+--- HIT: notification (3) ---
+
+
+Table of Contents
+INTRODUCTION
+PAYMENT FLOW OVERVIEW
+SECURITY & DATA INTEGRITY
+Verify Key [Confidential]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+Advanced Full/Partial Refund
+Partial Refund Status Inquiry by TxnID/RefID
+Static QR-Code Generator
+Channel Status API
+Channel Success Rate API
+Card BIN information API
+Foreign Exchange Rate API
+Void Pending-Cash API
+Void Pending Non-Cash API
+Recurring Plan API
+Payment Token API
+Idempotence Request
+Jump App Integration
+DuitNow QR Account Enquiry Notify
+Extra
+
+--- HIT: notification (4) ---
+
+ey [Confidential]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+Advanced Full/Partial Refund
+Partial Refund Status Inquiry by TxnID/RefID
+Static QR-Code Generator
+Channel Status API
+Channel Success Rate API
+Card BIN information API
+Foreign Exchange Rate API
+Void Pending-Cash API
+Void Pending Non-Cash API
+Recurring Plan API
+Payment Token API
+Idempotence Request
+Jump App Integration
+DuitNow QR Account Enquiry Notify
+ExtraP
+ERROR CODES
+Payment Page
+3DS Error
+Payment Status Query (PSQ) Error
+Error in Merchant 
+
+--- HIT: notification (5) ---
+
+al]
+Secret Key [Top Secret]
+vcode (in payment request)
+skey (in payment response)
+Domain Registration for Merchant Endpoints
+SIMULATION (Sandbox Account)
+USER ACCEPTANCE TEST (Developer Account)
+PAYMENT APIs
+Initiating Payment
+Channel Lists
+Multi-Currency Payment
+Malaysia
+Singapore
+Philippines
+Indonesia
+Thailand
+Vietnam
+China
+Taiwan
+Payment Page Integration
+Getting Payment Result
+Payment Status Notification (Merchant Webhook or the 3 Endpoints)
+Return URL with IPN (Instant Payment Notification)
+Notification URL with IPN
+Callback URL with IPN
+TL;DR?
+SUMMARY ON INTEGRATION, 3 ENDPOINTS AND IPN
+INTEGRATION
+3 ENDPOINTS for payment response notification (For integration 1-6 only)
+IPN
+Comparison Chart
+MERCHANT REQUEST APIs
+Direct Status Requery
+Indirect Status Requery
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+Advanced Full/Partial Refund
+Partial Refund Status Inquiry by TxnID/RefID
+Static QR-Code Generator
+Channel Status API
+Channel Success Rate API
+Card BIN information API
+Foreign Exchange Rate API
+Void Pending-Cash API
+Void Pending Non-Cash API
+Recurring Plan API
+Payment Token API
+Idempotence Request
+Jump App Integration
+DuitNow QR Account Enquiry Notify
+ExtraP
+ERROR CODES
+Payment Page
+3DS Error
+Payment Status Query (PSQ) Error
+Error in Merchant Admin
+Error Co
+
+--- HIT: txn (1) ---
+
+ known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+7
+
+-- 8 of 167 --
+
+Fiuu ^ Powering Future Payments
+Daily Transaction Report (Reconciliation)
+Settlement Report (Reconciliation)
+Unsettled/Refunded Transaction Report (Exclusion from settlement)
+Capture Request (For pre-auth or authorized transaction)
+Reversal Request
+Advanced Full/Partial Refund
+Partial Refund Status Inquiry by TxnID/RefID
+Static QR-Code Generator
+Channel Status API
+Channel Success Rate API
+Card BIN information API
+Foreign Exchange Rate API
+Void Pending-Cash API
+Void Pending Non-Cash API
+Recurring Plan API
+Payment Token API
+Idempotence Request
+Jump App Integration
+DuitNow QR Account Enquiry Notify
+ExtraP
+ERROR CODES
+Payment Page
+3DS Error
+Payment Status Query (PSQ) Error
+Error in Merchant Admin
+Error Codes from Payment Channel
+RESOURCES
+Logos of all brand name
+Mobile SDK/XDK
+Supported Shopping Cart
+ISO References
+Handling JSON/PLAIN TEXT using .NET
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+8
+
+-- 9 of 167 --
+
+Fiuu ^ Powering Future Payments
+INTRODUCTION
+Dealing with banks and multiple payment channels are time-consuming and it might cost you a
+lot of money. We also understand that it’s a hassle for those non-technical people to integrate
+even one kind of online payment method into their existing website. Thus we consolidate all
+payment channels into one integration to reduce merchant’s costs and effort, and to shorten
+your time-to-marke
+
+--- HIT: txn (2) ---
+
+erchant Request APIs’
+parameters. Try not to confuse yourself with this payment response “skey”.
+skey was encrypted twice using MD5 encryption hash function and consists of the following
+information (must be set in the following orders) :
+First hash string
+1. Transaction ID
+2. Order ID
+3. Status
+4. Merchant ID (domain)
+5. Amount
+6. Currency
+Final hash string
+1. Payment Date/Time
+2. Merchant ID (domain)
+3. First hash string
+4. Approval Code
+5. Secret Key
+Formula to generate skey
+pre_skey = md5( {txnID}{orderID}{status}{merchantID}{amount}{currency} )
+skey = md5( {paydate}{merchantID}{pre_skey}{appcode}{secret_key} )
+Example to generate skey for PHP developer
+<?php
+$sec_key ="xxxxxxxxxx"; //Replace xxxxxxxxxx with your Secret_Key
+/********************************
+*Don't change below parameters
+********************************/
+$tranID = 	$_POST['tranID'];
+$orderid 	= 	$_POST['orderid'];
+$status 	= 	$_POST['status'];
+$merchant 	= 	$_POST['domain'];
+$amount 	= 	$_POST['amount'];
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+19
+
+-- 20 of 167 --
+
+Fiuu ^ Powering Future Payments
+$currency 	= 	$_POST['currency'];
+$appcode 	= 	$_POST['appcode'];
+$paydate 	= 	$_POST['paydate'];
+$skey 	= 	$_POST['skey']; //Security hashstring returned by PG
+/***********************************************************
+* To verify the data integrity sending by PG
+************************************************************/
+$key0 = md5( $tranID.$orderid.$status.$merchant.$amount.$currency );
+$key1 = md5( $paydate.$merchant.$key0.$appcode.$sec_key );
+//
+
+--- HIT: txn (3) ---
+
+o processing bank directly
+2. Indirect Status Requery - merchant send status query to PG system
+3. Daily Transaction Report (Reconciliation) - list all transactions of a specific date
+4. Settlement Report (Reconciliation) - settlement details
+5. Capture Request - to capture any pre-auth or authorized transaction
+6. Reversal Request - merchant to cancel or void a transaction or refund of payment
+7. Partial Refund - for merchant who requires partial refund only
+8. Partial Refund Status Inquiry by Txn ID
+9. Channel Status API
+10. Card BIN information API
+11. Foreign Exchange Rate API
+12. Void Pending-Cash API
+13. Recurring Plans API
+14. Payment Token API
+Notes:
+W.e.f 19th October 2017, Razer Merchant Services will migrate all none payment-flow related service APIs to a new FQDN:
+https://api.molpay.com (and now changed to https://api.fiuu.com)
+from the original https://www.onlinepayment.com.my
+W.e.f 1st November 2017, Razer Merchant Services will shutdown all none payment-flow related service APIs on
+https://www.onlinepayment.com.my
+For sandbox environment, use https://sandbox-payment.fiuu.com
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+66
+
+-- 67 of 167 --
+
+Fiuu ^ Powering Future Payments
+Direct Status Requery
+This will trigger a query to the payment channel or bank status server and there are cases that bank
+status server is not in-sync with its payment server that might give different results, that leads to a defer
+update and will trigger a callback from PG server, once the status is synced and changed.
+Note : No result av
+
+--- HIT: txn (4) ---
+
+ions identifier
+TerminalID 	alphanumeric, optional, with
+req4terminal=1
+Terminal ID of the transaction
+DbtrAgt 	alphanumeric, optional, with
+req4duitnow=1
+Debtor BIC code
+DbtrAcct_Type 	alphanumeric, optional, with
+req4duitnow=1
+Debtor account type
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+73
+
+-- 74 of 167 --
+
+Fiuu ^ Powering Future Payments
+TxnType 	alphanumeric, optional, with
+req4duitnow=1
+Debtor transaction type
+Formula of skey & VrfKey
+skey =md5( {oID}{domain}{verify_key}{amount} )
+VrfKey=md5( {Amount}{secret_key}{Domain}{OrderID}{StatCode} )
+3. Query by order ID (batch output)
+Request
+URL: https://api.fiuu.com/RMS/query/q_oid_batch.php
+Method: POST or GET
+Variable / Parameter Type Format / Max Length 	Description / Example
+oID 	alphanumeric, 32 chars 	Merchant order ID, which might be duplicated.
+domain 	alphanumeric, 32 chars 	Merchant ID in PG system.
+skey 	32 chars hexadecimal string 	This is the data integrity protection hash string.
+url 	optional, URL for POST response 	The URL to receive POST response from PG
+type 	optional, 1-digit integer 	0 = plain text result (default)
+1 = result via POST method
+2 = JSON text result
+format 	optional, 1-digit integer, for type=1 only 0 = result string with delimiter ( | )
+1 = result in array
+req4token 	optional, 1-digit integer 	0 = No (default)
+1 = Yes for more card related information
+req4terminal 	optional, 1-digit integer 	0 = No (default)
+1 = Yes to return TerminalID
+req4duitnow 	optional, 1-digit integer 	0 = No (default)
+1 = Yes to return DuitNow extra information
+
+--- HIT: txn (5) ---
+
+ID 	alphanumeric 	3DS transactions identifier
+TerminalID 	alphanumeric 	Terminal ID of the transaction
+DbtrAgt 	alphanumeric, optional, with
+req4duitnow=1
+Debtor BIC code
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+75
+
+-- 76 of 167 --
+
+Fiuu ^ Powering Future Payments
+DbtrAcct_Type 	alphanumeric, optional, with
+req4duitnow=1
+Debtor account type
+TxnType 	alphanumeric, optional, with
+req4duitnow=1
+Debtor transaction type
+Channel 	Alphanumerics, optional with
+fields=channel
+Payment via Channel
+Formula of skey
+skey =md5( {oID}{domain}{verify_key} )
+Example of response
+type=0,
+plain text output,
+newline with
+single or two TAB
+character(s)
+TranID BillingDate 	StatCode StatName Amount BillingName Currency ErrorCode ErrorDesc
+418607 2009-11-26 	22 	pending 25.00 Lenka MYR
+418603 2009-11-26 	00 	captured 125.10 Mika 	MYR
+418583 2009-11-26 	00 	captured 71.10 Ciara 	MYR
+type=1, format=0,
+POST variables
+with delimiter “|”
+$_POST[TranID] = “418607|418603|418583”;
+$_POST[BillingDate] = “2009-11-26|2009-11-26|2009-11-26”;
+$_POST[StatCode] = “22|00|00”;
+$_POST[StatName] = “pending|captured|captured”;
+$_POST[Amount] = “25.00|125.10|71.10”;
+$_POST[BillingName] = “Lenka|Mika|Ciara”;
+$_POST[Currency] = “MYR|MYR|MYR”;
+$_POST[ErrorCode] = “||”;
+$_POST[ErrorDesc] = “||”;
+type=1, format=1,
+POST variables in
+array
+$_POST[0][TranID] = “418607”;
+$_POST[0][BillingDate] = “2009-11-26”;
+$_POST[0][StatCode] = “22”;
+$_POST[0][StatName] = “pending”;
+$_POST[0] [Amount] = “25.00”;
+$_POST[0] [BillingName] = “Lenka”;
+$_POST[0] [Currency] = “MYR”;
+$_POST[0] 
+
+--- HIT: amount (1) ---
+
+1:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+13
+
+-- 14 of 167 --
+
+Fiuu ^ Powering Future Payments
+Payment Status Flow
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+14
+
+-- 15 of 167 --
+
+Fiuu ^ Powering Future Payments
+Pre authorization workflow is suitable for business without knowing the exact amount to be
+charged before the service or item is delivered. This feature can be enabled upon request by
+sending an email to support@fiuu.com. (Refer Capture Request)
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+15
+
+-- 16 of 167 --
+
+Fiuu ^ Powering Future Payments
+SECURITY & DATA INTEGRITY
+For online payment. The system uses “merchant ID”, “Verify Key” and “Secret Key” to generate
+encrypted hash string to ensure data integrity in the payment process.
+Verify Key [Confidential]
+Verify Key is unique shared secret for PG merchants to generate request to the payment
+gateway. It is a key or seed for generating one-time hash data, which are known as “vcode”
+(merchant’s payment request to the gateway) or some of the “skey” (APIs’ request from
+merchant to the gateway).
+How to get the verify key?
+1. Logon to PG Merchant Portal
+2. Open up the “Transaction” drop down list in “MAIN NAVIGATION”.
+3. Clink on “Settings” option
+4. “Verify Key” will be listed at “Integration” tab
+5. Clink on Eye Icon to show the “Verify Key”
+•••••• is Merchant’s Ve
+
+--- HIT: amount (2) ---
+
+the data integrity passed from merchant-end (either website or mobile APP)
+to the payment page to avoid man-in-the-middle (MITM) attack. It uses “Verify Key”(like a public
+key) in combination with the data string for hashing purposes.
+It becomes mandatory for each transaction if “Enable Verify Payment” is activated in merchant
+profile as shown:-
+vcode was generated using MD5 encryption hash function and consists of the following
+information (must be set in the following orders) :
+1. Transaction amount
+2. Merchant ID
+3. Order ID
+4. Verify Key
+Extra parameters which are COMPULSORY for merchants accepting multi currency channels.
+To have these values calculated in the hash. Kindly enable it from Merchant Portal
+(Transactions -> Settings). Enable the option “Use extended format for Verify Payment” to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vc
+
+--- HIT: amount (3) ---
+
+ set in the following orders) :
+1. Transaction amount
+2. Merchant ID
+3. Order ID
+4. Verify Key
+Extra parameters which are COMPULSORY for merchants accepting multi currency channels.
+To have these values calculated in the hash. Kindly enable it from Merchant Portal
+(Transactions -> Settings). Enable the option “Use extended format for Verify Payment” to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2
+
+--- HIT: amount (4) ---
+
+ayment” to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the paym
+
+--- HIT: amount (5) ---
+
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment result data
+integrity that passed to the merchant system. Merchants or developers MUST verify this h
+
+--- HIT: orderid (1) ---
+
+g orders) :
+1. Transaction amount
+2. Merchant ID
+3. Order ID
+4. Verify Key
+Extra parameters which are COMPULSORY for merchants accepting multi currency channels.
+To have these values calculated in the hash. Kindly enable it from Merchant Portal
+(Transactions -> Settings). Enable the option “Use extended format for Verify Payment” to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly k
+
+--- HIT: orderid (2) ---
+
+he following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment result data
+inte
+
+--- HIT: orderid (3) ---
+
+rchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment result data
+integrity that passed to the merchant system. Merchants or developers MUST verify this hash
+string properly and compare the order ID, currency, amount
+
+--- HIT: orderid (4) ---
+
+he property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment result data
+integrity that passed to the merchant system. Merchants or developers MUST verify this hash
+string properly and compare the order ID, currency, amount, and also the payment date/time, to
+protect self interest from being cheated by a fraudster/hacker. It uses a “Secret Key”(like a
+private key) in combination with a data string for the hashi
+
+--- HIT: orderid (5) ---
+
+ture Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment result data
+integrity that passed to the merchant system. Merchants or developers MUST verify this hash
+string properly and compare the order ID, currency, amount, and also the payment date/time, to
+protect self interest from being cheated by a fraudster/hacker. It uses a “Secret Key”(like a
+private key) in combination with a data string for the hashing process.
+Please note that there are other “skey” with different formulas in 
+
+--- HIT: MerchantID (1) ---
+
+the following orders) :
+1. Transaction amount
+2. Merchant ID
+3. Order ID
+4. Verify Key
+Extra parameters which are COMPULSORY for merchants accepting multi currency channels.
+To have these values calculated in the hash. Kindly enable it from Merchant Portal
+(Transactions -> Settings). Enable the option “Use extended format for Verify Payment” to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu
+
+--- HIT: MerchantID (2) ---
+
+to
+include the following, which is essential for digital product or instant delivery services:-
+5. Currency
+Formula to generate vcode
+vcode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment resu
+
+--- HIT: MerchantID (3) ---
+
+ode = md5( {amount}{merchantID}{orderID}{verify_key} )
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment result data
+integrity that passed to the merchant system. Merchants or developers MUST verify this hash
+string properly and compare the orde
+
+--- HIT: MerchantID (4) ---
+
+emarks are the property of their respective owners.
+17
+
+-- 18 of 167 --
+
+Fiuu ^ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment result data
+integrity that passed to the merchant system. Merchants or developers MUST verify this hash
+string properly and compare the order ID, currency, amount, and also the payment date/time, to
+protect self interest from being cheated by a fraudster/hacker. It uses a “Secret Key”(like a
+private key) in combination with a data string f
+
+--- HIT: MerchantID (5) ---
+
+ Powering Future Payments
+Formula with extended vcode enabled
+vcode = md5( {amount}{merchantID}{orderID}{verify_key}{currency} )
+Example to generate vcode for PHP developer
+<?php
+$amount 	= “27.60”;
+$currency 	= “MYR”;
+$merchantID = “ACME”;
+$orderid 	= “OD8842”;
+$verifykey 	= “f5bb0c8de146c67b44babbf4e6584cc0”;
+// Replace f5bb0c8de146c67b44babbf4e6584cc0 with your Verify Key
+// vcode formula
+//$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey ); //extended vcode off
+$vcode 	= md5( $amount.$merchantID.$orderid.$verifykey.$currency );
+// output of the vcode based on above information equals to :
+$vcode 	= “5bf33e6500a53830d4f80087b67e13de”;
+?>
+Verification tool for vcode
+To verify whether the vcode generated is correct, merchant may check on this URL:-
+https://api.fiuu.com/RMS/query/vcode.php
+What happens if a merchant passes in an incorrect vcode?
+An error will be displayed on the payment page as shown:-
+© 2005 - 2025 Fiuu (Formerly known as Razer Merchant Services)
+PCI-DSS v4.0 compliant & ISO/IEC 27001:2022 certified
+All rights reserved. All trademarks are the property of their respective owners.
+18
+
+-- 19 of 167 --
+
+Fiuu ^ Powering Future Payments
+skey (in payment response)
+skey is a payment gateway generated returning hash string to ensure the payment result data
+integrity that passed to the merchant system. Merchants or developers MUST verify this hash
+string properly and compare the order ID, currency, amount, and also the payment date/time, to
+protect self interest from being cheated by a fraudster/hacker. It uses a “Secret Key”(like a
+private key) in combination with a data string for the hashing process.
+Please note that there are other “skey” with different 

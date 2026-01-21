@@ -1,0 +1,252 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Products</h1>
+    <div class="muted small"><%= total %> products</div>
+  </div>
+  <div class="actions icon-row">
+    <div class="actions-group">
+      <button class="btn btn-icon icon-only" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true" title="Filters" aria-label="Filters" data-label="Filters"><%- icon('filter') %></button>
+      <a class="btn btn-icon" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
+      <a class="btn btn-icon" href="/admin/categories" title="Categories" aria-label="Categories" data-label="Categories"><%- icon('tag') %></a>
+      <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+      <a class="btn btn-icon" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+    </div>
+
+    <span class="actions-sep" aria-hidden="true"></span>
+
+    <% const baseQs = new URLSearchParams(); %>
+    <% if (q) baseQs.set('q', q); %>
+    <% if (category) baseQs.set('category', category); %>
+    <% if (visibility) baseQs.set('visibility', visibility); %>
+    <% if (archived) baseQs.set('archived', archived); %>
+    <% if (stock) baseQs.set('stock', stock); %>
+    <% if (min_price) baseQs.set('min_price', min_price); %>
+    <% if (max_price) baseQs.set('max_price', max_price); %>
+    <% if (sort) baseQs.set('sort', sort); %>
+    <% if (pageSize) baseQs.set('pageSize', String(pageSize)); %>
+
+    <% const listQs = new URLSearchParams(baseQs); %>
+    <% listQs.set('view', 'list'); %>
+    <% const gridQs = new URLSearchParams(baseQs); %>
+    <% gridQs.set('view', 'grid'); %>
+    <% const listHref = `/admin/products?${listQs.toString()}`; %>
+    <% const gridHref = `/admin/products?${gridQs.toString()}`; %>
+
+    <div class="actions-group">
+      <label class="sr-only" for="viewSelect">View</label>
+      <select id="viewSelect" class="select-compact" aria-label="View" onchange="if (this.value) window.location.href = this.value">
+        <option value="<%= listHref %>" <%= view === 'list' ? 'selected' : '' %>>List view</option>
+        <option value="<%= gridHref %>" <%= view === 'grid' ? 'selected' : '' %>>Grid view</option>
+      </select>
+
+      <a class="btn btn-primary btn-icon" href="/admin/products/new" title="New product" aria-label="New product" data-label="New"><%- icon('plus') %></a>
+    </div>
+  </div>
+</div>
+
+<div class="card filters-panel" id="filters-panel" style="padding:14px; margin-top:12px" data-filters-panel>
+  <div class="filters-panel__top">
+    <div class="filters-panel__title">Filters</div>
+    <button class="btn btn-icon icon-only" type="button" data-filters-close title="Close filters" aria-label="Close filters" data-label="Close"><%- icon('x') %></button>
+  </div>
+
+  <form method="get" action="/admin/products" class="row" style="align-items:flex-end">
+    <input type="hidden" name="view" value="<%= view || 'list' %>" />
+
+    <div class="col" style="min-width:240px">
+      <label>Search</label>
+      <input class="input" name="q" value="<%= q %>" />
+    </div>
+
+    <div style="width:220px">
+      <label>Archived</label>
+      <select name="archived">
+        <option value="ACTIVE" <%= archived === 'ACTIVE' ? 'selected' : '' %>>Active only</option>
+        <option value="ARCHIVED" <%= archived === 'ARCHIVED' ? 'selected' : '' %>>Archived only</option>
+        <option value="ALL" <%= archived === 'ALL' ? 'selected' : '' %>>All</option>
+      </select>
+    </div>
+
+    <div style="width:220px">
+      <label>Stock</label>
+      <select name="stock">
+        <option value="ALL" <%= stock === 'ALL' ? 'selected' : '' %>>All</option>
+        <option value="IN_STOCK" <%= stock === 'IN_STOCK' ? 'selected' : '' %>>In stock</option>
+        <option value="OUT_OF_STOCK" <%= stock === 'OUT_OF_STOCK' ? 'selected' : '' %>>Out of stock</option>
+        <option value="LOW_STOCK" <%= stock === 'LOW_STOCK' ? 'selected' : '' %>>Low stock (≤5)</option>
+      </select>
+    </div>
+
+    <div style="width:260px">
+      <label>Category</label>
+      <select name="category">
+        <option value="" <%= category ? '' : 'selected' %>>All</option>
+        <% (categories || []).forEach(c => { %>
+          <option value="<%= c.slug %>" <%= category === c.slug ? 'selected' : '' %>><%= c.name %><%= c.archived ? ' (archived)' : '' %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div style="width:160px">
+      <label>Min price</label>
+      <input class="input" name="min_price" inputmode="decimal" value="<%= min_price %>" placeholder="0.00" />
+    </div>
+    <div style="width:160px">
+      <label>Max price</label>
+      <input class="input" name="max_price" inputmode="decimal" value="<%= max_price %>" placeholder="9999.00" />
+    </div>
+
+    <div style="width:200px">
+      <label>Sort</label>
+      <select name="sort">
+        <option value="NEWEST" <%= sort === 'NEWEST' ? 'selected' : '' %>>Newest</option>
+        <option value="OLDEST" <%= sort === 'OLDEST' ? 'selected' : '' %>>Oldest</option>
+        <option value="UPDATED_DESC" <%= sort === 'UPDATED_DESC' ? 'selected' : '' %>>Recently updated</option>
+        <option value="UPDATED_ASC" <%= sort === 'UPDATED_ASC' ? 'selected' : '' %>>Oldest updated</option>
+        <option value="ID_ASC" <%= sort === 'ID_ASC' ? 'selected' : '' %>>ID ↑</option>
+        <option value="ID_DESC" <%= sort === 'ID_DESC' ? 'selected' : '' %>>ID ↓</option>
+        <option value="PRICE_ASC" <%= sort === 'PRICE_ASC' ? 'selected' : '' %>>Price ↑</option>
+        <option value="PRICE_DESC" <%= sort === 'PRICE_DESC' ? 'selected' : '' %>>Price ↓</option>
+        <option value="STOCK_ASC" <%= sort === 'STOCK_ASC' ? 'selected' : '' %>>Stock ↑</option>
+        <option value="STOCK_DESC" <%= sort === 'STOCK_DESC' ? 'selected' : '' %>>Stock ↓</option>
+        <option value="NAME_ASC" <%= sort === 'NAME_ASC' ? 'selected' : '' %>>Name A–Z</option>
+        <option value="NAME_DESC" <%= sort === 'NAME_DESC' ? 'selected' : '' %>>Name Z–A</option>
+        <option value="CATEGORY_ASC" <%= sort === 'CATEGORY_ASC' ? 'selected' : '' %>>Category A–Z</option>
+        <option value="CATEGORY_DESC" <%= sort === 'CATEGORY_DESC' ? 'selected' : '' %>>Category Z–A</option>
+        <option value="VISIBILITY_ASC" <%= sort === 'VISIBILITY_ASC' ? 'selected' : '' %>>Visibility ↑</option>
+        <option value="VISIBILITY_DESC" <%= sort === 'VISIBILITY_DESC' ? 'selected' : '' %>>Visibility ↓</option>
+        <option value="ARCHIVED_ASC" <%= sort === 'ARCHIVED_ASC' ? 'selected' : '' %>>Archived ↑</option>
+        <option value="ARCHIVED_DESC" <%= sort === 'ARCHIVED_DESC' ? 'selected' : '' %>>Archived ↓</option>
+      </select>
+    </div>
+
+    <div style="width:160px">
+      <label>Per page</label>
+      <select name="pageSize">
+        <option value="12" <%= String(pageSize || 12) === '12' ? 'selected' : '' %>>12</option>
+        <option value="24" <%= String(pageSize || 12) === '24' ? 'selected' : '' %>>24</option>
+        <option value="48" <%= String(pageSize || 12) === '48' ? 'selected' : '' %>>48</option>
+      </select>
+    </div>
+
+    <div style="min-width:200px">
+      <label class="muted small">(Legacy: includeArchived still supported)</label>
+      <input type="hidden" name="includeArchived" value="<%= includeArchived ? '1' : '0' %>" />
+    </div>
+
+    <div class="actions" style="margin-left:auto; align-items:flex-end">
+      <button class="btn btn-primary" type="submit">Apply</button>
+      <a class="btn" href="/admin/products?view=<%= view || 'list' %>">Clear</a>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <% if (view === 'grid') { %>
+    <div class="grid">
+      <% products.forEach(p => { %>
+        <div class="card admin-product-card">
+          <a href="/admin/products/<%= p.product_id %>/edit" style="text-decoration:none; color:inherit">
+            <img class="product-img product-img--admin" src="<%= p.product_image || '/public/placeholder.svg' %>" alt="" />
+            <div style="margin-top:10px; font-weight:800"><%= p.name %></div>
+            <div class="muted small" style="margin-top:4px"><%= p.category_name || p.category %></div>
+            <div class="kv" style="margin-top:10px">
+              <div><span class="muted">Price</span> <strong><%= formatMoney(p.price) %></strong></div>
+              <div><span class="muted">Stock</span> <strong><%= p.stock %></strong></div>
+            </div>
+            <div class="admin-product-meta">
+              <% if (p.visibility) { %>
+                <span class="badge ok">Visible</span>
+              <% } else { %>
+                <span class="badge">Hidden</span>
+              <% } %>
+              <% if (p.archived) { %>
+                <span class="badge no">Archived</span>
+              <% } %>
+              <% if (p.product_image) { %>
+                <span class="badge">Has image</span>
+              <% } %>
+            </div>
+          </a>
+          <div class="actions" style="margin-top:10px">
+            <a class="btn btn-icon" href="/admin/products/<%= p.product_id %>/edit" title="Edit" aria-label="Edit" data-label="Edit"><%- icon('edit') %></a>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <%
+      function sortHref(ascKey, descKey) {
+        const qs = new URLSearchParams(baseQs);
+        qs.set('view', view || 'list');
+        qs.set('includeArchived', includeArchived ? '1' : '0');
+        qs.set('page', '1');
+        const nextSort = (String(sort || '').toUpperCase() === String(ascKey).toUpperCase()) ? descKey : ascKey;
+        qs.set('sort', nextSort);
+        return `/admin/products?${qs.toString()}`;
+      }
+
+      function sortMark(ascKey, descKey) {
+        const s = String(sort || '').toUpperCase();
+        if (s === String(ascKey).toUpperCase()) return ' ↑';
+        if (s === String(descKey).toUpperCase()) return ' ↓';
+        return '';
+      }
+    %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th></th>
+          <th><a href="<%= sortHref('ID_ASC','ID_DESC') %>">ID<%= sortMark('ID_ASC','ID_DESC') %></a></th>
+          <th><a href="<%= sortHref('NAME_ASC','NAME_DESC') %>">Name<%= sortMark('NAME_ASC','NAME_DESC') %></a></th>
+          <th><a href="<%= sortHref('CATEGORY_ASC','CATEGORY_DESC') %>">Category<%= sortMark('CATEGORY_ASC','CATEGORY_DESC') %></a></th>
+          <th><a href="<%= sortHref('PRICE_ASC','PRICE_DESC') %>">Price<%= sortMark('PRICE_ASC','PRICE_DESC') %></a></th>
+          <th><a href="<%= sortHref('STOCK_ASC','STOCK_DESC') %>">Stock<%= sortMark('STOCK_ASC','STOCK_DESC') %></a></th>
+          <th><a href="<%= sortHref('VISIBILITY_ASC','VISIBILITY_DESC') %>">Visible<%= sortMark('VISIBILITY_ASC','VISIBILITY_DESC') %></a></th>
+          <th><a href="<%= sortHref('ARCHIVED_ASC','ARCHIVED_DESC') %>">Archived<%= sortMark('ARCHIVED_ASC','ARCHIVED_DESC') %></a></th>
+          <th><a href="<%= sortHref('UPDATED_DESC','UPDATED_ASC') %>">Updated<%= sortMark('UPDATED_DESC','UPDATED_ASC') %></a></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% products.forEach(p => { %>
+          <tr>
+            <td style="width:56px">
+              <img class="product-thumb" src="<%= p.product_image || '/public/placeholder.svg' %>" alt="" />
+            </td>
+            <td>#<%= p.product_id %></td>
+            <td><strong><%= p.name %></strong></td>
+            <td class="muted"><%= p.category_name || p.category %></td>
+            <td><%= formatMoney(p.price) %></td>
+            <td><%= p.stock %></td>
+            <td><%= p.visibility ? 'Yes' : 'No' %></td>
+            <td><%= p.archived ? 'Yes' : 'No' %></td>
+            <td class="muted"><%= formatDateTime(p.updated_at) %></td>
+            <td><a class="btn btn-icon" href="/admin/products/<%= p.product_id %>/edit" title="Edit" aria-label="Edit" data-label="Edit"><%- icon('edit') %></a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <div class="pager">
+    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
+    <% const pqs = new URLSearchParams(baseQs); %>
+    <% pqs.set('view', view || 'list'); %>
+    <% pqs.set('includeArchived', includeArchived ? '1' : '0'); %>
+    <% if (page > 1) { %>
+      <% pqs.set('page', String(page - 1)); %>
+      <a href="/admin/products?<%= pqs.toString() %>">Prev</a>
+    <% } %>
+    <% if (page < pageCount) { %>
+      <% pqs.set('page', String(page + 1)); %>
+      <a href="/admin/products?<%= pqs.toString() %>">Next</a>
+    <% } %>
+  </div>
+</div>
+
+<script src="/public/js/filters-toggle.js" defer></script>
+
+<%- include('../shared/bottom') %>

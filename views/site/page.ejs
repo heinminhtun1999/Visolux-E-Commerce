@@ -1,0 +1,8 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="card" style="padding:16px">
+  <h1 class="h1"><%= pageTitle || title %></h1>
+  <div class="md"><%- html || '' %></div>
+</div>
+
+<%- include('../shared/bottom') %>

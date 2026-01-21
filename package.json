@@ -1,0 +1,44 @@
+{
+  "name": "visolux-e-commerce",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon -e js,ejs src/server.js",
+    "start": "node src/server.js",
+    "postinstall": "node scripts/ensure-storage.js",
+    "seed": "node scripts/seed.js",
+    "create-admin": "node scripts/create-admin.js",
+    "extract-fiuu": "node scripts/extract-fiuu-spec.js \".\\[official API] Fiuu API Spec for Merchant (v13.90)_2.pdf\"",
+    "docs:pdf": "node scripts/build-docs-pdf.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.6.0",
+    "marked": "^17.0.1",
+    "sanitize-html": "^2.17.0",
+    "connect-sqlite3": "^0.9.16",
+    "cookie-parser": "^1.4.7",
+    "dayjs": "^1.11.19",
+    "dotenv": "^17.2.3",
+    "ejs": "^4.0.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "multer": "^2.0.2",
+    "nanoid": "^5.1.6",
+    "nodemailer": "^6.10.1",
+    "pdf-parse": "^2.4.5",
+    "sharp": "^0.34.5",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11",
+    "puppeteer": "^24.35.0"
+  }
+}

@@ -1,0 +1,47 @@
+# dependencies
+node_modules/
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite DBs / runtime files
+storage/data/*.db
+storage/data/*.db-*
+storage/data/*.sqlite
+storage/data/*.sqlite-*
+storage/data/*.sqlite3
+storage/data/*.sqlite3-*
+
+# sqlite WAL/SHM
+storage/data/*.db-wal
+storage/data/*.db-shm
+storage/data/*.sqlite-wal
+storage/data/*.sqlite-shm
+storage/data/*.sqlite3-wal
+storage/data/*.sqlite3-shm
+
+# session DB
+storage/data/sessions.db*
+
+# uploads (keep folders, ignore contents)
+storage/uploads/**
+!storage/uploads/
+!storage/uploads/**/
+
+# generated docs
+*.pdf
+
+# VS Code
+.vscode/

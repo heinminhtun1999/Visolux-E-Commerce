@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= title || 'Visolux' %></title>
+  <link rel="stylesheet" href="/public/css/app.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="site-header" style="margin-top:10px; margin-bottom:12px">
+      <div class="site-header__brand">
+        <a class="site-brand" href="/" aria-label="Home">
+          <% if (siteLogoUrl) { %>
+            <img src="<%= siteLogoUrl %>" alt="<%= siteName || 'Home' %>" />
+          <% } else { %>
+            <span class="site-brand__text"><%= siteName || 'Visolux' %></span>
+          <% } %>
+        </a>
+      </div>
+
+      <div class="site-header__actions actions icon-row">
+        <% const isAdminArea = (currentPath || '').startsWith('/admin'); %>
+        <% const showAdminBell = isAdmin; %>
+        <% const showAdminLink = isAdmin && !isAdminArea; %>
+
+        <% if (!isAdminArea && (currentPath || '').startsWith('/products')) { %>
+          <button class="btn btn-icon icon-only" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true" title="Filters" aria-label="Filters" data-label="Filters"><%- icon('filter') %></button>
+        <% } %>
+
+        <% if (!isAdmin) { %>
+          <a class="btn btn-icon icon-only <%= (currentPath || '') === '/' ? 'is-active' : '' %>" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+          <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/cart') ? 'is-active' : '' %>" href="/cart" title="Cart" aria-label="Cart" data-label="Cart">
+            <%- icon('cart') %>
+            <% if (cartItemCount > 0) { %><span class="btn-badge" aria-label="<%= cartItemCount %> items in cart"><%= cartItemCount %></span><% } %>
+          </a>
+        <% } %>
+
+        <% if (currentUser && !isAdmin) { %>
+          <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/orders') ? 'is-active' : '' %>" href="/orders/history" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
+          <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/account') ? 'is-active' : '' %>" href="/account" title="Account" aria-label="Account" data-label="Account"><%- icon('user') %></a>
+        <% } %>
+
+        <% if (!currentUser) { %>
+          <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/login') ? 'is-active' : '' %>" href="/login" title="Sign in" aria-label="Sign in" data-label="Sign in"><%- icon('login') %></a>
+        <% } %>
+
+        <% if (showAdminBell) { %>
+          <a class="btn btn-icon icon-only" href="/admin/notifications" title="Notifications" aria-label="Notifications" data-label="Notifications" data-admin-notification-bell>
+            <%- icon('bell') %>
+            <% if ((adminUnreadNotificationCount || 0) > 0) { %><span class="btn-badge"><%= adminUnreadNotificationCount %></span><% } %>
+          </a>
+        <% } %>
+
+        <% if (showAdminLink) { %>
+          <a class="btn btn-icon icon-only" href="/admin" title="Admin" aria-label="Admin" data-label="Admin"><%- icon('admin') %></a>
+        <% } %>
+
+        <% if (currentUser) { %>
+          <form method="post" action="/logout" style="display:inline">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button class="btn btn-icon icon-only" type="submit" title="Sign out" aria-label="Sign out" data-label="Sign out"><%- icon('logout') %></button>
+          </form>
+        <% } %>
+      </div>
+    </header>
+
+    <% if (breadcrumbs && breadcrumbs.length) { %>
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <% breadcrumbs.forEach((c, idx) => { %>
+          <% const isLast = idx === breadcrumbs.length - 1; %>
+          <% if (!c || !c.label) return; %>
+          <% if (isLast) { %>
+            <span class="breadcrumbs__current" aria-current="page"><%= c.label %></span>
+          <% } else { %>
+            <a class="breadcrumbs__link" href="<%= c.href %>"><%= c.label %></a>
+            <span class="breadcrumbs__sep" aria-hidden="true">/</span>
+          <% } %>
+        <% }) %>
+      </nav>
+    <% } %>
+
+    <% if (typeof flash !== 'undefined' && flash) { %>
+      <div class="flash <%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <script src="/public/js/table-sort.js" defer></script>
+    <script src="/public/js/flash-dismiss.js" defer></script>
+    <% if (isAdmin && (currentPath || '').startsWith('/admin')) { %>
+      <script src="/public/js/admin-notifications.js" defer></script>
+    <% } %>

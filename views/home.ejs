@@ -1,0 +1,37 @@
+<%- include('./shared/top', { title }) %>
+
+<div class="card" style="padding:16px">
+  <div class="home-hero">
+    <div>
+      <h1 class="h1" style="margin:0">Welcome</h1>
+      <div class="muted" style="margin-top:6px">Select a category to start shopping.</div>
+    </div>
+  </div>
+
+  <div class="home-categories" style="margin-top:14px">
+    <% categories.forEach(c => { %>
+      <a href="/products?category=<%= encodeURIComponent(c.slug) %>" class="category-tile" style="text-decoration:none" aria-label="Browse <%= c.name %>">
+        <div class="category-tile__media">
+          <% if (c.image_url) { %>
+            <img src="<%= c.image_url %>" alt="" loading="lazy" decoding="async" />
+          <% } else { %>
+            <div class="category-tile__placeholder">
+              <span class="muted small">No image</span>
+            </div>
+          <% } %>
+          <div class="category-tile__overlay" aria-hidden="true"></div>
+        </div>
+        <div class="category-tile__body">
+          <div class="category-tile__title"><%= c.name %></div>
+          <div class="category-tile__subtitle">Browse products</div>
+          <div class="category-tile__cta">
+            <span>Shop now</span>
+            <span aria-hidden="true">→</span>
+          </div>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+</div>
+
+<%- include('./shared/bottom') %>

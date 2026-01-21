@@ -1,0 +1,317 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Settings</h1>
+    <div class="muted small">All configurable settings in one page.</div>
+  </div>
+  <div class="actions icon-row">
+    <a class="btn btn-icon icon-only" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
+    <a class="btn btn-icon icon-only" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+    <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <div class="row" style="gap:10px; flex-wrap:wrap">
+    <a class="btn" href="/admin/categories">Categories</a>
+    <a class="btn" href="/admin/reports/sales">Sales report</a>
+    <a class="btn" href="#branding">Branding</a>
+    <a class="btn" href="#shipping">Shipping</a>
+    <a class="btn" href="#footer-pages">Footer & Pages</a>
+    <a class="btn" href="#promos">Promos</a>
+    <a class="btn" href="#security">Security</a>
+  </div>
+</div>
+
+<section id="branding" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Branding</h2>
+  <div class="muted small">Configure the logo used in the header.</div>
+
+  <form method="post" action="/admin/site/branding" enctype="multipart/form-data" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <label>Logo image (JPG/PNG/WEBP)</label>
+    <input class="input" type="file" name="logo_image" accept="image/jpeg,image/png,image/webp" />
+
+    <div style="margin-top:10px" class="row" aria-label="Current logo preview">
+      <div class="card" style="padding:12px; width:320px">
+        <div class="muted small">Preview</div>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:12px">
+          <% if (siteLogoUrl) { %>
+            <img src="<%= siteLogoUrl %>" alt="" style="max-height:42px; max-width:240px; object-fit:contain; display:block" />
+          <% } else { %>
+            <div class="muted small">No logo uploaded</div>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="col" style="min-width:220px">
+        <label style="display:flex; gap:8px; align-items:center">
+          <input type="checkbox" name="clear_logo" value="1" />
+          <span>Remove logo</span>
+        </label>
+        <div class="muted small" style="margin-top:6px">If no logo is set, the site name text will be shown.</div>
+      </div>
+    </div>
+
+    <div class="row" style="justify-content:flex-end; margin-top:14px">
+      <button class="btn btn-primary" type="submit">Save Branding</button>
+    </div>
+  </form>
+</section>
+
+<section id="security" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Security</h2>
+  <div class="muted small">Change the admin account password.</div>
+
+  <form method="post" action="/admin/account/password" style="margin-top:12px; max-width:520px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <label>Current password</label>
+    <input class="input" type="password" name="current_password" required autocomplete="current-password" />
+
+    <label style="margin-top:10px">New password</label>
+    <input class="input" type="password" name="new_password" required minlength="8" autocomplete="new-password" />
+    <div class="muted small" style="margin-top:6px">Minimum 8 characters.</div>
+
+    <label style="margin-top:10px">Confirm new password</label>
+    <input class="input" type="password" name="confirm_password" required minlength="8" autocomplete="new-password" />
+
+    <div class="row" style="justify-content:flex-end; margin-top:14px">
+      <button class="btn btn-primary" type="submit">Change password</button>
+    </div>
+  </form>
+</section>
+
+<section id="footer-pages" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Footer & Pages</h2>
+  <div class="muted small">Configure footer links and edit the Privacy/Terms/How to Order pages.</div>
+
+  <form method="post" action="/admin/site/footer-pages" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="row" style="gap:14px; align-items:flex-start">
+      <div class="col" style="min-width:320px">
+        <label>Request Technician Onsite Support (Google Form URL)</label>
+        <input class="input" name="technician_support_url" value="<%= technicianSupportUrl || '' %>" maxlength="1000" placeholder="https://forms.gle/..." />
+        <div class="muted small" style="margin-top:6px">Leave blank to hide the link in the footer.</div>
+      </div>
+
+      <div class="col" style="min-width:320px">
+        <label>Footer copyright text</label>
+        <input class="input" name="footer_copyright" value="<%= footerCopyright || '' %>" maxlength="200" placeholder="Copyright © 2026 ..." />
+        <div class="muted small" style="margin-top:6px">Leave blank to use the default “© YEAR SITE. All rights reserved.”</div>
+      </div>
+    </div>
+
+    <div class="row" style="gap:14px; align-items:flex-start; margin-top:12px">
+      <div class="col" style="min-width:320px">
+        <label>Pages</label>
+        <div class="row" style="gap:10px; flex-wrap:wrap">
+          <a class="btn" href="/admin/pages/how-to-order">Edit How to Order</a>
+          <a class="btn" href="/admin/pages/privacy">Edit Privacy</a>
+          <a class="btn" href="/admin/pages/terms">Edit Terms</a>
+        </div>
+
+        <div class="muted small" style="margin-top:10px">
+          Footer links:
+          <div style="margin-top:6px">• Request Technician Onsite Support (external)</div>
+          <div>• How to Order</div>
+          <div>• Privacy</div>
+          <div>• Terms</div>
+          <div style="margin-top:10px">Payment logos are served from <code>/public/images/logo</code>.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="justify-content:flex-end; margin-top:14px">
+      <button class="btn btn-primary" type="submit">Save Footer & Pages</button>
+    </div>
+  </form>
+</section>
+
+<section id="promos" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Promos</h2>
+  <div class="muted small">Create and manage promo codes.</div>
+
+  <div class="card" style="padding:12px; margin-top:12px">
+    <div class="row" style="justify-content:space-between; align-items:flex-end; gap:12px">
+      <div>
+        <div class="muted small">View</div>
+        <div class="row" style="gap:8px; flex-wrap:wrap">
+          <a class="btn <%= promosView === 'ACTIVE' ? 'btn-primary' : '' %>" href="/admin/settings?promos_view=ACTIVE#promos">Active</a>
+          <a class="btn <%= promosView === 'ARCHIVED' ? 'btn-primary' : '' %>" href="/admin/settings?promos_view=ARCHIVED#promos">Archived</a>
+          <a class="btn <%= promosView === 'ALL' ? 'btn-primary' : '' %>" href="/admin/settings?promos_view=ALL#promos">All</a>
+        </div>
+      </div>
+      <div class="muted small" style="text-align:right">
+        Showing <strong><%= promos.length %></strong> promos
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:16px; margin-top:12px">
+    <h3 class="h3" style="margin-top:0; margin-bottom:10px">Create promo</h3>
+    <form id="promoCreateForm" method="post" action="/admin/promos" class="admin-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+      <div class="field is-md">
+        <label>Code</label>
+        <input class="input" name="code" required minlength="2" maxlength="32" placeholder="e.g. SAVE10" />
+        <div class="muted small" style="margin-top:6px">Stored uppercased.</div>
+      </div>
+
+      <div class="field is-sm">
+        <label>Type</label>
+        <select name="discount_type" id="promoDiscountType">
+          <option value="PERCENT" selected>Percent</option>
+          <option value="FIXED">Fixed (RM)</option>
+        </select>
+      </div>
+
+      <div class="field is-sm">
+        <label>Percent off</label>
+        <input class="input" name="percent_off" id="promoPercentOff" inputmode="numeric" placeholder="e.g. 10" />
+      </div>
+
+      <div class="field is-sm">
+        <label>Amount off (RM)</label>
+        <input class="input" name="amount_off_rm" id="promoAmountOffRm" inputmode="decimal" placeholder="e.g. 10.00" />
+      </div>
+
+      <div class="field is-sm">
+        <label>Max redemptions</label>
+        <input class="input" name="max_redemptions" inputmode="numeric" placeholder="e.g. 100" />
+        <div class="muted small" style="margin-top:6px">Blank = unlimited.</div>
+      </div>
+
+      <div class="field is-sm">
+        <label>Start date</label>
+        <input class="input" type="date" name="start_date" />
+      </div>
+
+      <div class="field is-sm">
+        <label>End date</label>
+        <input class="input" type="date" name="end_date" />
+      </div>
+
+      <div class="field is-sm">
+        <label>Status</label>
+        <select name="active">
+          <option value="1" selected>Active</option>
+          <option value="0">Disabled</option>
+        </select>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" type="submit">Create</button>
+      </div>
+    </form>
+    <div class="muted small" style="margin-top:10px">When “Percent” is selected, “Amount off” is disabled, and vice versa.</div>
+  </div>
+
+  <div class="card" style="padding:14px; margin-top:12px">
+    <div class="table-scroll">
+      <table class="table">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Discount</th>
+          <th>Window</th>
+          <th>Usage</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% (promos || []).forEach(p => { %>
+          <tr>
+            <% const promoFormId = 'promoForm-' + encodeURIComponent(p.code).replace(/%/g, '_'); %>
+
+            <td style="min-width:240px">
+              <label class="muted small">Code</label>
+              <input class="input" name="new_code" form="<%= promoFormId %>" value="<%= p.code %>" maxlength="32" />
+            </td>
+
+            <td style="min-width:420px">
+              <div class="row" style="gap:8px; align-items:flex-end; flex-wrap:wrap">
+                <div style="min-width:140px">
+                  <label class="muted small">Type</label>
+                  <select name="discount_type" form="<%= promoFormId %>" data-promo-type>
+                    <option value="PERCENT" <%= p.discount_type === 'PERCENT' ? 'selected' : '' %>>Percent</option>
+                    <option value="FIXED" <%= p.discount_type === 'FIXED' ? 'selected' : '' %>>Fixed (RM)</option>
+                  </select>
+                </div>
+
+                <div style="min-width:140px">
+                  <label class="muted small">Percent</label>
+                  <input class="input" name="percent_off" form="<%= promoFormId %>" data-promo-percent inputmode="numeric" value="<%= p.percent_off == null ? '' : p.percent_off %>" placeholder="e.g. 10" />
+                </div>
+
+                <div style="min-width:160px">
+                  <label class="muted small">Amount (RM)</label>
+                  <input class="input" name="amount_off_rm" form="<%= promoFormId %>" data-promo-amount inputmode="decimal" value="<%= p.amount_off_cents == null ? '' : ((p.amount_off_cents || 0) / 100).toFixed(2) %>" placeholder="e.g. 10.00" />
+                </div>
+
+                <div style="min-width:150px">
+                  <label class="muted small">Max uses</label>
+                  <input class="input" name="max_redemptions" form="<%= promoFormId %>" inputmode="numeric" value="<%= p.max_redemptions == null ? '' : p.max_redemptions %>" placeholder="unlimited" />
+                </div>
+              </div>
+            </td>
+
+            <td class="small" style="min-width:260px">
+              <div class="row" style="gap:8px; flex-wrap:wrap">
+                <div>
+                  <label class="muted small">Start</label>
+                  <input class="input" type="date" name="start_date" form="<%= promoFormId %>" value="<%= p.start_date || '' %>" />
+                </div>
+                <div>
+                  <label class="muted small">End</label>
+                  <input class="input" type="date" name="end_date" form="<%= promoFormId %>" value="<%= p.end_date || '' %>" />
+                </div>
+              </div>
+            </td>
+
+            <td class="small" style="min-width:120px">
+              <%= p.redeemed_count || 0 %><% if (p.max_redemptions) { %> / <%= p.max_redemptions %><% } %>
+            </td>
+
+            <td style="min-width:170px">
+              <label class="muted small">Status</label>
+              <select name="active" form="<%= promoFormId %>">
+                <option value="1" <%= p.active ? 'selected' : '' %>>Active</option>
+                <option value="0" <%= !p.active ? 'selected' : '' %>>Disabled</option>
+              </select>
+            </td>
+
+            <td style="white-space:nowrap; min-width:260px">
+              <form id="<%= promoFormId %>" method="post" action="/admin/promos/<%= encodeURIComponent(p.code) %>/update" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button class="btn btn-primary" type="submit">Save</button>
+              </form>
+
+              <% if (!p.archived) { %>
+                <form method="post" action="/admin/promos/<%= encodeURIComponent(p.code) %>/archive" style="display:inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <button class="btn" type="submit">Archive</button>
+                </form>
+              <% } else { %>
+                <form method="post" action="/admin/promos/<%= encodeURIComponent(p.code) %>/restore" style="display:inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <button class="btn" type="submit">Restore</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script src="/public/js/admin-promos.js" defer></script>
+
+<%- include('../shared/bottom') %>

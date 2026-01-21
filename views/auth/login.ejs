@@ -1,0 +1,21 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="card" style="padding:16px; max-width:520px; margin:0 auto">
+  <h1 class="h1">Sign in</h1>
+  <form method="post" action="/login">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label>Username or email</label>
+    <input class="input" name="identifier" required />
+
+    <label>Password</label>
+    <input class="input" type="password" name="password" required />
+
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-primary" type="submit">Sign in</button>
+      <a class="btn" href="/register">Create account</a>
+      <a class="btn" href="/forgot-password">Forgot password</a>
+    </div>
+  </form>
+</div>
+
+<%- include('../shared/bottom') %>

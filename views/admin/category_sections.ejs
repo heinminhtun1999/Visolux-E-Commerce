@@ -1,0 +1,106 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Category sections</h1>
+    <div class="muted small">
+      Category: <strong><%= category.name %></strong> (<span class="muted"><%= category.slug %></span>)
+    </div>
+  </div>
+  <div class="actions icon-row">
+    <a class="btn" href="/admin/categories">Back to Categories</a>
+    <a class="btn btn-icon" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+    <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+  </div>
+</div>
+
+<div class="card" style="padding:16px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0; margin-bottom:10px">Add section</h2>
+  <form method="post" action="/admin/categories/<%= category.id %>/sections" class="admin-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="field is-lg">
+      <label>Title (optional)</label>
+      <input class="input" name="title" maxlength="120" placeholder="e.g. Installation guide" />
+    </div>
+
+    <div class="field is-sm">
+      <label>Sort order</label>
+      <input class="input" name="sort_order" inputmode="numeric" placeholder="0" />
+    </div>
+
+    <div class="field is-sm">
+      <label>Status</label>
+      <select name="active">
+        <option value="1" selected>Active</option>
+        <option value="0">Hidden</option>
+      </select>
+    </div>
+
+    <div class="field is-full">
+      <label>Content (Markdown)</label>
+      <textarea class="input" name="body_md" rows="6" placeholder="You can use **bold**, lists, links, images, etc."></textarea>
+      <div class="muted small" style="margin-top:6px">Tip: Use blank line between paragraphs. Use `-` for lists.</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Add section</button>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Sections</h2>
+  <div class="muted small">These sections will appear below product pages in this category.</div>
+
+  <% if (!sections || sections.length === 0) { %>
+    <div class="muted" style="margin-top:10px">No sections yet.</div>
+  <% } else { %>
+    <div class="table-scroll" style="margin-top:10px">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="min-width:180px">Title</th>
+            <th style="min-width:90px">Sort</th>
+            <th style="min-width:120px">Status</th>
+            <th style="min-width:520px">Markdown</th>
+            <th style="min-width:220px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% sections.forEach(s => { %>
+            <tr>
+              <td>
+                <input class="input" name="title" form="secForm-<%= s.id %>" value="<%= s.title || '' %>" maxlength="120" placeholder="(optional)" />
+              </td>
+              <td>
+                <input class="input" name="sort_order" form="secForm-<%= s.id %>" value="<%= s.sort_order %>" inputmode="numeric" />
+              </td>
+              <td>
+                <select name="active" form="secForm-<%= s.id %>">
+                  <option value="1" <%= s.active ? 'selected' : '' %>>Active</option>
+                  <option value="0" <%= !s.active ? 'selected' : '' %>>Hidden</option>
+                </select>
+              </td>
+              <td>
+                <textarea class="input" name="body_md" form="secForm-<%= s.id %>" rows="5"><%= s.body_md || '' %></textarea>
+              </td>
+              <td style="white-space:nowrap">
+                <form id="secForm-<%= s.id %>" method="post" action="/admin/categories/<%= category.id %>/sections/<%= s.id %>" style="display:inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <button class="btn btn-primary" type="submit">Save</button>
+                </form>
+                <form method="post" action="/admin/categories/<%= category.id %>/sections/<%= s.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this section?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <button class="btn btn-danger" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../shared/bottom') %>

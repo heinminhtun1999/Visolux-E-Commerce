@@ -1,0 +1,88 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Home page</h1>
+    <div class="muted small">Configure the two category cards shown on the Home page.</div>
+  </div>
+  <div class="actions icon-row">
+    <div class="actions-group">
+      <a class="btn btn-icon" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+      <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+    </div>
+  </div>
+</div>
+
+<form method="post" action="/admin/site/home" enctype="multipart/form-data" class="card" style="padding:14px; margin-top:12px">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+  <div class="row" style="gap:14px; align-items:flex-start">
+    <div class="col" style="min-width:320px">
+      <h2 class="h2" style="margin:0 0 10px">TCN Spare Parts</h2>
+
+      <label>Card name</label>
+      <input class="input" name="tcn_name" value="<%= tcnName %>" required maxlength="80" />
+
+      <div style="margin-top:10px">
+        <label>Card image (JPG/PNG/WEBP)</label>
+        <input class="input" type="file" name="tcn_image" accept="image/jpeg,image/png,image/webp" />
+      </div>
+
+      <div style="margin-top:10px" class="row" aria-label="Current image preview">
+        <div style="width:180px; height:120px; border-radius:12px; overflow:hidden; background:var(--border)">
+          <% if (tcnImage) { %>
+            <img src="<%= tcnImage %>" alt="" style="width:180px; height:120px; object-fit:cover; display:block" />
+          <% } else { %>
+            <div style="width:180px; height:120px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, rgba(255,255,255,.15), rgba(0,0,0,.05))">
+              <span class="muted small">No image</span>
+            </div>
+          <% } %>
+        </div>
+        <div class="col" style="min-width:220px">
+          <label style="display:flex; gap:8px; align-items:center">
+            <input type="checkbox" name="tcn_clear_image" value="1" />
+            <span>Clear current image</span>
+          </label>
+          <div class="muted small" style="margin-top:6px">Uploading a new file will replace the existing image.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col" style="min-width:320px">
+      <h2 class="h2" style="margin:0 0 10px">Post Mix Dispenser Parts</h2>
+
+      <label>Card name</label>
+      <input class="input" name="post_name" value="<%= postName %>" required maxlength="80" />
+
+      <div style="margin-top:10px">
+        <label>Card image (JPG/PNG/WEBP)</label>
+        <input class="input" type="file" name="postmix_image" accept="image/jpeg,image/png,image/webp" />
+      </div>
+
+      <div style="margin-top:10px" class="row" aria-label="Current image preview">
+        <div style="width:180px; height:120px; border-radius:12px; overflow:hidden; background:var(--border)">
+          <% if (postImage) { %>
+            <img src="<%= postImage %>" alt="" style="width:180px; height:120px; object-fit:cover; display:block" />
+          <% } else { %>
+            <div style="width:180px; height:120px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, rgba(255,255,255,.15), rgba(0,0,0,.05))">
+              <span class="muted small">No image</span>
+            </div>
+          <% } %>
+        </div>
+        <div class="col" style="min-width:220px">
+          <label style="display:flex; gap:8px; align-items:center">
+            <input type="checkbox" name="postmix_clear_image" value="1" />
+            <span>Clear current image</span>
+          </label>
+          <div class="muted small" style="margin-top:6px">Uploading a new file will replace the existing image.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="justify-content:flex-end; margin-top:14px">
+    <button class="btn btn-primary" type="submit">Save</button>
+  </div>
+</form>
+
+<%- include('../shared/bottom') %>

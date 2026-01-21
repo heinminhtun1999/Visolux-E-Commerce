@@ -1,0 +1,49 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="card" style="padding:16px; max-width:560px; margin:0 auto">
+  <h1 class="h1">Create account</h1>
+  <form method="post" action="/register">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label>Username</label>
+    <input class="input" name="username" required />
+
+    <label>Email</label>
+    <input class="input" type="email" name="email" required />
+
+    <label>Password</label>
+    <input class="input" type="password" name="password" required />
+
+    <label>Phone (optional)</label>
+    <input class="input" name="phone" />
+
+    <h2 class="h2" style="margin-top:14px">Address (Malaysia, optional)</h2>
+    <div class="muted small">Used to prefill your delivery address at checkout.</div>
+
+    <label>Address line 1</label>
+    <input class="input" name="address_line1" placeholder="House/Unit, Street" />
+
+    <label>Address line 2 (optional)</label>
+    <input class="input" name="address_line2" placeholder="Building, floor, etc" />
+
+    <label>City</label>
+    <input class="input" name="city" placeholder="e.g. Shah Alam" />
+
+    <label>State</label>
+    <select class="input" name="state">
+      <option value="">Select state</option>
+      <% (malaysiaStates || []).forEach(s => { %>
+        <option value="<%= s %>"><%= s %></option>
+      <% }) %>
+    </select>
+
+    <label>Postcode</label>
+    <input class="input" name="postcode" inputmode="numeric" pattern="\d{5}" placeholder="e.g. 40100" />
+
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-primary" type="submit">Create</button>
+      <a class="btn" href="/login">Sign in</a>
+    </div>
+  </form>
+</div>
+
+<%- include('../shared/bottom') %>

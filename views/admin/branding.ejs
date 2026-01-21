@@ -1,0 +1,51 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Branding</h1>
+    <div class="muted small">Configure the logo used in the header.</div>
+  </div>
+  <div class="actions icon-row">
+    <div class="actions-group">
+      <a class="btn btn-icon" href="/admin/site/home" title="Site Home" aria-label="Site Home" data-label="Site"><%- icon('admin') %></a>
+      <a class="btn btn-icon" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+      <a class="btn btn-icon" href="/admin/site/shipping" title="Shipping" aria-label="Shipping" data-label="Shipping"><%- icon('edit') %></a>
+    </div>
+  </div>
+</div>
+
+<form method="post" action="/admin/site/branding" enctype="multipart/form-data" class="card" style="padding:14px; margin-top:12px">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+  <h2 class="h2" style="margin-top:0">Header logo</h2>
+
+  <label>Logo image (JPG/PNG/WEBP)</label>
+  <input class="input" type="file" name="logo_image" accept="image/jpeg,image/png,image/webp" />
+
+  <div style="margin-top:10px" class="row" aria-label="Current logo preview">
+    <div class="card" style="padding:12px; width:320px">
+      <div class="muted small">Preview</div>
+      <div style="margin-top:10px; display:flex; align-items:center; gap:12px">
+        <% if (siteLogoUrl) { %>
+          <img src="<%= siteLogoUrl %>" alt="" style="max-height:42px; max-width:240px; object-fit:contain; display:block" />
+        <% } else { %>
+          <div class="muted small">No logo uploaded</div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="col" style="min-width:220px">
+      <label style="display:flex; gap:8px; align-items:center">
+        <input type="checkbox" name="clear_logo" value="1" />
+        <span>Remove logo</span>
+      </label>
+      <div class="muted small" style="margin-top:6px">If no logo is set, the site name text will be shown.</div>
+    </div>
+  </div>
+
+  <div class="actions" style="margin-top:12px">
+    <button class="btn btn-primary" type="submit">Save</button>
+  </div>
+</form>
+
+<%- include('../shared/bottom') %>
