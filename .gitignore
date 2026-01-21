@@ -46,5 +46,11 @@ docs/generated/*.docx
 docs/generated/Visolux_Admin_Manual.docx
 docs/generated/Visolux_Developer_Guide.docx
 
+# generated doc outputs
+docs/generated/
+
+# extracted/reference specs (non-essential)
+fiuu-spec-*.txt
+
 # VS Code
 .vscode/

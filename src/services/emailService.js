@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 
 const { env } = require('../config/env');
+const { createOrderViewToken } = require('../utils/orderViewToken');
 const { formatDateTime } = require('../utils/datetime');
 
 function isSmtpConfigured() {
@@ -333,7 +334,9 @@ async function sendOrderPlacedEmailToCustomer({ order, promo }) {
     return { sent: false, reason: 'missing_customer_email' };
   }
 
-  const orderLink = `${String(env.appBaseUrl || '').replace(/\/$/, '')}/orders/${order.order_id}`;
+  const base = String(env.appBaseUrl || '').replace(/\/$/, '');
+  const token = order.user_id ? '' : createOrderViewToken({ orderId: order.order_id, ttlDays: 180 });
+  const orderLink = `${base}/orders/${order.order_id}${token ? `?t=${encodeURIComponent(token)}` : ''}`;
   const msg = buildCustomerOrderEmail({ order, promo, orderLink });
 
   const transport = createTransport();
@@ -367,7 +370,9 @@ async function sendOrderStatusChangedEmailToCustomer({ order, event, note }) {
     return { sent: false, reason: 'missing_customer_email' };
   }
 
-  const orderLink = `${String(env.appBaseUrl || '').replace(/\/$/, '')}/orders/${order.order_id}`;
+  const base = String(env.appBaseUrl || '').replace(/\/$/, '');
+  const token = order.user_id ? '' : createOrderViewToken({ orderId: order.order_id, ttlDays: 180 });
+  const orderLink = `${base}/orders/${order.order_id}${token ? `?t=${encodeURIComponent(token)}` : ''}`;
   const msg = buildCustomerOrderStatusEmail({ order, event, note, orderLink });
 
   const transport = createTransport();
