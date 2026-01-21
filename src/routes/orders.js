@@ -40,10 +40,16 @@ function canAccessOrderViaEmailToken(req, order) {
   if (!order || order.user_id) return false;
   const token = String(req.query.t || '').trim();
   if (!token) return false;
-  if (!verifyOrderViewToken({ token, orderId: order.order_id })) return false;
-  // Promote token-based access into the session for subsequent navigation.
-  req.session.lastGuestOrderId = order.order_id;
-  return true;
+
+  try {
+    if (!verifyOrderViewToken({ token, orderId: order.order_id })) return false;
+    // Promote token-based access into the session for subsequent navigation.
+    req.session.lastGuestOrderId = order.order_id;
+    return true;
+  } catch (e) {
+    logger.warn({ event: 'order_email_token_verify_failed', err: e, orderId: order.order_id }, 'failed to verify order email token');
+    return false;
+  }
 }
 
 function requireOrderAccess(req, res, order) {

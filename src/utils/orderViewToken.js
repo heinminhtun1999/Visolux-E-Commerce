@@ -3,7 +3,12 @@ const crypto = require('crypto');
 const { env } = require('../config/env');
 
 function base64url(buf) {
-  return Buffer.from(buf).toString('base64url');
+  // Avoid Buffer.toString('base64url') for compatibility with older Node versions.
+  return Buffer.from(buf)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
 }
 
 function timingSafeEqualStr(a, b) {
