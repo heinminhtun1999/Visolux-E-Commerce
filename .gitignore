@@ -42,6 +42,9 @@ storage/uploads/**
 
 # generated docs
 *.pdf
+docs/generated/*.docx
+docs/generated/Visolux_Admin_Manual.docx
+docs/generated/Visolux_Developer_Guide.docx
 
 # generated doc outputs
 docs/generated/
