@@ -5,16 +5,9 @@
     <h1 class="h1">Admin – Sales report</h1>
     <div class="muted small">Paid orders and confirmed refunds in the selected date range.</div>
   </div>
-  <div class="actions icon-row">
-    <a class="btn btn-icon icon-only" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
-    <a class="btn btn-icon icon-only" href="/admin/users" title="Users" aria-label="Users" data-label="Users"><%- icon('user') %></a>
-    <a class="btn btn-icon icon-only" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
-    <a class="btn btn-icon icon-only" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
-    <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
-  </div>
 </div>
 
-<div class="card" style="padding:14px; margin-top:12px">
+<div class="card card--pad card--mt">
   <form method="get" action="/admin/reports/sales" class="admin-form">
     <div class="field is-sm">
       <label>From</label>
@@ -29,35 +22,35 @@
       <% const qs = new URLSearchParams(); %>
       <% if (date_from) qs.set('date_from', date_from); %>
       <% if (date_to) qs.set('date_to', date_to); %>
-      <a class="btn" href="/admin/reports/sales.csv?<%= qs.toString() %>">Download CSV</a>
+      <a class="btn btn-secondary" href="/admin/reports/sales.csv?<%= qs.toString() %>">Download CSV</a>
     </div>
   </form>
 </div>
 
-<div class="row" style="gap:12px; flex-wrap:wrap; margin-top:12px">
-  <div class="card" style="padding:14px; min-width:240px">
-    <div class="muted small">Paid orders</div>
-    <div style="font-size:20px; font-weight:800"><%= (summary && summary.orders_count != null) ? summary.orders_count : 0 %></div>
+<div class="stats-grid">
+  <div class="card card--pad">
+    <div class="stat__label">Paid orders</div>
+    <div class="stat__value"><%= (summary && summary.orders_count != null) ? summary.orders_count : 0 %></div>
   </div>
-  <div class="card" style="padding:14px; min-width:240px">
-    <div class="muted small">Gross sales</div>
-    <div style="font-size:20px; font-weight:800">RM <%= formatMoney((summary && summary.gross_cents) ? summary.gross_cents : 0) %></div>
+  <div class="card card--pad">
+    <div class="stat__label">Gross sales</div>
+    <div class="stat__value">RM <%= formatMoney((summary && summary.gross_cents) ? summary.gross_cents : 0) %></div>
   </div>
-  <div class="card" style="padding:14px; min-width:240px">
-    <div class="muted small">Refunds (confirmed)</div>
-    <div style="font-size:20px; font-weight:800">RM <%= formatMoney((summary && summary.refund_cents) ? summary.refund_cents : 0) %></div>
+  <div class="card card--pad">
+    <div class="stat__label">Refunds (confirmed)</div>
+    <div class="stat__value">RM <%= formatMoney((summary && summary.refund_cents) ? summary.refund_cents : 0) %></div>
   </div>
-  <div class="card" style="padding:14px; min-width:240px">
-    <div class="muted small">Net</div>
-    <div style="font-size:20px; font-weight:800">RM <%= formatMoney((summary && summary.net_cents) ? summary.net_cents : 0) %></div>
+  <div class="card card--pad">
+    <div class="stat__label">Net</div>
+    <div class="stat__value">RM <%= formatMoney((summary && summary.net_cents) ? summary.net_cents : 0) %></div>
   </div>
 </div>
 
-<div class="card" style="padding:14px; margin-top:12px">
-  <div class="row" style="justify-content:space-between; align-items:flex-end; gap:10px; margin-bottom:6px">
+<div class="card card--pad card--mt">
+  <div class="card__header">
     <div>
-      <h2 class="h2" style="margin:0">Trend</h2>
-      <div class="muted small">Gross and net over the selected date range.</div>
+      <div class="card__title">Trend</div>
+      <div class="card__subtitle">Gross and net over the selected date range.</div>
     </div>
     <div class="muted small" style="text-align:right">Blue: Gross, Gray: Net</div>
   </div>
@@ -65,9 +58,13 @@
   <canvas class="report-chart" data-sales-daily='<%- JSON.stringify(daily || []) %>' height="180" aria-label="Sales trend chart" role="img"></canvas>
 </div>
 
-<div class="card" style="padding:14px; margin-top:12px">
-  <h2 class="h2" style="margin-top:0">Daily</h2>
-  <div class="muted small" style="margin-top:-6px">Gross is grouped by order created date; refunds are grouped by refund created date.</div>
+<div class="card card--pad card--mt">
+  <div class="card__header" style="margin-bottom:6px">
+    <div>
+      <div class="card__title">Daily</div>
+      <div class="card__subtitle">Gross is grouped by order created date; refunds are grouped by refund created date.</div>
+    </div>
+  </div>
 
   <div class="table-scroll" style="margin-top:10px">
     <table class="table">
@@ -93,9 +90,13 @@
   </div>
 </div>
 
-<div class="card" style="padding:14px; margin-top:12px">
-  <h2 class="h2" style="margin-top:0">Top products</h2>
-  <div class="muted small" style="margin-top:-6px">By gross item subtotal within paid orders.</div>
+<div class="card card--pad card--mt">
+  <div class="card__header" style="margin-bottom:6px">
+    <div>
+      <div class="card__title">Top products</div>
+      <div class="card__subtitle">By gross item subtotal within paid orders.</div>
+    </div>
+  </div>
 
   <div class="table-scroll" style="margin-top:10px">
     <table class="table">

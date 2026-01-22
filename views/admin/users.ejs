@@ -5,14 +5,6 @@
     <h1 class="h1">Admin – Users</h1>
     <div class="muted small"><%= total %> users</div>
   </div>
-  <div class="actions icon-row">
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/users') ? 'is-active' : '' %>" href="/admin/users" title="Users" aria-label="Users" data-label="Users"><%- icon('user') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/orders') ? 'is-active' : '' %>" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/products') ? 'is-active' : '' %>" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/reports/sales') ? 'is-active' : '' %>" href="/admin/reports/sales" title="Sales report" aria-label="Sales report" data-label="Sales report"><%- icon('chart') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
-    <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
-  </div>
 </div>
 
 <div class="card" style="padding:14px; margin-top:12px">

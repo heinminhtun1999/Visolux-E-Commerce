@@ -1,9 +1,8 @@
 <%- include('../shared/top', { title }) %>
 
 <div class="actions icon-row" style="margin-bottom:12px">
+  <a class="btn btn-icon icon-only" href="/admin/orders" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></a>
   <a class="btn btn-icon icon-only" href="/orders/<%= order.order_id %>/receipt" title="Receipt" aria-label="Receipt" data-label="Receipt"><%- icon('view') %></a>
-  <a class="btn btn-icon icon-only" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
-  <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
 </div>
 
 <div class="card" style="padding:16px">
@@ -27,7 +26,7 @@
         <% if ((order.refund_status || 'NONE') === 'FULL_REFUND') { %>
           <span class="badge ok" style="margin-left:8px">Full refund</span>
         <% } else if ((order.refund_status || 'NONE') === 'PARTIAL_REFUND') { %>
-          <span class="badge" style="margin-left:8px">Partial refund</span>
+          <span class="badge warn badge--ml">Partial refund</span>
         <% } %>
       </div>
       <div class="muted small" style="margin-top:8px">Fulfilment</div>
@@ -91,7 +90,7 @@
             <div class="timeline-body">
               <div class="timeline-top">
                 <div class="timeline-title">
-                  <span class="badge" style="margin-right:8px"><%= h.status_type %></span>
+                  <span class="badge neutral badge--mr"><%= h.status_type %></span>
                   <strong>
                     <%= h.old_status ? (h.old_status + ' → ' + h.new_status) : h.new_status %>
                   </strong>

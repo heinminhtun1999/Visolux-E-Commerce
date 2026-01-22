@@ -6,12 +6,17 @@
     <div class="muted small">Rich text editor with image upload.</div>
   </div>
   <div class="actions icon-row">
-    <a class="btn" href="/admin/settings#footer-pages">Back to Settings</a>
-    <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+    <a class="btn btn-secondary" href="/admin/settings#footer-pages">Back to Settings</a>
   </div>
 </div>
 
-<div class="card" style="padding:14px; margin-top:12px">
+<div class="row" style="gap:8px; margin-top:12px">
+  <a class="btn <%= String(action || '').includes('/admin/pages/privacy') ? 'btn-primary' : 'btn-secondary' %>" href="/admin/pages/privacy">Privacy</a>
+  <a class="btn <%= String(action || '').includes('/admin/pages/terms') ? 'btn-primary' : 'btn-secondary' %>" href="/admin/pages/terms">Terms</a>
+  <a class="btn <%= String(action || '').includes('/admin/pages/how-to-order') ? 'btn-primary' : 'btn-secondary' %>" href="/admin/pages/how-to-order">How to order</a>
+</div>
+
+<div class="card card--pad card--mt">
   <form method="post" action="<%= action %>">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
 
