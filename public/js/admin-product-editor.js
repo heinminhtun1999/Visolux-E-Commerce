@@ -24,43 +24,71 @@
     textareaText.style.display = 'none';
     wrap.style.display = 'block';
 
-    var toolbar = wrap.querySelector('.rte__toolbar');
+    var toolbar = wrap.querySelector('[data-product-desc-toolbar]');
     var editorEl = wrap.querySelector('.rte__editor');
+
+    // Build toolbar UI BEFORE Quill init (Quill reads the DOM once).
+    if (toolbar) {
+      toolbar.innerHTML =
+        '<span class="ql-formats">' +
+        '<select class="ql-header">' +
+        '<option selected></option>' +
+        '<option value="1"></option>' +
+        '<option value="2"></option>' +
+        '<option value="3"></option>' +
+        '</select>' +
+        '</span>' +
+        '<span class="ql-formats">' +
+        '<button class="ql-bold"></button>' +
+        '<button class="ql-italic"></button>' +
+        '<button class="ql-underline"></button>' +
+        '<button class="ql-strike"></button>' +
+        '</span>' +
+        '<span class="ql-formats">' +
+        '<button class="ql-list" value="ordered"></button>' +
+        '<button class="ql-list" value="bullet"></button>' +
+        '</span>' +
+        '<span class="ql-formats">' +
+        '<button class="ql-link"></button>' +
+        '<button class="ql-clean"></button>' +
+        '</span>';
+    }
 
     var quill = new window.Quill(editorEl, {
       theme: 'snow',
       modules: {
-        toolbar: {
-          container: toolbar,
-          handlers: {},
-        },
+        toolbar: toolbar || false,
       },
     });
 
-    // Build toolbar UI.
-    toolbar.innerHTML =
-      '<span class="ql-formats">' +
-      '<select class="ql-header">' +
-      '<option selected></option>' +
-      '<option value="1"></option>' +
-      '<option value="2"></option>' +
-      '<option value="3"></option>' +
-      '</select>' +
-      '</span>' +
-      '<span class="ql-formats">' +
-      '<button class="ql-bold"></button>' +
-      '<button class="ql-italic"></button>' +
-      '<button class="ql-underline"></button>' +
-      '<button class="ql-strike"></button>' +
-      '</span>' +
-      '<span class="ql-formats">' +
-      '<button class="ql-list" value="ordered"></button>' +
-      '<button class="ql-list" value="bullet"></button>' +
-      '</span>' +
-      '<span class="ql-formats">' +
-      '<button class="ql-link"></button>' +
-      '<button class="ql-clean"></button>' +
-      '</span>';
+    // Disable inserting images via paste/drop.
+    try {
+      var Delta = window.Quill.import('delta');
+      quill.clipboard.addMatcher('IMG', function () {
+        return new Delta();
+      });
+    } catch (_) {
+      // ignore
+    }
+
+    // Prevent file drops (common way images get inserted).
+    editorEl.addEventListener('drop', function (e) {
+      if (!e || !e.dataTransfer) return;
+      if (e.dataTransfer.files && e.dataTransfer.files.length) {
+        e.preventDefault();
+      }
+    });
+    editorEl.addEventListener('dragover', function (e) {
+      if (e) e.preventDefault();
+    });
+
+    // Prevent image/file paste.
+    editorEl.addEventListener('paste', function (e) {
+      if (!e || !e.clipboardData) return;
+      if (e.clipboardData.files && e.clipboardData.files.length) {
+        e.preventDefault();
+      }
+    });
 
     // Load initial content (prefer HTML field; fallback to plain text).
     var initialHtml = (textareaHtml.value || '').trim();

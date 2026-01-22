@@ -26,7 +26,7 @@ const settingsRepo = require('../repositories/settingsRepo');
 const reportRepo = require('../repositories/reportRepo');
 const promoRepo = require('../repositories/promoRepo');
 const categorySectionRepo = require('../repositories/categorySectionRepo');
-const { renderMarkdown, sanitizeHtmlFragment } = require('../utils/markdown');
+const { renderMarkdown, sanitizeHtmlFragment, sanitizeHtmlFragmentNoImages } = require('../utils/markdown');
 
 const router = express.Router();
 
@@ -1466,7 +1466,7 @@ router.post(
       });
 
       const rawHtml = String(req.validated.body.description_html || '').trim();
-      const cleanHtml = rawHtml ? sanitizeHtmlFragment(rawHtml) : '';
+      const cleanHtml = rawHtml ? sanitizeHtmlFragmentNoImages(rawHtml) : '';
       const descText = cleanHtml ? htmlToPlainText(cleanHtml) : String(req.validated.body.description || '').trim();
       inventoryRepo.update(created.product_id, { description: descText, description_html: cleanHtml });
 
@@ -1572,7 +1572,7 @@ router.post(
       }
 
       const rawHtml = String(req.validated.body.description_html || '').trim();
-      const cleanHtml = rawHtml ? sanitizeHtmlFragment(rawHtml) : '';
+      const cleanHtml = rawHtml ? sanitizeHtmlFragmentNoImages(rawHtml) : '';
       const descText = cleanHtml ? htmlToPlainText(cleanHtml) : String(req.validated.body.description || '').trim();
 
       let imagePath = product.product_image;
