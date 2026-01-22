@@ -335,6 +335,37 @@ body{
   text-align:center;
   border:2px solid var(--bg);
 }
+
+/* Admin notification toast (near bell/header) */
+.admin-notify-toast{
+  position:fixed;
+  z-index:9999;
+  width:340px;
+  max-width:calc(100vw - 24px);
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:var(--shadow-hover);
+  padding:12px 12px;
+}
+.admin-notify-toast.is-clickable{cursor:pointer}
+.admin-notify-toast:focus-visible{outline:none; box-shadow:var(--ring)}
+.admin-notify-toast__row{display:flex; gap:12px; align-items:flex-start; justify-content:space-between}
+.admin-notify-toast__title{font-weight:900; line-height:1.2}
+.admin-notify-toast__body{margin-top:3px; color:var(--muted); font-size:12px; line-height:1.35}
+.admin-notify-toast__close{
+  flex:0 0 auto;
+  width:32px;
+  height:32px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:transparent;
+  color:var(--muted);
+  font-size:20px;
+  line-height:28px;
+  cursor:pointer;
+}
+.admin-notify-toast__close:hover{background:rgba(148,163,184,.15); color:var(--text)}
 .btn-icon.btn-primary{border-color:var(--accent)}
 .btn-icon.btn-danger{border-color:var(--danger)}
 .btn-icon .icon{margin:0}

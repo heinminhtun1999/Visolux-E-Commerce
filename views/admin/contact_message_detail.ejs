@@ -58,27 +58,6 @@
     <div class="muted small">Message</div>
     <div class="card" style="padding:12px; white-space:pre-wrap"><%= message.message %></div>
   </div>
-
-  <div class="row" style="gap:14px; flex-wrap:wrap; align-items:flex-start; margin-top:14px">
-    <div class="col" style="min-width:320px">
-      <div class="muted small">Page URL</div>
-      <% if (message.page_url) { %>
-        <div><a href="<%= message.page_url %>" target="_blank" rel="noopener noreferrer"><%= message.page_url %></a></div>
-      <% } else { %>
-        <div class="muted">(unknown)</div>
-      <% } %>
-    </div>
-
-    <div class="col" style="min-width:220px">
-      <div class="muted small">IP</div>
-      <div><%= message.ip || '(unknown)' %></div>
-    </div>
-
-    <div class="col" style="min-width:320px">
-      <div class="muted small">User agent</div>
-      <div class="muted small" style="word-break:break-word"><%= message.user_agent || '(unknown)' %></div>
-    </div>
-  </div>
 </div>
 
 <%- include('../shared/bottom') %>
