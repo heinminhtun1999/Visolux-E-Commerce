@@ -1,0 +1,19 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="card" style="padding:16px; max-width:560px; margin:0 auto">
+  <h1 class="h1"><%= title || 'Sign in required' %></h1>
+  <p class="muted" style="margin-top:6px">
+    This order was placed using an account. Please sign in to view it.
+  </p>
+
+  <div class="actions" style="margin-top:12px">
+    <a class="btn btn-primary" href="/login?returnTo=<%= encodeURIComponent(returnTo || '/') %>">Sign in</a>
+    <a class="btn" href="/">Back to shop</a>
+  </div>
+
+  <% if (typeof hint !== 'undefined' && hint) { %>
+    <p class="muted small" style="margin-top:12px"><%= hint %></p>
+  <% } %>
+</div>
+
+<%- include('../shared/bottom') %>

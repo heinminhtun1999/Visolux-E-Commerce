@@ -70,8 +70,10 @@ function requireOrderAccess(req, res, order) {
   // Orders made with an account must be viewed by that same logged-in account.
   if (order.user_id) {
     if (!req.session.user) {
-      req.session.flash = { type: 'error', message: 'Please sign in to view your order.' };
-      return res.redirect(`/login?returnTo=${encodeURIComponent(req.originalUrl || '/')}`);
+      return res.status(401).render('orders/login_required', {
+        title: 'Sign in required',
+        returnTo: req.originalUrl || '/',
+      });
     }
 
     if (req.session.user.user_id !== order.user_id) {
