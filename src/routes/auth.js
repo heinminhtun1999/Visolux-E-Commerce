@@ -311,6 +311,12 @@ router.post(
         return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
 
+      if (user.is_closed) {
+        logger.warn({ event: 'login_failed', reason: 'account_closed', userId: user.user_id, ip: req.ip }, 'login failed');
+        req.session.flash = { type: 'error', message: 'This account has been closed.' };
+        return res.redirect('/login');
+      }
+
       const ok = await bcrypt.compare(password, user.password_hash);
       if (!ok) {
         logger.warn(

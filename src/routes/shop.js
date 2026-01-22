@@ -10,6 +10,7 @@ const categorySectionRepo = require('../repositories/categorySectionRepo');
 const settingsRepo = require('../repositories/settingsRepo');
 const { renderMarkdown, sanitizeHtmlFragment } = require('../utils/markdown');
 const productImageRepo = require('../repositories/productImageRepo');
+const contactMessageRepo = require('../repositories/contactMessageRepo');
 
 const router = express.Router();
 
@@ -97,6 +98,41 @@ function safeReturnTo(returnTo, fallbackPath) {
   if (raw.includes('://')) return fallback;
   return raw;
 }
+
+router.post(
+  '/contact',
+  validate(
+    z.object({
+      body: z.object({
+        name: z.string().trim().min(2).max(80),
+        subject: z.string().trim().min(2).max(160),
+        message: z.string().trim().min(2).max(2000),
+        return_to: z.string().trim().max(500).optional().or(z.literal('')),
+      }),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const pageUrl = String(req.get('referer') || '').trim();
+      contactMessageRepo.create({
+        name: req.validated.body.name,
+        subject: req.validated.body.subject,
+        message: req.validated.body.message,
+        page_url: pageUrl,
+        ip: req.ip,
+        user_agent: req.get('user-agent'),
+      });
+
+      req.session.flash = { type: 'success', message: 'Message sent. We will contact you soon.' };
+      const returnTo = safeReturnTo(req.validated.body.return_to, '');
+      return res.redirect(returnTo || safeRedirectBack(req, '/'));
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
 
 router.get(
   '/products',

@@ -89,6 +89,15 @@
     });
 
     pane.addEventListener('pointerdown', (e) => {
+      // Allow UI controls inside the pane (carousel arrows, thumbnails, etc.)
+      // to receive their normal click behavior.
+      const target = e.target;
+      if (target && typeof target.closest === 'function') {
+        if (target.closest('[data-carousel-prev],[data-carousel-next],[data-carousel-thumb],button,a,input,select,textarea,label')) {
+          return;
+        }
+      }
+
       pane.setPointerCapture(e.pointerId);
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 

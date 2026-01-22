@@ -1,6 +1,7 @@
 <%- include('../shared/top', { title }) %>
 
 <div class="actions icon-row" style="margin-bottom:12px">
+  <a class="btn btn-icon icon-only" href="/orders/<%= order.order_id %>/receipt" title="Receipt" aria-label="Receipt" data-label="Receipt"><%- icon('view') %></a>
   <a class="btn btn-icon icon-only" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
   <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
 </div>

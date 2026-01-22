@@ -1,7 +1,91 @@
     <footer class="site-footer" style="margin-top:18px">
-      <div class="site-footer__grid">
-        <div class="site-footer__left muted small">
-          <% const cc = String(footerCopyright || '').trim(); %>
+      <% const ci = contactInfo || {}; %>
+      <% const phone = String(ci.phone || '').trim(); %>
+      <% const whatsappRaw = String(ci.whatsapp || '').trim(); %>
+      <% const email = String(ci.email || '').trim(); %>
+      <% const address = String(ci.address || '').trim(); %>
+      <% const facebook = String(ci.facebook_url || '').trim(); %>
+      <% const tech = String(footerTechnicianSupportUrl || '').trim(); %>
+      <% const cc = String(footerCopyright || '').trim(); %>
+
+      <% const wa = (() => {
+        const raw = whatsappRaw;
+        if (!raw) return '';
+        if (/^https?:\/\//i.test(raw)) return raw;
+        const digits = raw.replace(/\D+/g, '');
+        if (!digits) return '';
+        return `https://wa.me/${digits}`;
+      })(); %>
+
+      <div class="site-footer__columns">
+        <div class="site-footer__col">
+          <div class="site-footer__brand">
+            <% if (siteLogoUrl) { %>
+              <img class="site-footer__logo" src="<%= siteLogoUrl %>" alt="<%= siteName || 'Visolux' %>" loading="lazy" decoding="async" />
+            <% } else { %>
+              <div class="site-footer__title"><%= siteName || 'Visolux' %></div>
+            <% } %>
+          </div>
+
+          <div class="site-footer__contact">
+            <% if (phone) { %>
+              <div class="site-footer__line"><span class="site-footer__label">Phone:</span> <a class="site-footer__alink" href="tel:<%= phone.replace(/\s+/g,'') %>"><%= phone %></a></div>
+            <% } %>
+            <% if (email) { %>
+              <div class="site-footer__line"><span class="site-footer__label">Email:</span> <a class="site-footer__alink" href="mailto:<%= email %>"><%= email %></a></div>
+            <% } %>
+            <% if (address) { %>
+              <div class="site-footer__line"><span class="site-footer__label">Address:</span> <span class="site-footer__text"><%= address %></span></div>
+            <% } %>
+          </div>
+
+          <div class="site-footer__social">
+            <a class="social-btn <%= facebook ? '' : 'is-disabled' %>" href="<%= facebook || '#' %>" <%= facebook ? 'target="_blank" rel="noopener noreferrer"' : 'aria-disabled="true" tabindex="-1"' %> aria-label="Facebook">
+              <img src="/public/images/logo/facebook.png" alt="Facebook" loading="lazy" decoding="async" />
+            </a>
+            <a class="social-btn <%= wa ? '' : 'is-disabled' %>" href="<%= wa || '#' %>" <%= wa ? 'target="_blank" rel="noopener noreferrer"' : 'aria-disabled="true" tabindex="-1"' %> aria-label="WhatsApp">
+              <img src="/public/images/logo/Whatsapp.webp" alt="WhatsApp" loading="lazy" decoding="async" />
+            </a>
+          </div>
+        </div>
+
+        <div class="site-footer__col">
+          <div class="site-footer__heading">Quick Links</div>
+          <div class="site-footer__links">
+            <% if (tech) { %>
+              <a href="<%= tech %>" class="site-footer__link" target="_blank" rel="noopener noreferrer">Request Technician Onsite Support</a>
+            <% } %>
+            <a href="/products" class="site-footer__link">Products</a>
+            <a href="/how-to-order" class="site-footer__link">How to Order</a>
+          </div>
+        </div>
+
+        <div class="site-footer__col">
+          <div class="site-footer__heading">Policy</div>
+          <div class="site-footer__links">
+            <a href="/privacy" class="site-footer__link">Privacy Policy</a>
+            <a href="/terms" class="site-footer__link">Terms &amp; Conditions</a>
+            <a href="/how-to-order" class="site-footer__link">Shipping</a>
+          </div>
+        </div>
+
+        <div class="site-footer__col">
+          <div class="site-footer__heading">Leave a Message</div>
+          <form method="post" action="/contact" class="footer-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <input type="hidden" name="return_to" value="<%= currentUrl || '/' %>" />
+            <input class="input footer-input" name="name" placeholder="Name" required maxlength="80" />
+            <input class="input footer-input" name="subject" placeholder="Subject" required maxlength="160" />
+            <textarea class="input footer-input" name="message" placeholder="Message" rows="3" required maxlength="2000"></textarea>
+            <div class="footer-form__actions">
+              <button class="btn footer-send" type="submit">Send</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="site-footer__bottom">
+        <div class="site-footer__copy muted small">
           <% if (cc) { %>
             <%= cc %>
           <% } else { %>
@@ -9,23 +93,13 @@
           <% } %>
         </div>
 
-        <div class="site-footer__links small">
-          <% const tech = String(footerTechnicianSupportUrl || '').trim(); %>
-          <% if (tech) { %>
-            <a href="<%= tech %>" class="site-footer__link" target="_blank" rel="noopener noreferrer">Request Technician Onsite Support</a>
-          <% } %>
-          <a href="/how-to-order" class="site-footer__link">How to Order</a>
-          <a href="/privacy" class="site-footer__link">Privacy</a>
-          <a href="/terms" class="site-footer__link">Terms</a>
+        <div class="site-footer__payments" aria-label="Supported payment methods">
+          <img class="pay-logo" src="/public/images/logo/visa.png" alt="VISA" loading="lazy" decoding="async" />
+          <img class="pay-logo" src="/public/images/logo/master.png" alt="Mastercard" loading="lazy" decoding="async" />
+          <img class="pay-logo" src="/public/images/logo/Bank%20Trasnfer.webp" alt="Bank Transfer" loading="lazy" decoding="async" />
+          <img class="pay-logo" src="/public/images/logo/Fiuu.png" alt="Fiuu" loading="lazy" decoding="async" />
+          <img class="pay-logo" src="/public/images/logo/SSL.jpg" alt="SSL Secured" loading="lazy" decoding="async" />
         </div>
-      </div>
-
-      <div class="site-footer__payments" aria-label="Supported payment methods">
-        <img class="pay-logo" src="/public/images/logo/visa.png" alt="VISA" loading="lazy" decoding="async" />
-        <img class="pay-logo" src="/public/images/logo/master.png" alt="Mastercard" loading="lazy" decoding="async" />
-        <img class="pay-logo" src="/public/images/logo/Bank%20Trasnfer.webp" alt="Bank Transfer" loading="lazy" decoding="async" />
-        <img class="pay-logo" src="/public/images/logo/Fiuu.png" alt="Fiuu" loading="lazy" decoding="async" />
-        <img class="pay-logo" src="/public/images/logo/SSL.jpg" alt="SSL Secured" loading="lazy" decoding="async" />
       </div>
     </footer>
   </div>

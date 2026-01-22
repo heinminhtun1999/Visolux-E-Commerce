@@ -1,0 +1,82 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end; margin-bottom:12px">
+  <div>
+    <h1 class="h1" style="margin:0">Receipt</h1>
+    <div class="muted small">Order <%= order.order_code || ('#' + order.order_id) %> · <%= formatDateTime(order.created_at) %></div>
+  </div>
+
+  <div class="actions icon-row">
+    <a class="btn btn-icon" href="/orders/<%= order.order_id %><%= token ? ('?t=' + encodeURIComponent(token)) : '' %>" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></a>
+
+    <button class="btn btn-primary" type="button" data-download-receipt-pdf data-receipt-target="receipt" data-label="Download PDF" data-download-name="receipt_<%= order.order_code || order.order_id %>.pdf">Download PDF</button>
+    <button class="btn" type="button" data-download-receipt-png data-receipt-target="receipt" data-label="Download PNG" data-download-name="receipt_<%= order.order_code || order.order_id %>.png">Download PNG</button>
+  </div>
+</div>
+
+<div class="card" id="receipt" style="padding:16px; background:#fff">
+  <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap">
+    <div>
+      <div style="font-weight:900; font-size:16px"><%= siteName || 'Visolux' %></div>
+      <div class="muted small">Receipt</div>
+    </div>
+    <div style="text-align:right">
+      <div class="muted small">Order</div>
+      <div style="font-weight:800"><%= order.order_code || ('#' + order.order_id) %></div>
+      <div class="muted small" style="margin-top:4px"><%= formatDateTime(order.created_at) %></div>
+    </div>
+  </div>
+
+  <div class="row" style="gap:18px; margin-top:14px">
+    <div class="col" style="min-width:280px">
+      <div class="muted small">Bill to</div>
+      <div style="font-weight:800"><%= order.customer_name %></div>
+      <div class="muted small"><%= order.email %> · <%= order.phone %></div>
+      <div class="muted small" style="margin-top:6px"><%= order.address %></div>
+    </div>
+    <div style="min-width:240px">
+      <div class="muted small">Payment</div>
+      <div style="font-weight:800"><%= order.payment_method %></div>
+      <div class="muted small" style="margin-top:8px">Status</div>
+      <div style="font-weight:800"><%= order.payment_status %></div>
+    </div>
+  </div>
+
+  <h2 class="h2" style="margin-top:14px">Items</h2>
+  <table class="table" style="margin-top:8px">
+    <thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Subtotal</th></tr></thead>
+    <tbody>
+      <% (order.items || []).forEach(it => { %>
+        <tr>
+          <td><%= it.product_name_snapshot %></td>
+          <td><%= formatMoney(it.price_snapshot) %></td>
+          <td><%= it.quantity %></td>
+          <td><%= formatMoney(it.subtotal) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <% const itemsSubtotal = (order.items_subtotal != null ? order.items_subtotal : (order.items || []).reduce((a, it) => a + Number(it.subtotal || 0), 0)); %>
+  <% const discountAmount = Number(order.discount_amount || 0); %>
+  <% const shippingFee = Number(order.shipping_fee || 0); %>
+
+  <div class="row" style="justify-content:flex-end; margin-top:12px">
+    <div class="card" style="padding:12px; min-width:300px">
+      <div class="kv"><span class="muted">Items subtotal</span> <strong><%= formatMoney(itemsSubtotal) %></strong></div>
+      <% if (discountAmount > 0) { %>
+        <div class="kv" style="margin-top:6px"><span class="muted">Discount</span> <strong>-<%= formatMoney(discountAmount) %></strong></div>
+      <% } %>
+      <div class="kv" style="margin-top:6px"><span class="muted">Shipping</span> <strong><%= formatMoney(shippingFee) %></strong></div>
+      <div class="kv" style="margin-top:6px"><span class="muted">Total</span> <strong><%= formatMoney(order.total_amount) %></strong></div>
+    </div>
+  </div>
+
+  <div class="muted small" style="margin-top:10px">Thank you for your purchase.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
+<script src="/public/js/receipt-download.js" defer></script>
+
+<%- include('../shared/bottom') %>

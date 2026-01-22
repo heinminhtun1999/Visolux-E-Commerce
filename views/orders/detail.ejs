@@ -3,6 +3,11 @@
 <div class="card" style="padding:16px">
   <h1 class="h1">Order <%= order.order_code || ('#' + order.order_id) %></h1>
 
+  <div class="actions icon-row" style="margin:-6px 0 12px; justify-content:flex-end">
+    <a class="btn btn-icon" href="/orders/<%= order.order_id %>/receipt<%= token ? ('?t=' + encodeURIComponent(token)) : '' %>" title="Receipt" aria-label="Receipt" data-label="Receipt"><%- icon('view') %></a>
+    <a class="btn" href="/orders/<%= order.order_id %>/receipt<%= token ? ('?t=' + encodeURIComponent(token)) : '' %>">Download receipt</a>
+  </div>
+
   <div class="row" style="gap:18px">
     <div class="col">
       <div class="muted small">Customer</div>

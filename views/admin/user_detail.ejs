@@ -1,0 +1,171 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – User <%= user.username %></h1>
+    <div class="muted small">
+      ID <%= user.user_id %>
+      <% if (user.is_closed) { %>
+        · <span class="badge no">CLOSED</span>
+      <% } else { %>
+        · <span class="badge ok">ACTIVE</span>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="actions icon-row">
+    <a class="btn btn-icon" href="/admin/users" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></a>
+
+    <% if (user.is_closed) { %>
+      <form method="post" action="/admin/users/<%= user.user_id %>/reopen" style="display:inline">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button class="btn btn-primary" type="submit">Reopen account</button>
+      </form>
+    <% } else { %>
+      <form method="post" action="/admin/users/<%= user.user_id %>/close" style="display:inline" onsubmit="return confirm('Close this account? The user will not be able to sign in.');">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button class="btn" type="submit" style="border-color:#fecaca; background:#fef2f2; color:#991b1b">Close account</button>
+      </form>
+    <% } %>
+
+    <a class="btn btn-icon" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
+    <a class="btn btn-icon" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+    <a class="btn btn-icon" href="/admin/reports/sales" title="Sales report" aria-label="Sales report" data-label="Sales report"><%- icon('chart') %></a>
+    <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+    <a class="btn btn-icon" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <div class="row">
+    <div class="col" style="min-width:280px">
+      <div class="muted small">Email</div>
+      <div><strong><%= user.email %></strong></div>
+    </div>
+    <div class="col" style="min-width:220px">
+      <div class="muted small">Phone</div>
+      <div><%= user.phone || '—' %></div>
+    </div>
+    <div class="col" style="min-width:240px">
+      <div class="muted small">Created</div>
+      <div><%= formatDateTime(user.created_at) %></div>
+    </div>
+    <div class="col" style="min-width:240px">
+      <div class="muted small">Closed at</div>
+      <div><%= user.closed_at ? formatDateTime(user.closed_at) : '—' %></div>
+    </div>
+  </div>
+
+  <div style="margin-top:10px">
+    <div class="muted small">Address</div>
+    <div><%= user.address || '—' %></div>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <div class="row" style="justify-content:space-between; align-items:flex-end">
+    <div>
+      <div class="h2">Orders report</div>
+      <div class="muted small"><%= total %> orders</div>
+    </div>
+  </div>
+
+  <form method="get" action="/admin/users/<%= user.user_id %>" class="row" style="margin-top:10px">
+    <div class="col" style="min-width:240px">
+      <label>Search</label>
+      <input class="input" name="q" value="<%= q || '' %>" placeholder="Order code / name / email" />
+    </div>
+
+    <div class="col" style="min-width:220px">
+      <label>Payment status</label>
+      <select name="payment_status">
+        <option value="" <%= payment_status ? '' : 'selected' %>>All</option>
+        <option value="PENDING" <%= payment_status==='PENDING' ? 'selected' : '' %>>PENDING</option>
+        <option value="PAID" <%= payment_status==='PAID' ? 'selected' : '' %>>PAID</option>
+        <option value="FAILED" <%= payment_status==='FAILED' ? 'selected' : '' %>>FAILED</option>
+        <option value="PARTIALLY_REFUNDED" <%= payment_status==='PARTIALLY_REFUNDED' ? 'selected' : '' %>>PARTIALLY_REFUNDED</option>
+        <option value="REFUNDED" <%= payment_status==='REFUNDED' ? 'selected' : '' %>>REFUNDED</option>
+        <option value="AWAITING_VERIFICATION" <%= payment_status==='AWAITING_VERIFICATION' ? 'selected' : '' %>>AWAITING_VERIFICATION</option>
+      </select>
+    </div>
+
+    <div class="col" style="min-width:220px">
+      <label>Payment method</label>
+      <select name="payment_method">
+        <option value="" <%= payment_method ? '' : 'selected' %>>All</option>
+        <option value="ONLINE" <%= payment_method==='ONLINE' ? 'selected' : '' %>>ONLINE</option>
+        <option value="OFFLINE_TRANSFER" <%= payment_method==='OFFLINE_TRANSFER' ? 'selected' : '' %>>OFFLINE_TRANSFER</option>
+      </select>
+    </div>
+
+    <div class="col" style="min-width:220px">
+      <label>Fulfilment status</label>
+      <select name="fulfilment_status">
+        <option value="" <%= fulfilment_status ? '' : 'selected' %>>All</option>
+        <option value="NEW" <%= fulfilment_status==='NEW' ? 'selected' : '' %>>NEW</option>
+        <option value="PROCESSING" <%= fulfilment_status==='PROCESSING' ? 'selected' : '' %>>PROCESSING</option>
+        <option value="SHIPPED" <%= fulfilment_status==='SHIPPED' ? 'selected' : '' %>>SHIPPED</option>
+        <option value="COMPLETED" <%= fulfilment_status==='COMPLETED' ? 'selected' : '' %>>COMPLETED</option>
+        <option value="CANCELLED" <%= fulfilment_status==='CANCELLED' ? 'selected' : '' %>>CANCELLED</option>
+      </select>
+    </div>
+
+    <div style="min-width:180px">
+      <label>From</label>
+      <input class="input" type="date" name="date_from" value="<%= date_from || '' %>" />
+    </div>
+    <div style="min-width:180px">
+      <label>To</label>
+      <input class="input" type="date" name="date_to" value="<%= date_to || '' %>" />
+    </div>
+
+    <div style="width:140px">
+      <label>&nbsp;</label>
+      <button class="btn btn-primary" type="submit">Apply</button>
+    </div>
+  </form>
+
+  <div class="table-scroll" style="margin-top:12px">
+    <table class="table">
+      <thead>
+        <tr><th>Order</th><th>Created</th><th>Payment</th><th>Fulfilment</th><th>Total</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% (orders || []).forEach(o => { %>
+          <tr>
+            <td><%= o.order_code || ('#' + o.order_id) %></td>
+            <td class="muted"><%= formatDateTime(o.created_at) %></td>
+            <td><%= o.payment_status %></td>
+            <td><%= o.fulfilment_status %></td>
+            <td><%= formatMoney(o.total_amount) %></td>
+            <td><a class="btn btn-icon" href="/admin/orders/<%= o.order_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></a></td>
+          </tr>
+        <% }) %>
+        <% if (!(orders || []).length) { %>
+          <tr><td colspan="6" class="muted">No orders for this filter.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager">
+    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
+    <% const qs = new URLSearchParams(); %>
+    <% if (q) qs.set('q', q); %>
+    <% if (payment_status) qs.set('payment_status', payment_status); %>
+    <% if (payment_method) qs.set('payment_method', payment_method); %>
+    <% if (fulfilment_status) qs.set('fulfilment_status', fulfilment_status); %>
+    <% if (date_from) qs.set('date_from', date_from); %>
+    <% if (date_to) qs.set('date_to', date_to); %>
+    <% if (page > 1) { %>
+      <% qs.set('page', String(page - 1)); %>
+      <a href="/admin/users/<%= user.user_id %>?<%= qs.toString() %>">Prev</a>
+    <% } %>
+    <% if (page < pageCount) { %>
+      <% qs.set('page', String(page + 1)); %>
+      <a href="/admin/users/<%= user.user_id %>?<%= qs.toString() %>">Next</a>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../shared/bottom') %>

@@ -6,6 +6,7 @@
     <div class="muted small"><%= total %> orders</div>
   </div>
   <div class="actions icon-row">
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/users') ? 'is-active' : '' %>" href="/admin/users" title="Users" aria-label="Users" data-label="Users"><%- icon('user') %></a>
     <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/orders') ? 'is-active' : '' %>" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
     <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/products') ? 'is-active' : '' %>" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
     <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/reports/sales') ? 'is-active' : '' %>" href="/admin/reports/sales" title="Sales report" aria-label="Sales report" data-label="Sales report"><%- icon('chart') %></a>

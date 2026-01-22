@@ -1,4 +1,4 @@
-<%- include('../shared/top', { title }) %>
+<%- include('../shared/top', { title, containerClass: 'container--wide' }) %>
 
 <div class="row" style="justify-content:space-between; align-items:flex-end">
   <div>
@@ -7,6 +7,7 @@
   </div>
   <div class="actions icon-row">
     <a class="btn btn-icon icon-only" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
+    <a class="btn btn-icon icon-only" href="/admin/users" title="Users" aria-label="Users" data-label="Users"><%- icon('user') %></a>
     <a class="btn btn-icon icon-only" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
     <a class="btn btn-icon icon-only" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
     <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
@@ -61,7 +62,7 @@
     <div class="muted small" style="text-align:right">Blue: Gross, Gray: Net</div>
   </div>
 
-  <canvas class="report-chart" data-sales-daily='<%- JSON.stringify(daily || []) %>' height="120" aria-label="Sales trend chart" role="img"></canvas>
+  <canvas class="report-chart" data-sales-daily='<%- JSON.stringify(daily || []) %>' height="180" aria-label="Sales trend chart" role="img"></canvas>
 </div>
 
 <div class="card" style="padding:14px; margin-top:12px">

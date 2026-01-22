@@ -113,6 +113,8 @@ CREATE TABLE IF NOT EXISTS users (
   city TEXT,
   state TEXT,
   postcode TEXT,
+  is_closed INTEGER NOT NULL DEFAULT 0 CHECK (is_closed IN (0,1)),
+  closed_at TEXT,
   password_reset_token_hash TEXT,
   password_reset_expires_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -154,6 +156,20 @@ CREATE TABLE IF NOT EXISTS orders (
 
 CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status, created_at);
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  phone TEXT NOT NULL,
+  location TEXT,
+  message TEXT NOT NULL,
+  page_url TEXT,
+  ip TEXT,
+  user_agent TEXT,
+  is_read INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0,1)),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_contact_messages_status ON contact_messages(is_read, created_at);
 
 CREATE TABLE IF NOT EXISTS order_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

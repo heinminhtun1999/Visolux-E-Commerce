@@ -1,0 +1,108 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Contact messages</h1>
+    <div class="muted small"><%= total %> messages</div>
+  </div>
+  <div class="actions icon-row">
+    <a class="btn btn-icon icon-only" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
+    <a class="btn btn-icon icon-only" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+    <a class="btn btn-icon icon-only" href="/admin/reports/sales" title="Sales report" aria-label="Sales report" data-label="Sales report"><%- icon('chart') %></a>
+    <a class="btn btn-icon icon-only" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <form method="get" action="/admin/contact-messages" class="row" style="gap:10px; flex-wrap:wrap; align-items:flex-end">
+    <div class="col" style="min-width:260px">
+      <label>Search</label>
+      <input class="input" name="q" value="<%= q || '' %>" placeholder="name / subject / message" />
+    </div>
+
+    <div class="col" style="min-width:220px">
+      <label>Status</label>
+      <select class="input" name="status">
+        <option value="NEW" <%= status === 'NEW' ? 'selected' : '' %>>New</option>
+        <option value="READ" <%= status === 'READ' ? 'selected' : '' %>>Read</option>
+        <option value="ALL" <%= status === 'ALL' ? 'selected' : '' %>>All</option>
+      </select>
+    </div>
+
+    <div class="actions" style="gap:8px">
+      <button class="btn btn-primary" type="submit">Filter</button>
+      <a class="btn" href="/admin/contact-messages">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>When</th>
+        <th>Name</th>
+        <th>Message</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% (rows || []).forEach(m => { %>
+        <tr style="cursor:pointer" data-open-url="/admin/contact-messages/<%= m.id %>">
+          <td class="muted"><%= formatDateTime(m.created_at) %></td>
+          <td style="min-width:240px">
+            <% if (m.phone) { %>
+              <div><strong><a href="/admin/contact-messages/<%= m.id %>"><%= m.phone %></a></strong></div>
+            <% } else { %>
+              <div><strong><a href="/admin/contact-messages/<%= m.id %>">Message #<%= m.id %></a></strong></div>
+            <% } %>
+            <% if (m.location) { %><div class="muted small"><%= m.location %></div><% } %>
+          </td>
+          <td style="min-width:320px">
+            <div class="muted small"><%= String(m.message || '').slice(0, 160) %><%= (m.message && m.message.length > 160) ? '…' : '' %></div>
+          </td>
+          <td>
+            <% if (m.is_read) { %><span class="badge">Read</span><% } else { %><span class="badge ok">New</span><% } %>
+          </td>
+          <td>
+            <div class="actions icon-row">
+              <a class="btn btn-icon icon-only" href="/admin/contact-messages/<%= m.id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></a>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+
+      <% if (!rows || rows.length === 0) { %>
+        <tr>
+          <td colspan="5" class="muted">No messages found.</td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+
+  <div class="pager">
+    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
+    <% const qs = `q=${encodeURIComponent(q || '')}&status=${encodeURIComponent(status || 'NEW')}`; %>
+    <% if (page > 1) { %>
+      <a href="/admin/contact-messages?<%= qs %>&page=<%= page - 1 %>">Prev</a>
+    <% } %>
+    <% if (page < pageCount) { %>
+      <a href="/admin/contact-messages?<%= qs %>&page=<%= page + 1 %>">Next</a>
+    <% } %>
+  </div>
+</div>
+
+<script>
+  // Same UX as notifications: click row to open.
+  document.addEventListener('click', (e) => {
+    const tr = e.target && e.target.closest ? e.target.closest('tr[data-open-url]') : null;
+    if (!tr) return;
+    // Let links/buttons behave normally.
+    if (e.target.closest('a,button,form,input,select,textarea')) return;
+    const url = tr.getAttribute('data-open-url');
+    if (url) window.location.href = url;
+  });
+</script>
+
+<%- include('../shared/bottom') %>

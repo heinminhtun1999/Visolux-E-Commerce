@@ -70,6 +70,11 @@ function icon(name, opts = {}) {
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6h16.5l-1.5 12.75a2.25 2.25 0 0 1-2.235 2.0H7.485a2.25 2.25 0 0 1-2.235-2.0L3.75 6Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 6V4.5A1.5 1.5 0 0 1 9 3h6a1.5 1.5 0 0 1 1.5 1.5V6"/>`);
     case 'bell':
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9a6 6 0 1 0-12 0v.75a8.967 8.967 0 0 1-2.31 6.022 23.848 23.848 0 0 0 5.454 1.31m5.713 0a3 3 0 1 1-5.714 0m5.714 0H9.143"/>`);
+    case 'mail':
+      return svg(
+        baseAttrs,
+        `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5A2.25 2.25 0 0 1 22.5 9v9A2.25 2.25 0 0 1 20.25 20.25H3.75A2.25 2.25 0 0 1 1.5 18V9A2.25 2.25 0 0 1 3.75 6.75Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 9 8.25 5.25L20.25 9"/>`
+      );
     case 'desktop-bell':
       return svg(
         baseAttrs,
