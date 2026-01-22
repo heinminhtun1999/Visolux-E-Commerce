@@ -10,7 +10,12 @@ process.on('unhandledRejection', (reason) => {
 
 process.on('uncaughtException', (err) => {
   logger.fatal({ err }, 'uncaughtException');
-  // Let PM2/systemd restart us.
+
+  // This commonly happens when code attempts to write/render after a redirect/response.
+  // It's still a bug, but restarting the whole process causes user-visible 502s.
+  if (err && err.code === 'ERR_HTTP_HEADERS_SENT') return;
+
+  // Let PM2/systemd restart us for all other uncaught exceptions.
   process.exit(1);
 });
 
