@@ -392,6 +392,7 @@ html.admin-sidebar-collapsed .admin-nav__item{justify-content:center}
   background:#fff; color:var(--text);
   border-radius:12px; padding:10px 12px;
   text-decoration:none; cursor:pointer; font-weight:600;
+  height: 100%;
   transition:
     transform var(--dur-2) var(--ease-out),
     background-color var(--dur-2) var(--ease-in-out),
