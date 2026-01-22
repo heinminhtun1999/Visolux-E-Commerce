@@ -6,6 +6,7 @@ function mapProduct(row) {
     product_id: row.product_id,
     name: row.name,
     description: row.description,
+    description_html: row.description_html || '',
     category: row.category,
     category_name: row.category_name || null,
     price: row.price,
@@ -274,7 +275,7 @@ function getById(productId) {
   );
 }
 
-function create({ name, description, category, price, stock, visibility, archived, product_image }) {
+function create({ name, description, description_html, category, price, stock, visibility, archived, product_image }) {
   const db = getDb();
   if (!Number.isFinite(Number(price)) || Number(price) < 100) {
     const err = new Error('Minimum product price is RM 1.00');
@@ -282,12 +283,13 @@ function create({ name, description, category, price, stock, visibility, archive
     throw err;
   }
   const stmt = db.prepare(
-    `INSERT INTO inventory (name, description, category, price, stock, visibility, archived, product_image)
-     VALUES (@name, @description, @category, @price, @stock, @visibility, @archived, @product_image)`
+    `INSERT INTO inventory (name, description, description_html, category, price, stock, visibility, archived, product_image)
+     VALUES (@name, @description, @description_html, @category, @price, @stock, @visibility, @archived, @product_image)`
   );
   const result = stmt.run({
     name,
     description: description || '',
+    description_html: description_html || '',
     category,
     price,
     stock,
@@ -316,13 +318,14 @@ function update(productId, patch) {
 
   db.prepare(
     `UPDATE inventory
-     SET name=@name, description=@description, category=@category, price=@price, stock=@stock,
+     SET name=@name, description=@description, description_html=@description_html, category=@category, price=@price, stock=@stock,
          visibility=@visibility, archived=@archived, product_image=@product_image
      WHERE product_id=@product_id`
   ).run({
     product_id: productId,
     name: next.name,
     description: next.description || '',
+    description_html: next.description_html || '',
     category: next.category,
     price: next.price,
     stock: next.stock,

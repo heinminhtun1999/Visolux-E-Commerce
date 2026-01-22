@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const sharp = require('sharp');
 
 const { env } = require('../config/env');
@@ -13,6 +14,23 @@ async function optimizeAndSaveProductImage(inputPath, productId) {
   ensureDir(outDir);
 
   const fileName = `product_${productId}.webp`;
+  const outPath = path.join(outDir, fileName);
+
+  await sharp(inputPath)
+    .rotate()
+    .resize({ width: env.productImageMaxWidth, withoutEnlargement: true })
+    .webp({ quality: 82 })
+    .toFile(outPath);
+
+  return `/uploads/products/${fileName}`;
+}
+
+async function optimizeAndSaveProductGalleryImage(inputPath, productId) {
+  const outDir = path.join(process.cwd(), 'storage', 'uploads', 'products');
+  ensureDir(outDir);
+
+  const nonce = crypto.randomBytes(8).toString('hex');
+  const fileName = `product_${productId}_${nonce}.webp`;
   const outPath = path.join(outDir, fileName);
 
   await sharp(inputPath)
@@ -79,6 +97,7 @@ async function optimizeAndSaveSiteContentImage(inputPath, key) {
 
 module.exports = {
   optimizeAndSaveProductImage,
+  optimizeAndSaveProductGalleryImage,
   optimizeAndSaveSlipImage,
   optimizeAndSaveSiteImage,
   optimizeAndSaveSiteContentImage,
