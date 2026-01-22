@@ -18,9 +18,9 @@
     <textarea class="input" name="description" rows="6" data-product-desc-textarea><%= product ? product.description : '' %></textarea>
     <textarea name="description_html" style="display:none" data-product-desc-html><%- product ? (product.description_html || '') : '' %></textarea>
     <div class="rte" data-product-desc-editor style="display:none; margin-top:10px">
-      <div class="rte__toolbar"></div>
+      <div class="ql-toolbar ql-snow" data-product-desc-toolbar></div>
       <div class="rte__editor" style="min-height:160px"></div>
-      <div class="muted small" style="margin-top:6px">Tip: paste images as links; for multiple product photos use the gallery upload below.</div>
+      <div class="muted small" style="margin-top:6px">Images are disabled in the description. Use the gallery upload below.</div>
     </div>
 
     <label>Category</label>
