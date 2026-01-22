@@ -2,6 +2,11 @@
   const bell = document.querySelector('[data-admin-notification-bell]');
   if (!bell) return;
 
+  const baseTitle = document.title;
+  let currentUnreadCount = 0;
+  let titleFlashTimer = null;
+  let titleFlashStopTimer = null;
+
   // If the admin opens a notification then navigates back, browsers may show a cached
   // version of the notifications list (so it still looks unread). Force a refresh.
   if (window.location && window.location.pathname === '/admin/notifications') {
@@ -29,6 +34,18 @@
 
   const enableBtn = document.querySelector('[data-enable-desktop-notifications]');
   const storageKey = 'visolux:lastNotifiedAdminNotificationId';
+  const toastStorageKey = 'visolux:lastToastedAdminNotificationId';
+
+  function getLastToastedId() {
+    const raw = window.localStorage ? window.localStorage.getItem(toastStorageKey) : null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function setLastToastedId(id) {
+    if (!window.localStorage) return;
+    window.localStorage.setItem(toastStorageKey, String(id));
+  }
 
   function getLastNotifiedId() {
     const raw = window.localStorage ? window.localStorage.getItem(storageKey) : null;
@@ -76,22 +93,164 @@
     badge.setAttribute('aria-label', `${count} unread`);
   }
 
+  function setTitleForCount(count) {
+    currentUnreadCount = count;
+    if (titleFlashTimer) return;
+    document.title = count > 0 ? `(${count}) ${baseTitle}` : baseTitle;
+  }
+
+  function stopTitleFlash() {
+    if (titleFlashTimer) window.clearInterval(titleFlashTimer);
+    if (titleFlashStopTimer) window.clearTimeout(titleFlashStopTimer);
+    titleFlashTimer = null;
+    titleFlashStopTimer = null;
+    setTitleForCount(currentUnreadCount);
+  }
+
+  function startTitleFlash(count) {
+    if (count <= 0) return;
+    stopTitleFlash();
+    const a = `(${count}) ${baseTitle}`;
+    const b = baseTitle;
+    let i = 0;
+    document.title = a;
+    titleFlashTimer = window.setInterval(function () {
+      i = (i + 1) % 2;
+      document.title = i === 0 ? a : b;
+    }, 800);
+    titleFlashStopTimer = window.setTimeout(stopTitleFlash, 12000);
+  }
+
+  window.addEventListener('focus', stopTitleFlash);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) stopTitleFlash();
+  });
+
+  let toastEl = null;
+  let toastCloseTimer = null;
+
+  function removeToast() {
+    if (toastCloseTimer) window.clearTimeout(toastCloseTimer);
+    toastCloseTimer = null;
+    if (toastEl) toastEl.remove();
+    toastEl = null;
+  }
+
+  function showToast(latest) {
+    if (!latest || !latest.id) return;
+
+    removeToast();
+
+    const root = document.createElement('div');
+    root.className = 'admin-notify-toast';
+    root.setAttribute('role', 'status');
+    root.tabIndex = 0;
+
+    const row = document.createElement('div');
+    row.className = 'admin-notify-toast__row';
+
+    const text = document.createElement('div');
+
+    const title = document.createElement('div');
+    title.className = 'admin-notify-toast__title';
+    title.textContent = latest.title || 'New notification';
+
+    const body = document.createElement('div');
+    body.className = 'admin-notify-toast__body';
+    body.textContent = latest.body || '';
+
+    text.appendChild(title);
+    if (body.textContent) text.appendChild(body);
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'admin-notify-toast__close';
+    close.setAttribute('aria-label', 'Dismiss');
+      close.textContent = '\u00D7';
+    close.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      removeToast();
+    });
+
+    row.appendChild(text);
+    row.appendChild(close);
+    root.appendChild(row);
+
+    const openUrl = latest.openUrl || latest.link;
+    if (openUrl) {
+      root.classList.add('is-clickable');
+      root.addEventListener('click', function (e) {
+        if (e.target === close) return;
+        window.location.href = openUrl;
+      });
+      root.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          window.location.href = openUrl;
+        }
+      });
+    }
+
+    document.body.appendChild(root);
+    toastEl = root;
+
+    // Position near the bell.
+    const rect = bell.getBoundingClientRect();
+    root.style.left = `${Math.max(12, rect.left)}px`;
+    root.style.top = `${Math.min(window.innerHeight - 12, rect.bottom + 10)}px`;
+
+    window.requestAnimationFrame(function () {
+      if (!toastEl) return;
+      const r = toastEl.getBoundingClientRect();
+      const left = Math.min(
+        Math.max(12, rect.right - r.width),
+        Math.max(12, window.innerWidth - r.width - 12)
+      );
+      let top = rect.bottom + 10;
+      if (top + r.height + 12 > window.innerHeight) top = rect.top - r.height - 10;
+      top = Math.min(Math.max(12, top), Math.max(12, window.innerHeight - r.height - 12));
+      toastEl.style.left = `${left}px`;
+      toastEl.style.top = `${top}px`;
+    });
+
+    toastCloseTimer = window.setTimeout(removeToast, 9000);
+    root.addEventListener('mouseenter', function () {
+      if (toastCloseTimer) window.clearTimeout(toastCloseTimer);
+      toastCloseTimer = null;
+    });
+    root.addEventListener('mouseleave', function () {
+      if (!toastCloseTimer) toastCloseTimer = window.setTimeout(removeToast, 5000);
+    });
+  }
+
   function applyPollData(data) {
-    const unreadCount = data && data.unreadCount;
+    const unreadCountRaw = data && data.unreadCount;
+    const unreadNum = Number(unreadCountRaw);
+    const unreadCount = Number.isFinite(unreadNum) && unreadNum > 0 ? Math.floor(unreadNum) : 0;
     setCount(unreadCount);
+    setTitleForCount(unreadCount);
 
     const latest = data && data.latest;
     if (!latest || !latest.id) return;
+
+    const lastToasted = getLastToastedId();
+    if (Number(latest.id) > lastToasted) {
+      showToast(latest);
+      startTitleFlash(unreadCount);
+      setLastToastedId(Number(latest.id));
+    }
+
     if (!canUseNotifications() || Notification.permission !== 'granted') return;
 
     const lastNotified = getLastNotifiedId();
     if (Number(latest.id) <= lastNotified) return;
 
-    const n = new Notification(latest.title || 'New notification', {
+    const notif = new Notification(latest.title || 'New notification', {
       body: latest.body || '',
     });
 
-    n.onclick = function () {
+    notif.onclick = function () {
       try {
         window.focus();
       } catch (_) {
