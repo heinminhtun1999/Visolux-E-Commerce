@@ -53,6 +53,18 @@
 </div>
 
 <div class="card" style="padding:14px; margin-top:12px">
+  <div class="row" style="justify-content:space-between; align-items:flex-end; gap:10px; margin-bottom:6px">
+    <div>
+      <h2 class="h2" style="margin:0">Trend</h2>
+      <div class="muted small">Gross and net over the selected date range.</div>
+    </div>
+    <div class="muted small" style="text-align:right">Blue: Gross, Gray: Net</div>
+  </div>
+
+  <canvas class="report-chart" data-sales-daily='<%- JSON.stringify(daily || []) %>' height="120" aria-label="Sales trend chart" role="img"></canvas>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
   <h2 class="h2" style="margin-top:0">Daily</h2>
   <div class="muted small" style="margin-top:-6px">Gross is grouped by order created date; refunds are grouped by refund created date.</div>
 
@@ -87,47 +99,25 @@
   <div class="table-scroll" style="margin-top:10px">
     <table class="table">
       <thead>
-        <tr><th style="width:92px">Image</th><th>Product</th><th>Qty</th><th>Subtotal</th></tr>
+        <tr><th>Product</th><th>Qty</th><th>Subtotal</th></tr>
       </thead>
       <tbody>
         <% if (topProducts && topProducts.length) { %>
           <% topProducts.forEach(p => { %>
             <tr>
-              <td>
-                <% const urls = (p.image_urls || []).filter(Boolean); %>
-                <% const encoded = urls.map(u => encodeURIComponent(u)).join('|'); %>
-                <div class="mini-carousel-wrap" data-image-carousel data-items="<%= encoded %>">
-                  <div class="mini-carousel">
-                    <img class="mini-carousel__img" data-carousel-img src="<%= urls[0] || '/public/placeholder.svg' %>" alt="" loading="lazy" decoding="async" />
-                    <% if (urls.length > 1) { %>
-                      <button class="mini-carousel__btn mini-carousel__btn--prev" type="button" data-carousel-prev aria-label="Previous image">‹</button>
-                      <button class="mini-carousel__btn mini-carousel__btn--next" type="button" data-carousel-next aria-label="Next image">›</button>
-                    <% } %>
-                  </div>
-                  <% if (urls.length > 1) { %>
-                    <div class="mini-thumbs" aria-label="Product images">
-                      <% urls.forEach((u, idx) => { %>
-                        <button class="mini-thumb <%= idx === 0 ? 'is-active' : '' %>" type="button" data-carousel-thumb data-idx="<%= idx %>" aria-label="View image <%= idx + 1 %>">
-                          <img src="<%= u %>" alt="" loading="lazy" decoding="async" />
-                        </button>
-                      <% }) %>
-                    </div>
-                  <% } %>
-                </div>
-              </td>
               <td><%= p.product_name %></td>
               <td><%= p.quantity %></td>
               <td>RM <%= formatMoney(p.subtotal_cents || 0) %></td>
             </tr>
           <% }) %>
         <% } else { %>
-          <tr><td colspan="4" class="muted">No data for this range.</td></tr>
+          <tr><td colspan="3" class="muted">No data for this range.</td></tr>
         <% } %>
       </tbody>
     </table>
   </div>
 </div>
 
-<script src="/public/js/image-carousel.js" defer></script>
+<script src="/public/js/sales-report-chart.js" defer></script>
 
 <%- include('../shared/bottom') %>

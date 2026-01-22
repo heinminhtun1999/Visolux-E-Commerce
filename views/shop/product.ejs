@@ -3,35 +3,37 @@
 <div class="card" style="padding:16px">
   <div class="row">
     <div style="flex:1">
-      <div class="zoom-pane" data-zoom-pane>
-        <% const galleryUrls = []; %>
-        <% if (product && product.product_image) galleryUrls.push(product.product_image); %>
-        <% (images || []).forEach(img => { if (img && img.image_url) galleryUrls.push(img.image_url); }); %>
-        <% const uniqGallery = [...new Set(galleryUrls.filter(Boolean))]; %>
-        <% const mainImg = (uniqGallery[0] || product.product_image || '/public/placeholder.svg'); %>
+      <% const galleryUrls = []; %>
+      <% if (product && product.product_image) galleryUrls.push(product.product_image); %>
+      <% (images || []).forEach(img => { if (img && img.image_url) galleryUrls.push(img.image_url); }); %>
+      <% const uniqGallery = [...new Set(galleryUrls.filter(Boolean))]; %>
+      <% const mainImg = (uniqGallery[0] || product.product_image || '/public/placeholder.svg'); %>
+      <% const encodedGallery = uniqGallery.map(u => encodeURIComponent(u)).join('|'); %>
 
-        <% const encodedGallery = uniqGallery.map(u => encodeURIComponent(u)).join('|'); %>
-        <div class="product-carousel" data-image-carousel data-items="<%= encodedGallery %>">
-          <img data-zoom-img data-carousel-img src="<%= mainImg %>" alt="" />
-          <% if (uniqGallery.length > 1) { %>
-            <button class="product-carousel__btn product-carousel__btn--prev" type="button" data-carousel-prev aria-label="Previous image">‹</button>
-            <button class="product-carousel__btn product-carousel__btn--next" type="button" data-carousel-next aria-label="Next image">›</button>
+      <div data-image-carousel data-items="<%= encodedGallery %>">
+        <div class="zoom-pane" data-zoom-pane>
+          <div class="product-carousel">
+            <img data-zoom-img data-carousel-img src="<%= mainImg %>" alt="" />
+            <% if (uniqGallery.length > 1) { %>
+              <button class="product-carousel__btn product-carousel__btn--prev" type="button" data-carousel-prev aria-label="Previous image">‹</button>
+              <button class="product-carousel__btn product-carousel__btn--next" type="button" data-carousel-next aria-label="Next image">›</button>
+            <% } %>
+          </div>
+          <% if (product.stock <= 0) { %>
+            <div class="product-stock-overlay" aria-label="Out of stock">Out of stock</div>
           <% } %>
         </div>
-        <% if (product.stock <= 0) { %>
-          <div class="product-stock-overlay" aria-label="Out of stock">Out of stock</div>
+
+        <% if (uniqGallery.length > 1) { %>
+          <div class="product-gallery">
+            <% uniqGallery.forEach((url, idx) => { %>
+              <button class="product-gallery__thumb <%= idx === 0 ? 'is-active' : '' %>" type="button" data-carousel-thumb data-idx="<%= idx %>" aria-label="View image <%= idx + 1 %>">
+                <img src="<%= url %>" alt="" loading="lazy" decoding="async" />
+              </button>
+            <% }) %>
+          </div>
         <% } %>
       </div>
-
-      <% if (uniqGallery.length > 1) { %>
-        <div class="product-gallery" data-product-gallery>
-          <% uniqGallery.forEach((url, idx) => { %>
-            <button class="product-gallery__thumb <%= idx === 0 ? 'is-active' : '' %>" type="button" data-carousel-thumb data-idx="<%= idx %>" aria-label="View image <%= idx + 1 %>">
-              <img src="<%= url %>" alt="" loading="lazy" decoding="async" />
-            </button>
-          <% }) %>
-        </div>
-      <% } %>
 
       <div class="muted small" style="margin-top:8px">Scroll/pinch to zoom, drag to pan, double-click to reset.</div>
     </div>
