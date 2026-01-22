@@ -413,11 +413,30 @@ router.get('/orders/:id', (req, res) => {
   return res.render('orders/detail', {
     title: `Order ${order.order_code || `#${order.order_id}`}`,
     order,
+    token: String(req.query.t || '').trim(),
     promo: orderRepo.getPromoForOrder(id),
     offline: orderRepo.getOfflineTransfer(id),
     statusHistory: orderRepo.listStatusHistory(id),
     itemRefunds: orderRefundRepo.listByOrder(id),
     extraRefunds: orderRefundExtraRepo.listByOrder(id),
+  });
+});
+
+router.get('/orders/:id/receipt', (req, res) => {
+  const id = resolveOrderParamToId(req.params.id);
+  const order = id ? orderRepo.getWithItems(id) : null;
+  if (!order) {
+    return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+  }
+  const ok = requireOrderAccess(req, res, order);
+  if (ok !== true) {
+    if (ok) return ok;
+    return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+  }
+  return res.render('orders/receipt', {
+    title: `Receipt ${order.order_code || `#${order.order_id}`}`,
+    order,
+    token: String(req.query.t || '').trim(),
   });
 });
 

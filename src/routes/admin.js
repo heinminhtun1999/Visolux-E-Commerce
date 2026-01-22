@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { z } = require('zod');
 
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, computeIsAdmin } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { upload } = require('../middleware/uploads');
 const { csrfProtection } = require('../middleware/csrf');
@@ -26,6 +26,7 @@ const settingsRepo = require('../repositories/settingsRepo');
 const reportRepo = require('../repositories/reportRepo');
 const promoRepo = require('../repositories/promoRepo');
 const categorySectionRepo = require('../repositories/categorySectionRepo');
+const contactMessageRepo = require('../repositories/contactMessageRepo');
 const { renderMarkdown, sanitizeHtmlFragment, sanitizeHtmlFragmentNoImages } = require('../utils/markdown');
 
 const router = express.Router();
@@ -126,6 +127,12 @@ router.get('/settings', (req, res) => {
   const technicianSupportUrl = settingsRepo.get('site.footer.technician_support_url', '');
   const footerCopyright = settingsRepo.get('site.footer.copyright', '');
 
+  const contactPhone = settingsRepo.get('site.contact.phone', '');
+  const contactWhatsapp = settingsRepo.get('site.contact.whatsapp', '');
+  const contactEmail = settingsRepo.get('site.contact.email', '');
+  const contactAddress = settingsRepo.get('site.contact.address', '');
+  const contactFacebookUrl = settingsRepo.get('site.contact.facebook_url', '');
+
   const westCents = Number(settingsRepo.get('shipping.courier.west_fee_cents', '800'));
   const eastCents = Number(settingsRepo.get('shipping.courier.east_fee_cents', '1800'));
   const westFeeRm = Number.isFinite(westCents) ? (westCents / 100).toFixed(2) : '8.00';
@@ -144,6 +151,11 @@ router.get('/settings', (req, res) => {
     siteLogoUrl,
     technicianSupportUrl,
     footerCopyright,
+    contactPhone,
+    contactWhatsapp,
+    contactEmail,
+    contactAddress,
+    contactFacebookUrl,
     westFeeRm,
     eastFeeRm,
     promos,
@@ -165,6 +177,120 @@ router.get('/reports/sales', (req, res) => {
     topProducts: report.topProducts,
   });
 });
+
+router.get('/users', (req, res) => {
+  const q = String(req.query.q || '').trim() || null;
+  const status = String(req.query.status || '').trim().toUpperCase() || 'ACTIVE';
+  const { page, pageSize, offset, limit } = getPagination({ page: req.query.page, pageSize: 12 });
+
+  const safeStatus = status === 'ACTIVE' || status === 'CLOSED' || status === 'ALL' ? status : 'ACTIVE';
+  const total = userRepo.countAdmin({ q, status: safeStatus });
+  const users = userRepo.listAdmin({ q, status: safeStatus, limit, offset });
+  const pageCount = getPageCount(total, pageSize);
+
+  return res.render('admin/users', {
+    title: 'Admin – Users',
+    users,
+    q: q || '',
+    status: safeStatus,
+    page,
+    pageCount,
+    total,
+  });
+});
+
+router.get('/users/:id', (req, res) => {
+  const userId = Number(req.params.id);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid user id.' });
+  }
+
+  const user = userRepo.getById(userId);
+  if (!user) return res.status(404).render('shared/error', { title: 'Not Found', message: 'User not found.' });
+
+  const q = String(req.query.q || '').trim() || null;
+  const payment_status = String(req.query.payment_status || '').trim() || null;
+  const payment_method = String(req.query.payment_method || '').trim() || null;
+  const fulfilment_status = String(req.query.fulfilment_status || '').trim() || null;
+  const date_from = String(req.query.date_from || '').trim() || null;
+  const date_to = String(req.query.date_to || '').trim() || null;
+  const { page, pageSize, offset, limit } = getPagination({ page: req.query.page, pageSize: 12 });
+
+  const ordersTotal = orderRepo.countByUserFiltered(userId, { q, payment_status, payment_method, fulfilment_status, date_from, date_to });
+  const orders = orderRepo.listByUserFiltered(userId, { q, payment_status, payment_method, fulfilment_status, date_from, date_to, limit, offset });
+  const pageCount = getPageCount(ordersTotal, pageSize);
+
+  return res.render('admin/user_detail', {
+    title: `Admin – User ${user.username}`,
+    user,
+    orders,
+    q: q || '',
+    payment_status: payment_status || '',
+    payment_method: payment_method || '',
+    fulfilment_status: fulfilment_status || '',
+    date_from: date_from || '',
+    date_to: date_to || '',
+    page,
+    pageCount,
+    total: ordersTotal,
+  });
+});
+
+router.post(
+  '/users/:id/close',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      query: z.any().optional(),
+      params: z.object({ id: z.string() }),
+    })
+  ),
+  (req, res) => {
+    const userId = Number(req.params.id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid user id.' });
+    }
+    const user = userRepo.getById(userId);
+    if (!user) return res.status(404).render('shared/error', { title: 'Not Found', message: 'User not found.' });
+    if (computeIsAdmin(user)) {
+      req.session.flash = { type: 'error', message: 'Cannot close an admin account.' };
+      return res.redirect(`/admin/users/${userId}`);
+    }
+
+    userRepo.closeAccount(userId);
+    req.session.flash = { type: 'success', message: 'Account closed.' };
+    return res.redirect(`/admin/users/${userId}`);
+  }
+);
+
+router.post(
+  '/users/:id/reopen',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      query: z.any().optional(),
+      params: z.object({ id: z.string() }),
+    })
+  ),
+  (req, res) => {
+    const userId = Number(req.params.id);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid user id.' });
+    }
+    const user = userRepo.getById(userId);
+    if (!user) return res.status(404).render('shared/error', { title: 'Not Found', message: 'User not found.' });
+    if (computeIsAdmin(user)) {
+      req.session.flash = { type: 'error', message: 'Cannot reopen an admin account.' };
+      return res.redirect(`/admin/users/${userId}`);
+    }
+
+    userRepo.reopenAccount(userId);
+    req.session.flash = { type: 'success', message: 'Account reopened.' };
+    return res.redirect(`/admin/users/${userId}`);
+  }
+);
 
 router.get('/reports/sales.csv', (req, res) => {
   const date_from = String(req.query.date_from || '').trim();
@@ -196,6 +322,11 @@ router.post(
       body: z.object({
         technician_support_url: z.string().trim().max(1000).optional().or(z.literal('')),
         footer_copyright: z.string().trim().max(200).optional().or(z.literal('')),
+        contact_phone: z.string().trim().max(64).optional().or(z.literal('')),
+        contact_whatsapp: z.string().trim().max(200).optional().or(z.literal('')),
+        contact_email: z.string().trim().max(200).optional().or(z.literal('')),
+        contact_address: z.string().trim().max(400).optional().or(z.literal('')),
+        contact_facebook_url: z.string().trim().max(1000).optional().or(z.literal('')),
       }),
       query: z.any().optional(),
       params: z.any().optional(),
@@ -208,8 +339,22 @@ router.post(
 
       const footer = String(req.validated.body.footer_copyright || '').trim();
 
+       const contactPhone = String(req.validated.body.contact_phone || '').trim();
+       const contactWhatsapp = String(req.validated.body.contact_whatsapp || '').trim();
+       const contactEmail = String(req.validated.body.contact_email || '').trim();
+       const contactAddress = String(req.validated.body.contact_address || '').trim();
+
+       const rawFacebook = String(req.validated.body.contact_facebook_url || '').trim();
+       const facebookUrl = /^https?:\/\//i.test(rawFacebook) ? rawFacebook : '';
+
       settingsRepo.set('site.footer.technician_support_url', technicianUrl);
       settingsRepo.set('site.footer.copyright', footer);
+
+       settingsRepo.set('site.contact.phone', contactPhone);
+       settingsRepo.set('site.contact.whatsapp', contactWhatsapp);
+       settingsRepo.set('site.contact.email', contactEmail);
+       settingsRepo.set('site.contact.address', contactAddress);
+       settingsRepo.set('site.contact.facebook_url', facebookUrl);
 
       req.session.flash = { type: 'success', message: 'Footer & pages updated.' };
       return res.redirect('/admin/settings#footer-pages');
@@ -2467,6 +2612,110 @@ router.get('/notifications', (req, res) => {
     unreadCount,
   });
 });
+
+router.get('/contact-messages', (req, res) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+
+  const q = String(req.query.q || '').trim() || '';
+  const statusRaw = String(req.query.status || 'NEW').trim().toUpperCase();
+  const status = statusRaw === 'NEW' || statusRaw === 'READ' || statusRaw === 'ALL' ? statusRaw : 'NEW';
+
+  const { page, pageSize, offset, limit } = getPagination({ page: req.query.page, pageSize: 20 });
+  const total = contactMessageRepo.countAdmin({ q: q || null, status });
+  const rows = contactMessageRepo.listAdmin({ q: q || null, status, limit, offset });
+  const pageCount = getPageCount(total, pageSize);
+
+  return res.render('admin/contact_messages', {
+    title: 'Admin – Contact messages',
+    q,
+    status,
+    total,
+    rows,
+    page,
+    pageCount,
+  });
+});
+
+router.get('/contact-messages/:id', (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid message id.' });
+  }
+
+  const message = contactMessageRepo.getById(id);
+  if (!message) {
+    return res.status(404).render('shared/error', { title: 'Not Found', message: 'Message not found.' });
+  }
+
+  if (!message.is_read) contactMessageRepo.markRead(id, true);
+  const refreshed = contactMessageRepo.getById(id) || message;
+
+  return res.render('admin/contact_message_detail', {
+    title: `Admin – Contact message #${id}`,
+    message: refreshed,
+  });
+});
+
+router.post(
+  '/contact-messages/:id/read',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      params: z.object({ id: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid message id.' });
+    }
+    contactMessageRepo.markRead(id, true);
+    return res.redirect(`/admin/contact-messages/${id}`);
+  }
+);
+
+router.post(
+  '/contact-messages/:id/unread',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      params: z.object({ id: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid message id.' });
+    }
+    contactMessageRepo.markRead(id, false);
+    return res.redirect(`/admin/contact-messages/${id}`);
+  }
+);
+
+router.post(
+  '/contact-messages/:id/delete',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      params: z.object({ id: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid message id.' });
+    }
+    contactMessageRepo.deleteById(id);
+    req.session.flash = { type: 'success', message: 'Message deleted.' };
+    return res.redirect('/admin/contact-messages');
+  }
+);
 
 router.get('/notifications/:id/open', (req, res) => {
   const id = Number(req.params.id);

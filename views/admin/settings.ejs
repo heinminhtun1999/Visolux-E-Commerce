@@ -132,6 +132,42 @@
       </div>
     </div>
 
+    <div class="card" style="padding:12px; margin-top:12px">
+      <h3 class="h3" style="margin:0">Contact info (footer)</h3>
+      <div class="muted small" style="margin-top:6px">These values show in the footer contact section and social icons.</div>
+
+      <div class="row" style="gap:14px; align-items:flex-start; margin-top:10px">
+        <div class="col" style="min-width:280px">
+          <label>Phone</label>
+          <input class="input" name="contact_phone" value="<%= contactPhone || '' %>" maxlength="64" placeholder="e.g. +60 12-345 6789" />
+        </div>
+
+        <div class="col" style="min-width:280px">
+          <label>WhatsApp</label>
+          <input class="input" name="contact_whatsapp" value="<%= contactWhatsapp || '' %>" maxlength="200" placeholder="e.g. +60123456789 or https://wa.me/..." />
+          <div class="muted small" style="margin-top:6px">If you enter digits, the footer auto-converts to a wa.me link.</div>
+        </div>
+
+        <div class="col" style="min-width:280px">
+          <label>Email</label>
+          <input class="input" name="contact_email" value="<%= contactEmail || '' %>" maxlength="200" placeholder="e.g. support@example.com" />
+        </div>
+      </div>
+
+      <div class="row" style="gap:14px; align-items:flex-start; margin-top:12px">
+        <div class="col" style="min-width:420px">
+          <label>Address</label>
+          <input class="input" name="contact_address" value="<%= contactAddress || '' %>" maxlength="400" placeholder="Company address" />
+        </div>
+
+        <div class="col" style="min-width:420px">
+          <label>Facebook URL</label>
+          <input class="input" name="contact_facebook_url" value="<%= contactFacebookUrl || '' %>" maxlength="1000" placeholder="https://facebook.com/..." />
+          <div class="muted small" style="margin-top:6px">Must start with http(s). Leave blank to hide the icon.</div>
+        </div>
+      </div>
+    </div>
+
     <div class="row" style="gap:14px; align-items:flex-start; margin-top:12px">
       <div class="col" style="min-width:320px">
         <label>Pages</label>

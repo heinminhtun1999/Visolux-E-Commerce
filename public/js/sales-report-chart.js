@@ -81,7 +81,8 @@
       return;
     }
 
-    var padding = { l: 10, r: 10, t: 10, b: 22 };
+    // Keep extra room at the bottom so the Y-min label and X-date labels don't overlap.
+    var padding = { l: 10, r: 10, t: 10, b: 36 };
     var x0 = padding.l;
     var y0 = padding.t;
     var w = cssWidth - padding.l - padding.r;
@@ -119,8 +120,11 @@
     // Labels (min/max only for simplicity).
     ctx.fillStyle = 'rgba(100,116,139,.9)';
     ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-    ctx.fillText(formatRM(maxY), x0 + 2, y0 + 10);
-    ctx.fillText(formatRM(0), x0 + 2, y0 + h + 18);
+    var yLabelTopY = y0 + 10;
+    var yLabelBottomY = y0 + h + 14;
+    var xLabelY = y0 + h + 30;
+    ctx.fillText(formatRM(maxY), x0 + 2, yLabelTopY);
+    ctx.fillText(formatRM(0), x0 + 2, yLabelBottomY);
 
     var grossPts = getPoints(gross, x0, y0, w, h, maxY);
     var netPts = getPoints(net, x0, y0, w, h, maxY);
@@ -136,9 +140,9 @@
     var first = daily[0].day;
     var last = daily[daily.length - 1].day;
     ctx.fillStyle = 'rgba(100,116,139,.9)';
-    ctx.fillText(first, x0, y0 + h + 18);
+    ctx.fillText(first, x0, xLabelY);
     var lastWidth = ctx.measureText(last).width;
-    ctx.fillText(last, x0 + w - lastWidth, y0 + h + 18);
+    ctx.fillText(last, x0 + w - lastWidth, xLabelY);
   }
 
   function init() {

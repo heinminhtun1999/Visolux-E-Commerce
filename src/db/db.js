@@ -30,6 +30,7 @@ function initializeSchema(database) {
   // Lightweight migrations for existing DB files.
   ensureUsersPasswordReset(database);
   ensureUsersAddressColumns(database);
+  ensureUsersAccountClosure(database);
   ensureSiteSettings(database);
   ensureOrdersOrderCode(database);
   ensureOrdersRefundStatus(database);
@@ -50,6 +51,7 @@ function initializeSchema(database) {
   ensureInventoryCategoryIsFlexible(database);
   ensureInventoryDescriptionHtml(database);
   ensureProductImages(database);
+  ensureContactMessages(database);
   seedCategoriesFromInventory(database);
   // Backfill is best-effort; existing orders fall back to order_id in UI if needed.
   backfillOrderCodes(database);
@@ -75,6 +77,35 @@ function ensureProductImages(database) {
     )`
   );
   database.exec('CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id, sort_order, id)');
+}
+
+function ensureUsersAccountClosure(database) {
+  const cols = database.prepare("PRAGMA table_info('users')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+  if (!has('is_closed')) {
+    // Keep migration simple for older SQLite versions.
+    database.exec("ALTER TABLE users ADD COLUMN is_closed INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!has('closed_at')) {
+    database.exec('ALTER TABLE users ADD COLUMN closed_at TEXT');
+  }
+}
+
+function ensureContactMessages(database) {
+  database.exec(
+    `CREATE TABLE IF NOT EXISTS contact_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      phone TEXT NOT NULL,
+      location TEXT,
+      message TEXT NOT NULL,
+      page_url TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      is_read INTEGER NOT NULL DEFAULT 0 CHECK (is_read IN (0,1)),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`
+  );
+  database.exec('CREATE INDEX IF NOT EXISTS idx_contact_messages_status ON contact_messages(is_read, created_at)');
 }
 
 function ensureCategorySections(database) {

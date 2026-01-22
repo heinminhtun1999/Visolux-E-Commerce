@@ -1,0 +1,90 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Users</h1>
+    <div class="muted small"><%= total %> users</div>
+  </div>
+  <div class="actions icon-row">
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/users') ? 'is-active' : '' %>" href="/admin/users" title="Users" aria-label="Users" data-label="Users"><%- icon('user') %></a>
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/orders') ? 'is-active' : '' %>" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/products') ? 'is-active' : '' %>" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/reports/sales') ? 'is-active' : '' %>" href="/admin/reports/sales" title="Sales report" aria-label="Sales report" data-label="Sales report"><%- icon('chart') %></a>
+    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+    <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <form method="get" action="/admin/users" class="row">
+    <div class="col" style="min-width:240px">
+      <label>Search</label>
+      <input class="input" name="q" value="<%= q || '' %>" placeholder="Username / email / phone" />
+    </div>
+
+    <div class="col" style="min-width:220px">
+      <label>Status</label>
+      <select name="status">
+        <option value="ACTIVE" <%= status === 'ACTIVE' ? 'selected' : '' %>>Active</option>
+        <option value="CLOSED" <%= status === 'CLOSED' ? 'selected' : '' %>>Closed</option>
+        <option value="ALL" <%= status === 'ALL' ? 'selected' : '' %>>All</option>
+      </select>
+    </div>
+
+    <div style="width:140px">
+      <label>&nbsp;</label>
+      <button class="btn btn-primary" type="submit">Apply</button>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <div class="table-scroll">
+    <table class="table">
+      <thead>
+        <tr><th>ID</th><th>User</th><th>Created</th><th>Status</th><th>Orders</th><th>Last order</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% (users || []).forEach(u => { %>
+          <tr>
+            <td class="muted"><%= u.user_id %></td>
+            <td>
+              <strong><%= u.username %></strong>
+              <div class="muted small"><%= u.email %></div>
+            </td>
+            <td class="muted"><%= formatDateTime(u.created_at) %></td>
+            <td>
+              <% if (u.is_closed) { %>
+                <span class="badge no">CLOSED</span>
+              <% } else { %>
+                <span class="badge ok">ACTIVE</span>
+              <% } %>
+            </td>
+            <td><%= Number(u.orders_count || 0) %></td>
+            <td class="muted"><%= u.last_order_at ? formatDateTime(u.last_order_at) : '—' %></td>
+            <td>
+              <a class="btn btn-icon" href="/admin/users/<%= u.user_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager">
+    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
+    <% const qs = new URLSearchParams(); %>
+    <% if (q) qs.set('q', q); %>
+    <% if (status) qs.set('status', status); %>
+    <% if (page > 1) { %>
+      <% qs.set('page', String(page - 1)); %>
+      <a href="/admin/users?<%= qs.toString() %>">Prev</a>
+    <% } %>
+    <% if (page < pageCount) { %>
+      <% qs.set('page', String(page + 1)); %>
+      <a href="/admin/users?<%= qs.toString() %>">Next</a>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../shared/bottom') %>

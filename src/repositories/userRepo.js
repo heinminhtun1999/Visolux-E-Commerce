@@ -14,6 +14,8 @@ function mapUser(row) {
     city: row.city,
     state: row.state,
     postcode: row.postcode,
+    is_closed: Number(row.is_closed || 0) ? 1 : 0,
+    closed_at: row.closed_at || null,
     password_reset_token_hash: row.password_reset_token_hash,
     password_reset_expires_at: row.password_reset_expires_at,
     created_at: row.created_at,
@@ -128,6 +130,82 @@ function findByValidPasswordResetTokenHash(tokenHash) {
   );
 }
 
+function listAdmin({ q, status, limit, offset } = {}) {
+  const db = getDb();
+  const where = [];
+  const params = { limit, offset };
+
+  const query = String(q || '').trim();
+  if (query) {
+    where.push('(u.username LIKE @q OR u.email LIKE @q OR u.phone LIKE @q)');
+    params.q = `%${query}%`;
+  }
+
+  const s = String(status || '').trim().toUpperCase();
+  if (s === 'ACTIVE') where.push('u.is_closed=0');
+  if (s === 'CLOSED') where.push('u.is_closed=1');
+
+  const sql = `SELECT u.*,
+      (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.user_id) as orders_count,
+      (SELECT MAX(created_at) FROM orders o WHERE o.user_id=u.user_id) as last_order_at
+    FROM users u
+    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    ORDER BY u.created_at DESC
+    LIMIT @limit OFFSET @offset`;
+
+  return db.prepare(sql).all(params).map((r) => {
+    const u = mapUser(r);
+    return {
+      ...u,
+      orders_count: Number(r.orders_count || 0),
+      last_order_at: r.last_order_at || null,
+    };
+  });
+}
+
+function countAdmin({ q, status } = {}) {
+  const db = getDb();
+  const where = [];
+  const params = {};
+
+  const query = String(q || '').trim();
+  if (query) {
+    where.push('(username LIKE @q OR email LIKE @q OR phone LIKE @q)');
+    params.q = `%${query}%`;
+  }
+
+  const s = String(status || '').trim().toUpperCase();
+  if (s === 'ACTIVE') where.push('is_closed=0');
+  if (s === 'CLOSED') where.push('is_closed=1');
+
+  const sql = `SELECT COUNT(*) as c FROM users${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
+  return db.prepare(sql).get(params).c;
+}
+
+function closeAccount(userId) {
+  const db = getDb();
+  db.prepare(
+    `UPDATE users
+     SET is_closed=1,
+         closed_at=datetime('now'),
+         password_reset_token_hash=NULL,
+         password_reset_expires_at=NULL
+     WHERE user_id=?`
+  ).run(userId);
+  return getById(userId);
+}
+
+function reopenAccount(userId) {
+  const db = getDb();
+  db.prepare(
+    `UPDATE users
+     SET is_closed=0,
+         closed_at=NULL
+     WHERE user_id=?`
+  ).run(userId);
+  return getById(userId);
+}
+
 module.exports = {
   getById,
   findByUsernameOrEmail,
@@ -137,4 +215,8 @@ module.exports = {
   setPasswordResetToken,
   clearPasswordResetToken,
   findByValidPasswordResetTokenHash,
+  listAdmin,
+  countAdmin,
+  closeAccount,
+  reopenAccount,
 };

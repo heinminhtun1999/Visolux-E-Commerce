@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/public/css/app.css" />
 </head>
 <body>
-  <div class="container">
+  <div class="container <%= (typeof containerClass !== 'undefined' && containerClass) ? containerClass : '' %>">
     <header class="site-header" style="margin-top:10px; margin-bottom:12px">
       <div class="site-header__brand">
         <a class="site-brand" href="/" aria-label="Home">
@@ -53,6 +53,13 @@
           <a class="btn btn-icon icon-only" href="/admin/notifications" title="Notifications" aria-label="Notifications" data-label="Notifications" data-admin-notification-bell>
             <%- icon('bell') %>
             <% if ((adminUnreadNotificationCount || 0) > 0) { %><span class="btn-badge"><%= adminUnreadNotificationCount %></span><% } %>
+          </a>
+        <% } %>
+
+        <% if (isAdmin) { %>
+          <a class="btn btn-icon icon-only" href="/admin/contact-messages" title="Contact messages" aria-label="Contact messages" data-label="Contact messages">
+            <%- icon('mail') %>
+            <% if ((adminUnreadContactMessageCount || 0) > 0) { %><span class="btn-badge"><%= adminUnreadContactMessageCount %></span><% } %>
           </a>
         <% } %>
 

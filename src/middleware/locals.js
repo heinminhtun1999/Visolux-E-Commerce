@@ -3,6 +3,7 @@ const { icon } = require('../utils/icons');
 const { formatDateTime } = require('../utils/datetime');
 const adminNotificationRepo = require('../repositories/adminNotificationRepo');
 const settingsRepo = require('../repositories/settingsRepo');
+const contactMessageRepo = require('../repositories/contactMessageRepo');
 
 function titleCase(s) {
   return String(s || '')
@@ -99,6 +100,23 @@ function attachLocals(req, res, next) {
     res.locals.footerCopyright = '';
   }
 
+  // Contact info (admin-configurable)
+  const getSetting = (key, fallback) => {
+    try {
+      return settingsRepo.get(key, fallback || '');
+    } catch (_) {
+      return fallback || '';
+    }
+  };
+
+  res.locals.contactInfo = {
+    phone: String(getSetting('site.contact.phone', '') || '').trim(),
+    whatsapp: String(getSetting('site.contact.whatsapp', '') || '').trim(),
+    email: String(getSetting('site.contact.email', '') || '').trim(),
+    address: String(getSetting('site.contact.address', '') || '').trim(),
+    facebook_url: String(getSetting('site.contact.facebook_url', '') || '').trim(),
+  };
+
   // Admin-only UI: unread notifications badge
   if (res.locals.isAdmin) {
     try {
@@ -106,8 +124,15 @@ function attachLocals(req, res, next) {
     } catch (_) {
       res.locals.adminUnreadNotificationCount = 0;
     }
+
+    try {
+      res.locals.adminUnreadContactMessageCount = contactMessageRepo.countUnread();
+    } catch (_) {
+      res.locals.adminUnreadContactMessageCount = 0;
+    }
   } else {
     res.locals.adminUnreadNotificationCount = 0;
+    res.locals.adminUnreadContactMessageCount = 0;
   }
   next();
 }
