@@ -62,7 +62,12 @@
   <% products.forEach(p => { %>
     <div class="card product-card">
       <a href="/products/<%= p.product_id %>" style="text-decoration:none; color:inherit">
-        <img class="product-img" src="<%= p.product_image || '/public/placeholder.svg' %>" alt="" />
+        <div class="product-img-wrap">
+          <img class="product-img" src="<%= p.product_image || '/public/placeholder.svg' %>" alt="<%= p.name %>" />
+          <% if (p.stock <= 0) { %>
+            <div class="product-stock-overlay" aria-label="Out of stock">Out of stock</div>
+          <% } %>
+        </div>
         <div style="margin-top:10px; font-weight:700"><%= p.name %></div>
         <div class="muted small" style="margin-top:4px"><%= p.category_name || p.category %></div>
         <div class="kv">

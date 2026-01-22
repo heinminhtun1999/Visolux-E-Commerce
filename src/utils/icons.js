@@ -82,6 +82,11 @@ function icon(name, opts = {}) {
       );
     case 'grid':
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 4.5h6v6h-6v-6Zm9 0h6v6h-6v-6Zm-9 9h6v6h-6v-6Zm9 0h6v6h-6v-6Z"/>`);
+    case 'chart':
+      return svg(
+        baseAttrs,
+        `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5V5.25"/><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5H21"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 16.5v-6"/><path stroke-linecap="round" stroke-linejoin="round" d="M12.75 16.5v-9"/><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 16.5v-3"/>`
+      );
     case 'list':
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12M8.25 17.25h12"/><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6.75h.75v.75H4.5v-.75Zm0 5.25h.75V12H4.5v-.75Zm0 5.25h.75v.75H4.5v-.75Z"/>`);
     case 'tag':
