@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS inventory (
   product_id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
+  -- Sanitized HTML version of description (used for rich text display)
+  description_html TEXT NOT NULL DEFAULT '',
   -- Category slug (managed via categories table)
   category TEXT NOT NULL,
   price INTEGER NOT NULL CHECK (price >= 100), -- stored in cents (min RM 1.00)
@@ -16,6 +18,18 @@ CREATE TABLE IF NOT EXISTS inventory (
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Additional product images (gallery)
+CREATE TABLE IF NOT EXISTS product_images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id INTEGER NOT NULL,
+  image_url TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (product_id) REFERENCES inventory(product_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id, sort_order, id);
 
 CREATE TABLE IF NOT EXISTS categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

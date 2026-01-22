@@ -9,6 +9,7 @@ const categoryRepo = require('../repositories/categoryRepo');
 const categorySectionRepo = require('../repositories/categorySectionRepo');
 const settingsRepo = require('../repositories/settingsRepo');
 const { renderMarkdown, sanitizeHtmlFragment } = require('../utils/markdown');
+const productImageRepo = require('../repositories/productImageRepo');
 
 const router = express.Router();
 
@@ -202,7 +203,8 @@ router.get('/products/:id', (req, res, next) => {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
   }
 
-  return res.render('shop/product', { title: product.name, product });
+  const images = productImageRepo.listByProductId(id);
+  return res.render('shop/product', { title: product.name, product, images });
 });
 
 router.get('/cart', async (req, res) => {

@@ -48,9 +48,33 @@ function initializeSchema(database) {
   ensureCategories(database);
   ensureCategorySections(database);
   ensureInventoryCategoryIsFlexible(database);
+  ensureInventoryDescriptionHtml(database);
+  ensureProductImages(database);
   seedCategoriesFromInventory(database);
   // Backfill is best-effort; existing orders fall back to order_id in UI if needed.
   backfillOrderCodes(database);
+}
+
+function ensureInventoryDescriptionHtml(database) {
+  const cols = database.prepare("PRAGMA table_info('inventory')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+  if (!has('description_html')) {
+    database.exec("ALTER TABLE inventory ADD COLUMN description_html TEXT NOT NULL DEFAULT ''");
+  }
+}
+
+function ensureProductImages(database) {
+  database.exec(
+    `CREATE TABLE IF NOT EXISTS product_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      image_url TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (product_id) REFERENCES inventory(product_id) ON DELETE CASCADE
+    )`
+  );
+  database.exec('CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id, sort_order, id)');
 }
 
 function ensureCategorySections(database) {

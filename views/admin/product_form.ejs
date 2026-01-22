@@ -15,7 +15,13 @@
     <input class="input" name="name" value="<%= product ? product.name : '' %>" required />
 
     <label>Description</label>
-    <textarea class="input" name="description" rows="5"><%= product ? product.description : '' %></textarea>
+    <textarea class="input" name="description" rows="6" data-product-desc-textarea><%= product ? product.description : '' %></textarea>
+    <textarea name="description_html" style="display:none" data-product-desc-html><%- product ? (product.description_html || '') : '' %></textarea>
+    <div class="rte" data-product-desc-editor style="display:none; margin-top:10px">
+      <div class="rte__toolbar"></div>
+      <div class="rte__editor" style="min-height:160px"></div>
+      <div class="muted small" style="margin-top:6px">Tip: paste images as links; for multiple product photos use the gallery upload below.</div>
+    </div>
 
     <label>Category</label>
     <select name="category" required>
@@ -65,11 +71,32 @@
       </div>
     <% } %>
 
+    <label style="margin-top:14px">More product images (gallery)</label>
+    <input class="input" type="file" name="product_images" accept="image/*" multiple />
+
+    <% if (product && images && images.length) { %>
+      <div class="grid" style="margin-top:12px; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr))">
+        <% images.forEach(img => { %>
+          <div class="card" style="padding:10px">
+            <img class="product-img" style="height:120px" src="<%= img.image_url %>" alt="" />
+            <form method="post" action="/admin/products/<%= product.product_id %>/images/<%= img.id %>/delete" style="margin-top:8px">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button class="btn btn-icon" type="submit" title="Delete" aria-label="Delete" data-label="Delete"><%- icon('trash') %></button>
+            </form>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+
     <div class="actions" style="margin-top:12px">
       <button class="btn btn-primary btn-icon" type="submit" title="Save" aria-label="Save" data-label="Save"><%- icon('check') %></button>
       <a class="btn btn-icon" href="/admin/products" title="Cancel" aria-label="Cancel" data-label="Cancel"><%- icon('x') %></a>
     </div>
   </form>
 </div>
+
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js" defer></script>
+<script src="/public/js/admin-product-editor.js" defer></script>
 
 <%- include('../shared/bottom') %>

@@ -11,6 +11,7 @@ const { csrfProtection } = require('../middleware/csrf');
 
 const inventoryRepo = require('../repositories/inventoryRepo');
 const categoryRepo = require('../repositories/categoryRepo');
+const productImageRepo = require('../repositories/productImageRepo');
 const orderRepo = require('../repositories/orderRepo');
 const userRepo = require('../repositories/userRepo');
 const imageService = require('../services/imageService');
@@ -95,6 +96,13 @@ function assertValidCategorySlug(slug) {
     throw err;
   }
   return s;
+}
+
+function htmlToPlainText(html) {
+  return String(html || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 router.use(requireAdmin);
@@ -1407,18 +1415,22 @@ router.get('/products', (req, res) => {
 
 router.get('/products/new', (req, res) => {
   const categories = categoryRepo.listAdmin({ includeArchived: false });
-  res.render('admin/product_form', { title: 'New Product', product: null, categories });
+  res.render('admin/product_form', { title: 'New Product', product: null, categories, images: [] });
 });
 
 router.post(
   '/products/new',
-  upload.single('product_image'),
+  upload.fields([
+    { name: 'product_image', maxCount: 1 },
+    { name: 'product_images', maxCount: 12 },
+  ]),
   csrfProtection({ ignoreMultipart: false }),
   validate(
     z.object({
       body: z.object({
         name: z.string().trim().min(2).max(200),
         description: z.string().trim().max(20000).optional().or(z.literal('')),
+        description_html: z.string().trim().max(200000).optional().or(z.literal('')),
         category: z.string().trim().min(2).max(80),
         price: z.string(),
         stock: z.string(),
@@ -1443,7 +1455,8 @@ router.post(
 
       const created = inventoryRepo.create({
         name: req.validated.body.name,
-        description: req.validated.body.description || '',
+        description: '',
+        description_html: '',
         category: cat.slug,
         price: priceCents,
         stock,
@@ -1452,13 +1465,42 @@ router.post(
         product_image: null,
       });
 
-      if (req.file) {
-        const optimized = await imageService.optimizeAndSaveProductImage(req.file.path, created.product_id);
+      const rawHtml = String(req.validated.body.description_html || '').trim();
+      const cleanHtml = rawHtml ? sanitizeHtmlFragment(rawHtml) : '';
+      const descText = cleanHtml ? htmlToPlainText(cleanHtml) : String(req.validated.body.description || '').trim();
+      inventoryRepo.update(created.product_id, { description: descText, description_html: cleanHtml });
+
+      const files = req.files || {};
+      const mainFile = (files.product_image && files.product_image[0]) || null;
+      const galleryFiles = Array.isArray(files.product_images) ? files.product_images : [];
+
+      if (mainFile) {
+        const optimized = await imageService.optimizeAndSaveProductImage(mainFile.path, created.product_id);
         inventoryRepo.update(created.product_id, { product_image: optimized });
         try {
-          fs.unlinkSync(req.file.path);
+          fs.unlinkSync(mainFile.path);
         } catch (_) {
           // ignore
+        }
+      }
+
+      for (let i = 0; i < galleryFiles.length; i++) {
+        const f = galleryFiles[i];
+        const url = await imageService.optimizeAndSaveProductGalleryImage(f.path, created.product_id);
+        productImageRepo.create({ productId: created.product_id, imageUrl: url, sortOrder: i * 10 });
+        try {
+          fs.unlinkSync(f.path);
+        } catch (_) {
+          // ignore
+        }
+      }
+
+      // If there's no primary image but there are gallery images, use the first as primary.
+      const after = inventoryRepo.getById(created.product_id);
+      if (after && !after.product_image) {
+        const imgs = productImageRepo.listByProductId(created.product_id);
+        if (imgs && imgs[0] && imgs[0].image_url) {
+          inventoryRepo.update(created.product_id, { product_image: imgs[0].image_url });
         }
       }
 
@@ -1475,7 +1517,8 @@ router.get('/products/:id/edit', (req, res) => {
   const product = inventoryRepo.getById(id);
   if (!product) return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
   const categories = categoryRepo.listAdmin({ includeArchived: false });
-  return res.render('admin/product_form', { title: 'Edit Product', product, categories });
+  const images = productImageRepo.listByProductId(id);
+  return res.render('admin/product_form', { title: 'Edit Product', product, categories, images });
 });
 
 // Convenience alias for breadcrumb navigation: /admin/products/:id -> /admin/products/:id/edit
@@ -1489,13 +1532,17 @@ router.get('/products/:id', (req, res) => {
 
 router.post(
   '/products/:id/edit',
-  upload.single('product_image'),
+  upload.fields([
+    { name: 'product_image', maxCount: 1 },
+    { name: 'product_images', maxCount: 12 },
+  ]),
   csrfProtection({ ignoreMultipart: false }),
   validate(
     z.object({
       body: z.object({
         name: z.string().trim().min(2).max(200),
         description: z.string().trim().max(20000).optional().or(z.literal('')),
+        description_html: z.string().trim().max(200000).optional().or(z.literal('')),
         category: z.string().trim().min(2).max(80),
         price: z.string(),
         stock: z.string(),
@@ -1524,11 +1571,30 @@ router.post(
         throw err;
       }
 
+      const rawHtml = String(req.validated.body.description_html || '').trim();
+      const cleanHtml = rawHtml ? sanitizeHtmlFragment(rawHtml) : '';
+      const descText = cleanHtml ? htmlToPlainText(cleanHtml) : String(req.validated.body.description || '').trim();
+
       let imagePath = product.product_image;
-      if (req.file) {
-        imagePath = await imageService.optimizeAndSaveProductImage(req.file.path, id);
+      const files = req.files || {};
+      const mainFile = (files.product_image && files.product_image[0]) || null;
+      const galleryFiles = Array.isArray(files.product_images) ? files.product_images : [];
+
+      if (mainFile) {
+        imagePath = await imageService.optimizeAndSaveProductImage(mainFile.path, id);
         try {
-          fs.unlinkSync(req.file.path);
+          fs.unlinkSync(mainFile.path);
+        } catch (_) {
+          // ignore
+        }
+      }
+
+      for (let i = 0; i < galleryFiles.length; i++) {
+        const f = galleryFiles[i];
+        const url = await imageService.optimizeAndSaveProductGalleryImage(f.path, id);
+        productImageRepo.create({ productId: id, imageUrl: url, sortOrder: i * 10 });
+        try {
+          fs.unlinkSync(f.path);
         } catch (_) {
           // ignore
         }
@@ -1536,7 +1602,8 @@ router.post(
 
       inventoryRepo.update(id, {
         name: req.validated.body.name,
-        description: req.validated.body.description || '',
+        description: descText,
+        description_html: cleanHtml,
         category: cat.slug,
         price: priceCents,
         stock,
@@ -1547,6 +1614,48 @@ router.post(
 
       req.session.flash = { type: 'success', message: 'Product updated.' };
       return res.redirect('/admin/products');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/products/:id/images/:imageId/delete',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      query: z.any().optional(),
+      params: z.object({ id: z.string(), imageId: z.string() }),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const productId = Number(req.params.id);
+      const imageId = Number(req.params.imageId);
+      if (!Number.isFinite(productId) || !Number.isFinite(imageId)) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid request.' });
+      }
+
+      const removed = productImageRepo.deleteById({ id: imageId, productId });
+      if (removed && removed.image_url) {
+        const url = String(removed.image_url || '');
+        if (url.startsWith('/uploads/products/')) {
+          const fileName = path.posix.basename(url);
+          if (/^product_\d+_[0-9a-f]{16}\.webp$/i.test(fileName)) {
+            const fullPath = path.join(process.cwd(), 'storage', 'uploads', 'products', fileName);
+            try {
+              fs.unlinkSync(fullPath);
+            } catch (_) {
+              // ignore
+            }
+          }
+        }
+      }
+
+      req.session.flash = { type: 'success', message: 'Image deleted.' };
+      return res.redirect(`/admin/products/${productId}/edit`);
     } catch (e) {
       return next(e);
     }

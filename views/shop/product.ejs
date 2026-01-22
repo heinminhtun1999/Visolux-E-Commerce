@@ -4,8 +4,28 @@
   <div class="row">
     <div style="flex:1">
       <div class="zoom-pane" data-zoom-pane>
-        <img data-zoom-img src="<%= product.product_image || '/public/placeholder.svg' %>" alt="" />
+        <% const galleryUrls = []; %>
+        <% if (product && product.product_image) galleryUrls.push(product.product_image); %>
+        <% (images || []).forEach(img => { if (img && img.image_url) galleryUrls.push(img.image_url); }); %>
+        <% const uniqGallery = [...new Set(galleryUrls.filter(Boolean))]; %>
+        <% const mainImg = (uniqGallery[0] || product.product_image || '/public/placeholder.svg'); %>
+
+        <img data-zoom-img src="<%= mainImg %>" alt="" />
+        <% if (product.stock <= 0) { %>
+          <div class="product-stock-overlay" aria-label="Out of stock">Out of stock</div>
+        <% } %>
       </div>
+
+      <% if (uniqGallery.length > 1) { %>
+        <div class="product-gallery" data-product-gallery>
+          <% uniqGallery.forEach((url, idx) => { %>
+            <button class="product-gallery__thumb <%= idx === 0 ? 'is-active' : '' %>" type="button" data-product-thumb data-src="<%= url %>" aria-label="View image <%= idx + 1 %>">
+              <img src="<%= url %>" alt="" loading="lazy" decoding="async" />
+            </button>
+          <% }) %>
+        </div>
+      <% } %>
+
       <div class="muted small" style="margin-top:8px">Scroll/pinch to zoom, drag to pan, double-click to reset.</div>
     </div>
     <div style="flex:1">
@@ -19,7 +39,13 @@
           <span class="badge no">Out of stock</span>
         <% } %>
       </div>
-      <p style="margin-top:12px" class="muted"><%= product.description %></p>
+      <div style="margin-top:12px" class="muted">
+        <% if (String(product.description_html || '').trim()) { %>
+          <div class="md"><%- product.description_html %></div>
+        <% } else { %>
+          <p class="muted"><%= product.description %></p>
+        <% } %>
+      </div>
 
       <% if (!isAdmin) { %>
         <form method="post" action="/cart/add" style="margin-top:12px" class="row">
@@ -41,5 +67,6 @@
 </div>
 
 <script src="/public/js/zoom-pan.js" defer></script>
+<script src="/public/js/product-gallery.js" defer></script>
 
 <%- include('../shared/bottom') %>
