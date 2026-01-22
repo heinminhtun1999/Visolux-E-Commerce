@@ -156,26 +156,13 @@ router.get('/reports/sales', (req, res) => {
   const date_to = String(req.query.date_to || '').trim();
   const report = reportRepo.getSalesReport({ dateFrom: date_from, dateTo: date_to });
 
-  const topProducts = (report.topProducts || []).map((p) => {
-    const productId = Number(p.product_id);
-    const product = Number.isFinite(productId) ? inventoryRepo.getById(productId) : null;
-    const gallery = Number.isFinite(productId) ? productImageRepo.listByProductId(productId) : [];
-    const urls = [];
-    if (product && product.product_image) urls.push(product.product_image);
-    for (const img of gallery || []) {
-      if (img && img.image_url) urls.push(img.image_url);
-    }
-    const uniq = [...new Set(urls.filter(Boolean))];
-    return { ...p, image_urls: uniq };
-  });
-
   return res.render('admin/sales_report', {
     title: 'Admin – Sales report',
     date_from: report.date_from,
     date_to: report.date_to,
     summary: report.summary,
     daily: report.daily,
-    topProducts,
+    topProducts: report.topProducts,
   });
 });
 
