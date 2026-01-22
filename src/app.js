@@ -12,6 +12,7 @@ const { attachLocals } = require('./middleware/locals');
 const { ensureCsrfToken, csrfProtection } = require('./middleware/csrf');
 const { notFoundHandler, errorHandler } = require('./middleware/errors');
 const settingsRepo = require('./repositories/settingsRepo');
+const { logger } = require('./utils/logger');
 
 const shopRoutes = require('./routes/shop');
 const authRoutes = require('./routes/auth');
@@ -158,6 +159,36 @@ function createApp() {
 
   // Attach view locals early so error pages render safely.
   app.use(attachLocals);
+
+  // Guard against accidental double-sends or responses after client disconnect.
+  // This prevents ERR_HTTP_HEADERS_SENT from bubbling into uncaughtException.
+  app.use((req, res, next) => {
+    const isClosed = () => Boolean(req.aborted || res.headersSent || res.writableEnded);
+
+    const wrap = (name) => {
+      const original = res[name].bind(res);
+      res[name] = (...args) => {
+        if (isClosed()) {
+          logger.error(
+            {
+              req: { method: req.method, url: req.originalUrl, ip: req.ip },
+              res: { headersSent: res.headersSent, writableEnded: res.writableEnded },
+              err: { code: 'ERR_HTTP_HEADERS_SENT' },
+            },
+            `${name} called after response finished`
+          );
+          return res;
+        }
+        return original(...args);
+      };
+    };
+
+    wrap('render');
+    wrap('send');
+    wrap('json');
+    wrap('redirect');
+    return next();
+  });
 
   // CSRF: required because cookies are cross-site in iframe mode (SameSite=None).
   // Exempt payment return/callback because they are initiated by the gateway.
