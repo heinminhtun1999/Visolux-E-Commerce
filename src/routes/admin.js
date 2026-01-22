@@ -156,13 +156,26 @@ router.get('/reports/sales', (req, res) => {
   const date_to = String(req.query.date_to || '').trim();
   const report = reportRepo.getSalesReport({ dateFrom: date_from, dateTo: date_to });
 
+  const topProducts = (report.topProducts || []).map((p) => {
+    const productId = Number(p.product_id);
+    const product = Number.isFinite(productId) ? inventoryRepo.getById(productId) : null;
+    const gallery = Number.isFinite(productId) ? productImageRepo.listByProductId(productId) : [];
+    const urls = [];
+    if (product && product.product_image) urls.push(product.product_image);
+    for (const img of gallery || []) {
+      if (img && img.image_url) urls.push(img.image_url);
+    }
+    const uniq = [...new Set(urls.filter(Boolean))];
+    return { ...p, image_urls: uniq };
+  });
+
   return res.render('admin/sales_report', {
     title: 'Admin – Sales report',
     date_from: report.date_from,
     date_to: report.date_to,
     summary: report.summary,
     daily: report.daily,
-    topProducts: report.topProducts,
+    topProducts,
   });
 });
 
@@ -1421,7 +1434,6 @@ router.get('/products/new', (req, res) => {
 router.post(
   '/products/new',
   upload.fields([
-    { name: 'product_image', maxCount: 1 },
     { name: 'product_images', maxCount: 12 },
   ]),
   csrfProtection({ ignoreMultipart: false }),
@@ -1471,36 +1483,27 @@ router.post(
       inventoryRepo.update(created.product_id, { description: descText, description_html: cleanHtml });
 
       const files = req.files || {};
-      const mainFile = (files.product_image && files.product_image[0]) || null;
       const galleryFiles = Array.isArray(files.product_images) ? files.product_images : [];
 
-      if (mainFile) {
-        const optimized = await imageService.optimizeAndSaveProductImage(mainFile.path, created.product_id);
-        inventoryRepo.update(created.product_id, { product_image: optimized });
+      if (galleryFiles.length) {
+        const primary = galleryFiles[0];
+        const primaryUrl = await imageService.optimizeAndSaveProductImage(primary.path, created.product_id);
+        inventoryRepo.update(created.product_id, { product_image: primaryUrl });
         try {
-          fs.unlinkSync(mainFile.path);
+          fs.unlinkSync(primary.path);
         } catch (_) {
           // ignore
         }
-      }
 
-      for (let i = 0; i < galleryFiles.length; i++) {
-        const f = galleryFiles[i];
-        const url = await imageService.optimizeAndSaveProductGalleryImage(f.path, created.product_id);
-        productImageRepo.create({ productId: created.product_id, imageUrl: url, sortOrder: i * 10 });
-        try {
-          fs.unlinkSync(f.path);
-        } catch (_) {
-          // ignore
-        }
-      }
-
-      // If there's no primary image but there are gallery images, use the first as primary.
-      const after = inventoryRepo.getById(created.product_id);
-      if (after && !after.product_image) {
-        const imgs = productImageRepo.listByProductId(created.product_id);
-        if (imgs && imgs[0] && imgs[0].image_url) {
-          inventoryRepo.update(created.product_id, { product_image: imgs[0].image_url });
+        for (let i = 1; i < galleryFiles.length; i++) {
+          const f = galleryFiles[i];
+          const url = await imageService.optimizeAndSaveProductGalleryImage(f.path, created.product_id);
+          productImageRepo.create({ productId: created.product_id, imageUrl: url, sortOrder: (i - 1) * 10 });
+          try {
+            fs.unlinkSync(f.path);
+          } catch (_) {
+            // ignore
+          }
         }
       }
 
@@ -1533,7 +1536,6 @@ router.get('/products/:id', (req, res) => {
 router.post(
   '/products/:id/edit',
   upload.fields([
-    { name: 'product_image', maxCount: 1 },
     { name: 'product_images', maxCount: 12 },
   ]),
   csrfProtection({ ignoreMultipart: false }),
@@ -1577,26 +1579,26 @@ router.post(
 
       let imagePath = product.product_image;
       const files = req.files || {};
-      const mainFile = (files.product_image && files.product_image[0]) || null;
       const galleryFiles = Array.isArray(files.product_images) ? files.product_images : [];
 
-      if (mainFile) {
-        imagePath = await imageService.optimizeAndSaveProductImage(mainFile.path, id);
+      if (galleryFiles.length) {
+        const primary = galleryFiles[0];
+        imagePath = await imageService.optimizeAndSaveProductImage(primary.path, id);
         try {
-          fs.unlinkSync(mainFile.path);
+          fs.unlinkSync(primary.path);
         } catch (_) {
           // ignore
         }
-      }
 
-      for (let i = 0; i < galleryFiles.length; i++) {
-        const f = galleryFiles[i];
-        const url = await imageService.optimizeAndSaveProductGalleryImage(f.path, id);
-        productImageRepo.create({ productId: id, imageUrl: url, sortOrder: i * 10 });
-        try {
-          fs.unlinkSync(f.path);
-        } catch (_) {
-          // ignore
+        for (let i = 1; i < galleryFiles.length; i++) {
+          const f = galleryFiles[i];
+          const url = await imageService.optimizeAndSaveProductGalleryImage(f.path, id);
+          productImageRepo.create({ productId: id, imageUrl: url, sortOrder: (i - 1) * 10 });
+          try {
+            fs.unlinkSync(f.path);
+          } catch (_) {
+            // ignore
+          }
         }
       }
 
