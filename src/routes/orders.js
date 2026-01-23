@@ -21,7 +21,7 @@ const fiuu = require('../services/payments/fiuu');
 const { env } = require('../config/env');
 const emailService = require('../services/emailService');
 const adminNotificationRepo = require('../repositories/adminNotificationRepo');
-const { MALAYSIA_STATES, buildMalaysiaFullAddress, getMalaysiaRegionForState } = require('../utils/malaysia');
+const { MALAYSIA_STATES, buildMalaysiaFullAddress } = require('../utils/malaysia');
 const shippingService = require('../services/shippingService');
 const promoService = require('../services/promoService');
 const { logger } = require('../utils/logger');
@@ -133,9 +133,20 @@ router.get('/checkout', async (req, res) => {
     }
   }
 
-  const prefillRegion = prefill?.state ? getMalaysiaRegionForState(prefill.state) : null;
-  const courierFees = shippingService.getCourierFeesCents();
-  const prefillShippingFee = prefill?.state ? shippingService.getCourierFeeCentsForState(prefill.state) : 0;
+  const totalWeightKg = hydrated.items.reduce((acc, line) => {
+    const w = Number(line?.product?.weight_kg || 0);
+    const q = Number(line?.quantity || 0);
+    if (!Number.isFinite(w) || !Number.isFinite(q) || q <= 0) return acc;
+    return acc + w * q;
+  }, 0);
+
+  const prefillQuote = prefill?.state && prefill?.postcode
+    ? shippingService.quoteShippingCents({ state: prefill.state, postcode: prefill.postcode, weightKg: totalWeightKg })
+    : null;
+  const prefillShippingFee = prefillQuote ? Number(prefillQuote.shippingCents || 0) : 0;
+  const prefillShippingLabel = prefillQuote && prefillQuote.zone && prefillQuote.zone.name
+    ? String(prefillQuote.zone.name)
+    : '-';
 
   return res.render('orders/checkout', {
     title: 'Checkout',
@@ -143,20 +154,21 @@ router.get('/checkout', async (req, res) => {
     canOnlinePay: fiuu.isConfigured(),
     prefill,
     malaysiaStates: MALAYSIA_STATES,
-    prefillRegion,
     prefillShippingFee,
-    courierFees,
+    prefillShippingLabel,
+    totalWeightKg,
   });
 });
 
 router.post(
-  '/checkout/promo-check',
+  '/checkout/quote',
   csrfProtection({ ignoreMultipart: true }),
   validate(
     z.object({
       body: z.object({
         promo_code: z.string().trim().max(32).optional().or(z.literal('')),
         state: z.enum(MALAYSIA_STATES),
+        postcode: z.string().trim().regex(/^\d{5}$/),
       }),
       query: z.any().optional(),
       params: z.any().optional(),
@@ -170,14 +182,136 @@ router.post(
     const cart = cartService.getCart(req.session);
     const hydrated = await cartService.hydrateCart(cart);
     const itemsTotal = Math.max(0, Number(hydrated.total || 0));
-    const shippingCents = shippingService.getCourierFeeCentsForState(req.validated.body.state);
+
+    const totalWeightKg = hydrated.items.reduce((acc, line) => {
+      const w = Number(line?.product?.weight_kg || 0);
+      const q = Number(line?.quantity || 0);
+      if (!Number.isFinite(w) || !Number.isFinite(q) || q <= 0) return acc;
+      return acc + w * q;
+    }, 0);
+
+    const quote = shippingService.quoteShippingCents({
+      state: req.validated.body.state,
+      postcode: req.validated.body.postcode,
+      weightKg: totalWeightKg,
+    });
+
+    const shippingOk = !quote || !quote.noMatch;
+    const shippingCents = shippingOk ? Math.max(0, Number(quote.shippingCents || 0)) : 0;
     const preDiscountGrandTotal = itemsTotal + shippingCents;
 
-    const applied = promoService.applyPromoToTotal({
-      promoCodeInput: req.validated.body.promo_code,
-      // Promo applies to items subtotal only (shipping excluded).
+    const promoCodeInput = req.validated.body.promo_code;
+    let applied = promoService.applyPromoToTotal({
+      promoCodeInput,
       totalCents: itemsTotal,
     });
+
+    if (applied?.promo?.applies_to_shipping) {
+      applied = promoService.applyPromoToTotal({
+        promoCodeInput,
+        totalCents: shippingCents,
+      });
+    }
+
+    const ok = Boolean(applied && applied.promo);
+    const discountCents = ok ? Number(applied.discount || 0) : 0;
+    const grandTotalCents = Math.max(0, preDiscountGrandTotal - discountCents);
+
+    const label = quote && quote.zone && quote.zone.name
+      ? String(quote.zone.name)
+      : '-';
+
+    if (!shippingOk) {
+      return res.json({
+        ok: false,
+        message: 'Shipping is not available for the selected address. Please select a different delivery area or contact us.',
+        promo: null,
+        discountCents: 0,
+        shippingCents: 0,
+        preDiscountGrandTotalCents: itemsTotal,
+        grandTotalCents: itemsTotal,
+        shippingLabel: '-',
+        shippingOk: false,
+        totalWeightKg,
+      });
+    }
+
+    return res.json({
+      ok,
+      message: ok ? 'Promo applied.' : (promoCodeInput ? 'Promo code is not valid.' : ''),
+      promo: ok ? applied.promo : null,
+      discountCents,
+      shippingCents,
+      preDiscountGrandTotalCents: preDiscountGrandTotal,
+      grandTotalCents,
+      shippingLabel: label,
+      shippingOk: true,
+      totalWeightKg,
+    });
+  }
+);
+
+router.post(
+  '/checkout/promo-check',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({
+        promo_code: z.string().trim().max(32).optional().or(z.literal('')),
+        state: z.enum(MALAYSIA_STATES),
+        postcode: z.string().trim().regex(/^\d{5}$/).optional().or(z.literal('')),
+      }),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  async (req, res) => {
+    if (req.session.user?.isAdmin) {
+      return res.status(403).json({ ok: false, message: 'Admins cannot place orders.' });
+    }
+
+    const cart = cartService.getCart(req.session);
+    const hydrated = await cartService.hydrateCart(cart);
+    const itemsTotal = Math.max(0, Number(hydrated.total || 0));
+
+    const totalWeightKg = hydrated.items.reduce((acc, line) => {
+      const w = Number(line?.product?.weight_kg || 0);
+      const q = Number(line?.quantity || 0);
+      if (!Number.isFinite(w) || !Number.isFinite(q) || q <= 0) return acc;
+      return acc + w * q;
+    }, 0);
+
+    const quote = shippingService.quoteShippingCents({
+      state: req.validated.body.state,
+      postcode: req.validated.body.postcode || null,
+      weightKg: totalWeightKg,
+    });
+    const shippingOk = !quote || !quote.noMatch;
+    const shippingCents = shippingOk ? Math.max(0, Number(quote.shippingCents || 0)) : 0;
+    const preDiscountGrandTotal = itemsTotal + shippingCents;
+
+    if (!shippingOk) {
+      return res.json({
+        ok: false,
+        message: 'Shipping is not available for the selected address. Please select a different delivery area or contact us.',
+        discountCents: 0,
+        shippingCents: 0,
+        preDiscountGrandTotalCents: itemsTotal,
+        grandTotalCents: itemsTotal,
+        shippingOk: false,
+      });
+    }
+
+    let applied = promoService.applyPromoToTotal({
+      promoCodeInput: req.validated.body.promo_code,
+      totalCents: itemsTotal,
+    });
+    if (applied?.promo?.applies_to_shipping) {
+      applied = promoService.applyPromoToTotal({
+        promoCodeInput: req.validated.body.promo_code,
+        totalCents: shippingCents,
+      });
+    }
 
     if (!applied.promo) {
       return res.json({
@@ -187,6 +321,7 @@ router.post(
         shippingCents,
         preDiscountGrandTotalCents: preDiscountGrandTotal,
         grandTotalCents: preDiscountGrandTotal,
+        shippingOk: true,
       });
     }
 
@@ -198,6 +333,7 @@ router.post(
       shippingCents,
       preDiscountGrandTotalCents: preDiscountGrandTotal,
       grandTotalCents: Math.max(0, preDiscountGrandTotal - applied.discount),
+      shippingOk: true,
     });
   }
 );
@@ -321,6 +457,11 @@ router.post(
         debugFiuu: Boolean(env.fiuu.logRequests),
       });
     } catch (e) {
+      if (e && e.status === 400 && String(e.message || '').toLowerCase().includes('shipping')) {
+        req.session.flash = { type: 'error', message: String(e.message || 'Shipping is not available for the selected address.') };
+        return res.redirect('/checkout');
+      }
+
       return next(e);
     }
   }

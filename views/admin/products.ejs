@@ -6,18 +6,6 @@
     <div class="muted small"><%= total %> products</div>
   </div>
   <div class="actions icon-row">
-    <div class="actions-group">
-      <button class="btn btn-icon icon-only" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true" title="Filters" aria-label="Filters" data-label="Filters"><%- icon('filter') %></button>
-      <a class="btn btn-icon" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
-      <a class="btn btn-icon" href="/admin/users" title="Users" aria-label="Users" data-label="Users"><%- icon('user') %></a>
-      <a class="btn btn-icon" href="/admin/categories" title="Categories" aria-label="Categories" data-label="Categories"><%- icon('tag') %></a>
-      <a class="btn btn-icon" href="/admin/reports/sales" title="Sales report" aria-label="Sales report" data-label="Sales report"><%- icon('chart') %></a>
-      <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
-      <a class="btn btn-icon" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
-    </div>
-
-    <span class="actions-sep" aria-hidden="true"></span>
-
     <% const baseQs = new URLSearchParams(); %>
     <% if (q) baseQs.set('q', q); %>
     <% if (category) baseQs.set('category', category); %>
@@ -36,7 +24,19 @@
     <% const listHref = `/admin/products?${listQs.toString()}`; %>
     <% const gridHref = `/admin/products?${gridQs.toString()}`; %>
 
+    <% const exportHref = `/admin/exports/products.csv?${baseQs.toString()}`; %>
+
     <div class="actions-group">
+      <a class="btn btn-secondary btn-icon" href="<%= exportHref %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
+        <%- icon('file-text') %>
+        <span class="btn-text">Export</span>
+      </a>
+
+      <button class="btn btn-secondary btn-icon" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true">
+        <%- icon('filter') %>
+        <span class="btn-text">Filters</span>
+      </button>
+
       <label class="sr-only" for="viewSelect">View</label>
       <select id="viewSelect" class="select-compact" aria-label="View" onchange="if (this.value) window.location.href = this.value">
         <option value="<%= listHref %>" <%= view === 'list' ? 'selected' : '' %>>List view</option>
@@ -48,7 +48,7 @@
   </div>
 </div>
 
-<div class="card filters-panel" id="filters-panel" style="padding:14px; margin-top:12px" data-filters-panel>
+<div class="card card--pad card--mt filters-panel" id="filters-panel" data-filters-panel>
   <div class="filters-panel__top">
     <div class="filters-panel__title">Filters</div>
     <button class="btn btn-icon icon-only" type="button" data-filters-close title="Close filters" aria-label="Close filters" data-label="Close"><%- icon('x') %></button>
@@ -162,13 +162,13 @@
               <% if (p.visibility) { %>
                 <span class="badge ok">Visible</span>
               <% } else { %>
-                <span class="badge">Hidden</span>
+                <span class="badge neutral">Hidden</span>
               <% } %>
               <% if (p.archived) { %>
                 <span class="badge no">Archived</span>
               <% } %>
               <% if (p.product_image) { %>
-                <span class="badge">Has image</span>
+                <span class="badge info">Has image</span>
               <% } %>
             </div>
           </a>

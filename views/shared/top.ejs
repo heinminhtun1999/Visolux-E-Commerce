@@ -4,16 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><%= title || 'Visolux' %></title>
-  <link rel="icon" href="/favicon.ico" />
   <% const faviconHref = siteLogoUrl || '/public/placeholder.svg'; %>
   <link rel="icon" href="<%= faviconHref %>" />
   <link rel="apple-touch-icon" href="<%= faviconHref %>" />
   <link rel="stylesheet" href="/public/css/app.css" />
 </head>
-<body>
+<% const isAdminArea = (currentPath || '').startsWith('/admin'); %>
+<body class="<%= isAdminArea ? 'is-admin' : 'is-store' %>">
   <div class="container <%= (typeof containerClass !== 'undefined' && containerClass) ? containerClass : '' %>">
-    <header class="site-header" style="margin-top:10px; margin-bottom:12px">
+
+
+    <header class="site-header site-header--sticky" style="margin-top:10px; margin-bottom:12px">
       <div class="site-header__brand">
+        <% if (isAdminArea) { %>
+          <button class="btn btn-icon icon-only" type="button" data-admin-sidebar-toggle title="Toggle sidebar" aria-label="Toggle sidebar" data-label="Toggle sidebar"><%- icon('panel-left') %></button>
+        <% } %>
+
         <a class="site-brand" href="/" aria-label="Home">
           <% if (siteLogoUrl) { %>
             <img src="<%= siteLogoUrl %>" alt="<%= siteName || 'Home' %>" />
@@ -23,30 +29,59 @@
         </a>
       </div>
 
+      <% if (!isAdminArea) { %>
+        <nav class="store-nav" aria-label="Store navigation">
+          <a class="store-nav__link <%= (currentPath || '') === '/' ? 'is-active' : '' %>" href="/">Home</a>
+
+          <div class="store-nav__dropdown">
+            <button type="button" class="store-nav__link store-nav__linkBtn" aria-haspopup="menu">
+              Categories
+              <span class="store-nav__chev" aria-hidden="true"><%- icon('chevron-down', { size: 16 }) %></span>
+            </button>
+            <div class="store-nav__menu">
+              <% const cats = (typeof navCategories !== 'undefined' && Array.isArray(navCategories)) ? navCategories : []; %>
+              <a class="store-nav__menuItem" href="/products">All products</a>
+              <% if (cats.length) { %>
+                <div class="store-nav__menuDivider"></div>
+                <% cats.forEach(function(c){ %>
+                  <a class="store-nav__menuItem" href="/products?category=<%= encodeURIComponent(c.slug) %>"><%= c.name %></a>
+                <% }) %>
+              <% } %>
+            </div>
+          </div>
+
+          <a class="store-nav__link <%= (currentPath || '').startsWith('/how-to-order') ? 'is-active' : '' %>" href="/how-to-order">How to order</a>
+        </nav>
+      <% } %>
+
       <div class="site-header__actions actions icon-row">
-        <% const isAdminArea = (currentPath || '').startsWith('/admin'); %>
         <% const showAdminBell = isAdmin; %>
         <% const showAdminLink = isAdmin && !isAdminArea; %>
 
-        <% if (!isAdminArea && (currentPath || '').startsWith('/products')) { %>
-          <button class="btn btn-icon icon-only" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true" title="Filters" aria-label="Filters" data-label="Filters"><%- icon('filter') %></button>
-        <% } %>
-
         <% if (!isAdmin) { %>
-          <a class="btn btn-icon icon-only <%= (currentPath || '') === '/' ? 'is-active' : '' %>" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
-          <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/cart') ? 'is-active' : '' %>" href="/cart" title="Cart" aria-label="Cart" data-label="Cart">
+          <a class="btn btn-icon <%= (currentPath || '').startsWith('/cart') ? 'is-active' : '' %>" href="/cart" title="Cart" aria-label="Cart" data-label="Cart">
             <%- icon('cart') %>
+            <span class="btn-text">Cart</span>
             <% if (cartItemCount > 0) { %><span class="btn-badge" aria-label="<%= cartItemCount %> items in cart"><%= cartItemCount %></span><% } %>
           </a>
         <% } %>
 
         <% if (currentUser && !isAdmin) { %>
-          <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/orders') ? 'is-active' : '' %>" href="/orders/history" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
-          <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/account') ? 'is-active' : '' %>" href="/account" title="Account" aria-label="Account" data-label="Account"><%- icon('user') %></a>
+          <a class="btn btn-icon <%= (currentPath || '').startsWith('/orders') ? 'is-active' : '' %>" href="/orders/history" title="Orders" aria-label="Orders" data-label="Orders">
+            <%- icon('orders') %>
+            <span class="btn-text">Orders</span>
+          </a>
+          <a class="btn btn-icon <%= (currentPath || '').startsWith('/account') ? 'is-active' : '' %>" href="/account" title="Account" aria-label="Account" data-label="Account">
+            <%- icon('user') %>
+            <span class="btn-text">Account</span>
+          </a>
         <% } %>
 
         <% if (!currentUser) { %>
-          <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/login') ? 'is-active' : '' %>" href="/login" title="Sign in" aria-label="Sign in" data-label="Sign in"><%- icon('login') %></a>
+          <a class="btn btn-icon <%= (currentPath || '').startsWith('/login') ? 'is-active' : '' %>" href="/login" title="Sign in" aria-label="Sign in" data-label="Sign in">
+            <%- icon('login') %>
+            <span class="btn-text">Sign in</span>
+          </a>
         <% } %>
 
         <% if (showAdminBell) { %>
@@ -92,11 +127,84 @@
     <% } %>
 
     <% if (typeof flash !== 'undefined' && flash) { %>
-      <div class="flash <%= flash.type %>"><%= flash.message %></div>
+      <div class="flash <%= flash.type %>" data-flash role="status" aria-live="polite">
+        <div class="flash__row">
+          <div class="flash__msg"><%= flash.message %></div>
+          <button class="flash__close" type="button" data-flash-close aria-label="Dismiss">
+            <%- icon('x', { size: 18 }) %>
+          </button>
+        </div>
+      </div>
+    <% } %>
+
+    <% if (isAdminArea) { %>
+      <div class="admin-shell">
+        <aside class="admin-sidebar" aria-label="Admin navigation">
+          <div class="admin-sidebar__inner">
+            <div class="admin-nav__section">Catalog</div>
+            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/products') ? 'is-active' : '' %>" href="/admin/products">
+              <span class="admin-nav__icon"><%- icon('box') %></span>
+              <span class="admin-nav__label">Products</span>
+            </a>
+            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/categories') ? 'is-active' : '' %>" href="/admin/categories">
+              <span class="admin-nav__icon"><%- icon('layers') %></span>
+              <span class="admin-nav__label">Categories</span>
+            </a>
+
+            <div class="admin-nav__section">Sales</div>
+            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/orders') ? 'is-active' : '' %>" href="/admin/orders">
+              <span class="admin-nav__icon"><%- icon('shopping-bag') %></span>
+              <span class="admin-nav__label">Orders</span>
+            </a>
+            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/reports/sales') ? 'is-active' : '' %>" href="/admin/reports/sales">
+              <span class="admin-nav__icon"><%- icon('bar-chart-3') %></span>
+              <span class="admin-nav__label">Sales report</span>
+            </a>
+
+            <div class="admin-nav__section">People</div>
+            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/users') ? 'is-active' : '' %>" href="/admin/users">
+              <span class="admin-nav__icon"><%- icon('users') %></span>
+              <span class="admin-nav__label">Users</span>
+            </a>
+
+            <div class="admin-nav__section">Comms</div>
+            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/notifications') ? 'is-active' : '' %>" href="/admin/notifications">
+              <span class="admin-nav__icon"><%- icon('bell') %></span>
+              <span class="admin-nav__label">Notifications</span>
+            </a>
+            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/contact-messages') ? 'is-active' : '' %>" href="/admin/contact-messages">
+              <span class="admin-nav__icon"><%- icon('mail') %></span>
+              <span class="admin-nav__label">Contact messages</span>
+            </a>
+
+            <div class="admin-nav__section">Content</div>
+            <a class="admin-nav__item <%= (currentPath || '') === '/admin/pages/privacy' ? 'is-active' : '' %>" href="/admin/pages/privacy">
+              <span class="admin-nav__icon"><%- icon('file-text') %></span>
+              <span class="admin-nav__label">Privacy</span>
+            </a>
+            <a class="admin-nav__item <%= (currentPath || '') === '/admin/pages/terms' ? 'is-active' : '' %>" href="/admin/pages/terms">
+              <span class="admin-nav__icon"><%- icon('file-text') %></span>
+              <span class="admin-nav__label">Terms</span>
+            </a>
+            <a class="admin-nav__item <%= (currentPath || '') === '/admin/pages/how-to-order' ? 'is-active' : '' %>" href="/admin/pages/how-to-order">
+              <span class="admin-nav__icon"><%- icon('file-text') %></span>
+              <span class="admin-nav__label">How to order</span>
+            </a>
+
+            <div class="admin-nav__section">System</div>
+            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings">
+              <span class="admin-nav__icon"><%- icon('settings') %></span>
+              <span class="admin-nav__label">Settings</span>
+            </a>
+          </div>
+        </aside>
+        <main class="admin-main">
     <% } %>
 
     <script src="/public/js/table-sort.js" defer></script>
     <script src="/public/js/flash-dismiss.js" defer></script>
     <% if (isAdmin && (currentPath || '').startsWith('/admin')) { %>
       <script src="/public/js/admin-notifications.js" defer></script>
+      <script src="/public/js/admin-sidebar.js" defer></script>
     <% } %>
+

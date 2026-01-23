@@ -7,7 +7,6 @@
   </div>
   <div class="actions icon-row">
     <a class="btn btn-icon icon-only" href="/admin/contact-messages" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></a>
-    <a class="btn btn-icon icon-only" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
 
     <% if (!message.is_read) { %>
       <form method="post" action="/admin/contact-messages/<%= message.id %>/read" style="display:inline">
@@ -23,7 +22,7 @@
 
     <form method="post" action="/admin/contact-messages/<%= message.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this message?');">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-      <button class="btn btn-icon icon-only" type="submit" title="Delete" aria-label="Delete" data-label="Delete"><%- icon('x') %></button>
+      <button class="btn btn-icon icon-only" type="submit" title="Delete" aria-label="Delete" data-label="Delete"><%- icon('trash-2') %></button>
     </form>
   </div>
 </div>

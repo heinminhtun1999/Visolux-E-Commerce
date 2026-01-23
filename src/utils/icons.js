@@ -1,5 +1,5 @@
 function svg(attrs, path) {
-  return `<svg ${attrs} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">${path}</svg>`;
+  return `<svg ${attrs} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 }
 
 function icon(name, opts = {}) {
@@ -10,10 +10,172 @@ function icon(name, opts = {}) {
   const titleTag = title ? `<title>${escapeHtml(title)}</title>` : '';
 
   switch (String(name)) {
+    // Lucide icons (preferred)
+    case 'chevron-down':
+      return svg(baseAttrs, `${titleTag}<path d="m6 9 6 6 6-6"/>`);
+    case 'panel-left':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M9 3v18"/>
+        `
+      );
+    case 'columns-2':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <rect x="3" y="4" width="18" height="16" rx="2"/>
+        <path d="M12 4v16"/>
+        `
+      );
+    case 'bar-chart-3':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M3 3v18h18"/>
+        <path d="M7 16v-6"/>
+        <path d="M12 16V6"/>
+        <path d="M17 16v-9"/>
+        `
+      );
+    case 'layout-dashboard':
+    case 'dashboard':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <rect x="3" y="3" width="7" height="9" rx="1"/>
+        <rect x="14" y="3" width="7" height="5" rx="1"/>
+        <rect x="14" y="12" width="7" height="9" rx="1"/>
+        <rect x="3" y="16" width="7" height="5" rx="1"/>
+        `
+      );
+    case 'box':
+    case 'products':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+        <path d="M3.3 7 12 12l8.7-5"/>
+        <path d="M12 22V12"/>
+        `
+      );
+    case 'layers':
+    case 'categories':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.84l8.57 3.9a2 2 0 0 0 1.66 0l8.57-3.9a1 1 0 0 0 0-1.84Z"/>
+        <path d="m2 12 9.17 4.19a2 2 0 0 0 1.66 0L22 12"/>
+        <path d="m2 16 9.17 4.19a2 2 0 0 0 1.66 0L22 16"/>
+        `
+      );
+    case 'shopping-bag':
+    case 'orders-admin':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+        <path d="M3 6h18"/>
+        <path d="M16 10a4 4 0 0 1-8 0"/>
+        `
+      );
+    case 'users':
+    case 'customers':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        `
+      );
+    case 'settings':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.15.08a2 2 0 0 1-2-.02l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.08a2 2 0 0 1 1 1.73V12a2 2 0 0 1-1 1.73l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2-.02l.15.08a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.15-.08a2 2 0 0 1 2 .02l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.73v-.36a2 2 0 0 1 1-1.73l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 .02l-.15-.08a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"/>
+        <circle cx="12" cy="12" r="3"/>
+        `
+      );
+    case 'plus':
+    case 'add':
+      return svg(baseAttrs, `${titleTag}<path d="M12 5v14"/><path d="M5 12h14"/>`);
+    case 'pencil':
+    case 'edit-lucide':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+        <path d="m15 5 4 4"/>
+        `
+      );
+    case 'trash-2':
+    case 'trash':
+    case 'delete':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M3 6h18"/>
+        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+        <path d="M10 11v6"/>
+        <path d="M14 11v6"/>
+        `
+      );
+    case 'file-text':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/>
+        <path d="M14 2v6h6"/>
+        <path d="M8 13h8"/>
+        <path d="M8 17h8"/>
+        <path d="M8 9h3"/>
+        `
+      );
+    case 'eye':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+        <circle cx="12" cy="12" r="3"/>
+        `
+      );
+    case 'search':
+      return svg(baseAttrs, `${titleTag}<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>`);
+    case 'sliders-horizontal':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M21 4H14"/>
+        <path d="M10 4H3"/>
+        <path d="M21 12H12"/>
+        <path d="M8 12H3"/>
+        <path d="M21 20H16"/>
+        <path d="M12 20H3"/>
+        <path d="M14 2v4"/>
+        <path d="M8 10v4"/>
+        <path d="M16 18v4"/>
+        `
+      );
+    case 'log-out':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <path d="M16 17l5-5-5-5"/>
+        <path d="M21 12H9"/>
+        `
+      );
+
     case 'home':
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5 12 3l9 7.5V21a.75.75 0 0 1-.75.75H15a.75.75 0 0 1-.75-.75v-6.75h-4.5V21a.75.75 0 0 1-.75.75H3.75A.75.75 0 0 1 3 21V10.5Z"/>`);
     case 'cart':
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.5l.75 3m0 0 1.5 6h12l2.25-8.25H4.5Zm3 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm10.5 0a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z"/>`);
+    case 'shopping-cart':
+      return icon('cart', opts);
     case 'orders':
       return svg(
         baseAttrs,
@@ -44,7 +206,7 @@ function icon(name, opts = {}) {
     case 'admin':
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12a7.5 7.5 0 0 0-.09-1.17l1.62-1.26-1.5-2.6-1.95.78a7.59 7.59 0 0 0-2.02-1.17l-.3-2.07h-3l-.3 2.07a7.59 7.59 0 0 0-2.02 1.17l-1.95-.78-1.5 2.6 1.62 1.26A7.5 7.5 0 0 0 4.5 12c0 .4.03.79.09 1.17l-1.62 1.26 1.5 2.6 1.95-.78c.62.5 1.3.9 2.02 1.17l.3 2.07h3l.3-2.07c.72-.27 1.4-.67 2.02-1.17l1.95.78 1.5-2.6-1.62-1.26c.06-.38.09-.77.09-1.17Z"/>`);
     case 'logout':
-      return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15"/><path stroke-linecap="round" stroke-linejoin="round" d="M18 12H9m0 0 3-3m-3 3 3 3"/>`);
+      return icon('log-out', opts);
     case 'login':
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 12h9m0 0-3-3m3 3-3 3"/>`);
     case 'filter':
@@ -54,14 +216,11 @@ function icon(name, opts = {}) {
     case 'plus':
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>`);
     case 'edit':
-      return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487 19.5 7.125M7.5 20.25H4.5v-3L15.75 6l3 3L7.5 20.25Z"/>`);
+      return icon('pencil', opts);
     case 'gear':
-      return svg(
-        baseAttrs,
-        `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.094c.55 0 1.02.398 1.11.94l.149.894c.07.424.37.776.78.93.329.123.64.285.928.483.356.246.84.262 1.205.043l.761-.457c.474-.284 1.08-.152 1.38.3l.547.82c.3.451.25 1.07-.12 1.412l-.693.637c-.328.3-.44.78-.287 1.182.122.322.214.66.27 1.01.07.424.37.776.78.93l.894.335c.51.191.825.716.725 1.258l-.214 1.137c-.1.542-.57.94-1.12.94h-.895c-.425 0-.81.247-.99.634-.154.329-.347.64-.574.926-.246.356-.262.84-.043 1.205l.457.761c.284.474.152 1.08-.3 1.38l-.82.547c-.451.3-1.07.25-1.412-.12l-.637-.693c-.3-.328-.78-.44-1.182-.287-.322.122-.66.214-1.01.27-.424.07-.776.37-.93.78l-.335.894c-.191.51-.716.825-1.258.725l-1.137-.214c-.542-.1-.94-.57-.94-1.12v-.895c0-.425-.247-.81-.634-.99-.329-.154-.64-.347-.926-.574-.356-.246-.84-.262-1.205-.043l-.761.457c-.474.284-1.08.152-1.38-.3l-.547-.82c-.3-.451-.25-1.07.12-1.412l.693-.637c.328-.3.44-.78.287-1.182-.122-.322-.214-.66-.27-1.01-.07-.424-.37-.776-.78-.93l-.894-.335c-.51-.191-.825-.716-.725-1.258l.214-1.137c.1-.542.57-.94 1.12-.94h.895c.425 0 .81-.247.99-.634.154-.329.347-.64.574-.926.246-.356.262-.84.043-1.205l-.457-.761c-.284-.474-.152-1.08.3-1.38l.82-.547c.451-.3 1.07-.25 1.412.12l.637.693c.3.328.78.44 1.182.287.322-.122.66-.214 1.01-.27.424-.07.776-.37.93-.78l.335-.894Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z"/>`
-      );
+      return icon('settings', opts);
     case 'view':
-      return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12s3.75-7.5 9.75-7.5S21.75 12 21.75 12s-3.75 7.5-9.75 7.5S2.25 12 2.25 12Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>`);
+      return icon('eye', opts);
     case 'check':
       return svg(baseAttrs, `${titleTag}<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 4.5 4.5 10.5-12"/>`);
     case 'x':

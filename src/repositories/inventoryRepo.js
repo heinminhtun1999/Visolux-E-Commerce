@@ -10,6 +10,11 @@ function mapProduct(row) {
     category: row.category,
     category_name: row.category_name || null,
     price: row.price,
+    cost_price: row.cost_price == null ? null : Number(row.cost_price),
+    weight_kg: row.weight_kg == null ? null : Number(row.weight_kg),
+    height_cm: row.height_cm == null ? null : Number(row.height_cm),
+    length_cm: row.length_cm == null ? null : Number(row.length_cm),
+    width_cm: row.width_cm == null ? null : Number(row.width_cm),
     stock: row.stock,
     availability: Boolean(row.availability),
     visibility: Boolean(row.visibility),
@@ -275,7 +280,22 @@ function getById(productId) {
   );
 }
 
-function create({ name, description, description_html, category, price, stock, visibility, archived, product_image }) {
+function create({
+  name,
+  description,
+  description_html,
+  category,
+  price,
+  cost_price,
+  weight_kg,
+  height_cm,
+  length_cm,
+  width_cm,
+  stock,
+  visibility,
+  archived,
+  product_image,
+}) {
   const db = getDb();
   if (!Number.isFinite(Number(price)) || Number(price) < 100) {
     const err = new Error('Minimum product price is RM 1.00');
@@ -283,8 +303,8 @@ function create({ name, description, description_html, category, price, stock, v
     throw err;
   }
   const stmt = db.prepare(
-    `INSERT INTO inventory (name, description, description_html, category, price, stock, visibility, archived, product_image)
-     VALUES (@name, @description, @description_html, @category, @price, @stock, @visibility, @archived, @product_image)`
+    `INSERT INTO inventory (name, description, description_html, category, price, cost_price, weight_kg, height_cm, length_cm, width_cm, stock, visibility, archived, product_image)
+     VALUES (@name, @description, @description_html, @category, @price, @cost_price, @weight_kg, @height_cm, @length_cm, @width_cm, @stock, @visibility, @archived, @product_image)`
   );
   const result = stmt.run({
     name,
@@ -292,6 +312,11 @@ function create({ name, description, description_html, category, price, stock, v
     description_html: description_html || '',
     category,
     price,
+    cost_price: cost_price == null ? null : Number(cost_price),
+    weight_kg: weight_kg == null ? null : Number(weight_kg),
+    height_cm: height_cm == null ? null : Number(height_cm),
+    length_cm: length_cm == null ? null : Number(length_cm),
+    width_cm: width_cm == null ? null : Number(width_cm),
     stock,
     visibility: visibility ? 1 : 0,
     archived: archived ? 1 : 0,
@@ -318,7 +343,9 @@ function update(productId, patch) {
 
   db.prepare(
     `UPDATE inventory
-     SET name=@name, description=@description, description_html=@description_html, category=@category, price=@price, stock=@stock,
+     SET name=@name, description=@description, description_html=@description_html, category=@category, price=@price,
+         cost_price=@cost_price, weight_kg=@weight_kg, height_cm=@height_cm, length_cm=@length_cm, width_cm=@width_cm,
+         stock=@stock,
          visibility=@visibility, archived=@archived, product_image=@product_image
      WHERE product_id=@product_id`
   ).run({
@@ -328,6 +355,11 @@ function update(productId, patch) {
     description_html: next.description_html || '',
     category: next.category,
     price: next.price,
+    cost_price: next.cost_price == null ? null : Number(next.cost_price),
+    weight_kg: next.weight_kg == null ? null : Number(next.weight_kg),
+    height_cm: next.height_cm == null ? null : Number(next.height_cm),
+    length_cm: next.length_cm == null ? null : Number(next.length_cm),
+    width_cm: next.width_cm == null ? null : Number(next.width_cm),
     stock: next.stock,
     visibility: next.visibility ? 1 : 0,
     archived: next.archived ? 1 : 0,

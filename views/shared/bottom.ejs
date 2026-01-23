@@ -1,3 +1,9 @@
+    <% const isAdminArea = (currentPath || '').startsWith('/admin'); %>
+
+    <% if (isAdminArea) { %>
+        </main>
+      </div>
+    <% } else { %>
     <footer class="site-footer" style="margin-top:18px">
       <% const ci = contactInfo || {}; %>
       <% const phone = String(ci.phone || '').trim(); %>
@@ -56,7 +62,6 @@
               <a href="<%= tech %>" class="site-footer__link" target="_blank" rel="noopener noreferrer">Request Technician Onsite Support</a>
             <% } %>
             <a href="/products" class="site-footer__link">Products</a>
-            <a href="/how-to-order" class="site-footer__link">How to Order</a>
           </div>
         </div>
 
@@ -101,6 +106,9 @@
         </div>
       </div>
     </footer>
+    <% } %>
   </div>
+
+  <script src="/public/js/flash-dismiss.js" defer></script>
 </body>
 </html>

@@ -38,6 +38,7 @@ function initializeSchema(database) {
   ensureOrdersPricingColumns(database);
   ensureOrdersPaymentChannel(database);
   ensureOrdersPaymentStatusEnum(database);
+  ensureOrdersAdminNote(database);
   ensureOrderItemRefunds(database);
   ensureOrderItemRefundGatewayColumns(database);
   ensureOrderRefunds(database);
@@ -46,10 +47,12 @@ function initializeSchema(database) {
   ensureOfflineTransferPurge(database);
   ensureOfflineTransferRejection(database);
   ensurePromoCodesV2(database);
+  ensurePromoCodesShippingFlag(database);
   ensureCategories(database);
   ensureCategorySections(database);
   ensureInventoryCategoryIsFlexible(database);
   ensureInventoryDescriptionHtml(database);
+  ensureInventoryCostAndDimensions(database);
   ensureProductImages(database);
   ensureContactMessages(database);
   seedCategoriesFromInventory(database);
@@ -62,6 +65,27 @@ function ensureInventoryDescriptionHtml(database) {
   const has = (name) => cols.some((c) => c.name === name);
   if (!has('description_html')) {
     database.exec("ALTER TABLE inventory ADD COLUMN description_html TEXT NOT NULL DEFAULT ''");
+  }
+}
+
+function ensureInventoryCostAndDimensions(database) {
+  const cols = database.prepare("PRAGMA table_info('inventory')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+
+  if (!has('cost_price')) {
+    database.exec('ALTER TABLE inventory ADD COLUMN cost_price INTEGER');
+  }
+  if (!has('weight_kg')) {
+    database.exec('ALTER TABLE inventory ADD COLUMN weight_kg REAL');
+  }
+  if (!has('height_cm')) {
+    database.exec('ALTER TABLE inventory ADD COLUMN height_cm REAL');
+  }
+  if (!has('length_cm')) {
+    database.exec('ALTER TABLE inventory ADD COLUMN length_cm REAL');
+  }
+  if (!has('width_cm')) {
+    database.exec('ALTER TABLE inventory ADD COLUMN width_cm REAL');
   }
 }
 
@@ -219,6 +243,20 @@ function ensurePromoCodesV2(database) {
 
   // Create index after upgrade.
   database.exec('CREATE INDEX IF NOT EXISTS idx_promo_codes_active ON promo_codes(archived, active, code)');
+}
+
+function ensurePromoCodesShippingFlag(database) {
+  const promoCols = database.prepare("PRAGMA table_info('promo_codes')").all();
+  const hasPromo = (name) => promoCols.some((c) => c.name === name);
+  if (promoCols.length && !hasPromo('applies_to_shipping')) {
+    database.exec('ALTER TABLE promo_codes ADD COLUMN applies_to_shipping INTEGER NOT NULL DEFAULT 0');
+  }
+
+  const orderPromoCols = database.prepare("PRAGMA table_info('order_promos')").all();
+  const hasOrderPromo = (name) => orderPromoCols.some((c) => c.name === name);
+  if (orderPromoCols.length && !hasOrderPromo('applies_to_shipping')) {
+    database.exec('ALTER TABLE order_promos ADD COLUMN applies_to_shipping INTEGER NOT NULL DEFAULT 0');
+  }
 }
 
 function ensureCategories(database) {
@@ -466,6 +504,14 @@ function ensureUsersAddressColumns(database) {
   if (!has('city')) database.exec('ALTER TABLE users ADD COLUMN city TEXT');
   if (!has('state')) database.exec('ALTER TABLE users ADD COLUMN state TEXT');
   if (!has('postcode')) database.exec('ALTER TABLE users ADD COLUMN postcode TEXT');
+}
+
+function ensureOrdersAdminNote(database) {
+  const cols = database.prepare("PRAGMA table_info('orders')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+  if (!has('admin_note')) {
+    database.exec("ALTER TABLE orders ADD COLUMN admin_note TEXT NOT NULL DEFAULT ''");
+  }
 }
 
 function ensureOrdersOrderCode(database) {
