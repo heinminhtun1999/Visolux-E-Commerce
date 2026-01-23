@@ -312,8 +312,30 @@ router.all('/payment/refund/notify', (req, res) => {
     }
 
     if (updated && updated.order_id) {
+      const orderId = Number(updated.order_id);
+      const before = orderRepo.getById(orderId);
+
       // If refund has now completed, this will update orders.refund_status and set payment_status=REFUNDED on full refund.
-      refundService.refreshOrderRefundStatus({ orderId: Number(updated.order_id) });
+      const refreshed = refundService.refreshOrderRefundStatus({ orderId });
+      const after = orderRepo.getById(orderId);
+
+      try {
+        const changed = before && after && String(before.refund_status || 'NONE') !== String(after.refund_status || 'NONE');
+        const rs = after ? String(after.refund_status || 'NONE') : 'NONE';
+        if (changed && (rs === 'PARTIAL_REFUND' || rs === 'FULL_REFUND')) {
+          const rm = refreshed ? `RM ${(Number(refreshed.refunded_amount || 0) / 100).toFixed(2)}` : '';
+          const note = rm ? `Refund confirmed: ${rm}` : 'Refund confirmed.';
+          Promise.resolve(
+            emailService.sendOrderStatusChangedEmailToCustomer({
+              order: after,
+              event: rs,
+              note,
+            })
+          ).catch(() => {});
+        }
+      } catch (_) {
+        // ignore email failures
+      }
     }
 
     return res.status(200).send('OK');

@@ -5,6 +5,7 @@ const path = require('path');
 const { z } = require('zod');
 
 const { requireAdmin, computeIsAdmin } = require('../middleware/auth');
+const { getDb } = require('../db/db');
 const { validate } = require('../middleware/validate');
 const { upload } = require('../middleware/uploads');
 const { csrfProtection } = require('../middleware/csrf');
@@ -27,9 +28,25 @@ const reportRepo = require('../repositories/reportRepo');
 const promoRepo = require('../repositories/promoRepo');
 const categorySectionRepo = require('../repositories/categorySectionRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
+const shippingService = require('../services/shippingService');
+const { MALAYSIA_STATES } = require('../utils/malaysia');
 const { renderMarkdown, sanitizeHtmlFragment, sanitizeHtmlFragmentNoImages } = require('../utils/markdown');
+const crypto = require('crypto');
 
 const router = express.Router();
+
+function csvCell(value) {
+  if (value == null) return '';
+  const s = String(value);
+  if (/["\r\n,]/.test(s) || /^\s|\s$/.test(s)) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function formatMoneyRm2(cents) {
+  return (Number(cents || 0) / 100).toFixed(2);
+}
 
 function parsePriceToCentsMinRM1(input) {
   const s = String(input || '').trim().replace(/,/g, '');
@@ -74,6 +91,18 @@ function parseMoneyToCentsAllowZero(input) {
   return Math.round(n * 100);
 }
 
+function parseNonNegativeNumberOrNull(input, { label }) {
+  const s = String(input == null ? '' : input).trim();
+  if (!s) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 0) {
+    const err = new Error(`${label} must be a non-negative number.`);
+    err.status = 400;
+    throw err;
+  }
+  return n;
+}
+
 function slugifyCategory(input) {
   const s = String(input || '').trim().toLowerCase();
   if (!s) return '';
@@ -112,7 +141,383 @@ router.get('/', (req, res) => res.redirect('/admin/products'));
 
 router.get('/site/home', (req, res) => res.redirect('/admin/categories'));
 router.get('/site/branding', (req, res) => res.redirect('/admin/settings#branding'));
-router.get('/site/shipping', (req, res) => res.redirect('/admin/settings#shipping'));
+
+router.get('/site/shipping', (req, res) => {
+  const westCents = Number(settingsRepo.get('shipping.courier.west_fee_cents', '800'));
+  const eastCents = Number(settingsRepo.get('shipping.courier.east_fee_cents', '1800'));
+  const westFeeRm = Number.isFinite(westCents) ? (westCents / 100).toFixed(2) : '8.00';
+  const eastFeeRm = Number.isFinite(eastCents) ? (eastCents / 100).toFixed(2) : '18.00';
+
+  return res.render('admin/shipping_settings', {
+    title: 'Admin – Shipping',
+    westFeeRm,
+    eastFeeRm,
+  });
+});
+
+function centsToRmFixed(cents) {
+  const n = Number(cents || 0) / 100;
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00';
+}
+
+function parseZipCodesText(text) {
+  const raw = String(text || '');
+  const parts = raw
+    .split(/[\n,]+/g)
+    .map((s) => String(s || '').trim())
+    .filter(Boolean);
+
+  // Keep unique while preserving order.
+  const seen = new Set();
+  const out = [];
+  for (const p of parts) {
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
+}
+
+router.get('/site/shipping-zones', (req, res) => {
+  const zones = (shippingService.getZones() || []).map((z) => {
+    const matchBy = String(z.match_by || 'SUBREGIONS').toUpperCase();
+    const methodsCount = Array.isArray(z.methods) ? z.methods.length : 0;
+    const coverageText = matchBy === 'ZIP_CODES'
+      ? `${Array.isArray(z.zip_codes) ? z.zip_codes.length : 0} zip code(s)`
+      : `${Array.isArray(z.subregions) ? z.subregions.length : 0}/${MALAYSIA_STATES.length} sub-region(s)`;
+
+    return {
+      id: String(z.id || ''),
+      name: String(z.name || ''),
+      match_by: matchBy,
+      coverageText,
+      methodsCount: methodsCount || 0,
+    };
+  });
+
+  return res.render('admin/shipping_zones', {
+    title: 'Admin – Shipping Zones',
+    zones,
+  });
+});
+
+router.get('/site/shipping-zones/new', (req, res) => {
+  return res.render('admin/shipping_zone_form', {
+    title: 'New shipping zone',
+    action: '/admin/site/shipping-zones',
+    zone: null,
+    malaysiaStates: MALAYSIA_STATES,
+    base: {
+      first_weight_kg: '1.00',
+      first_fee_rm: '8.00',
+      additional_weight_kg: '1.00',
+      additional_fee_rm: '2.00',
+    },
+    range: { enabled: false, min_weight_kg: '10.00', step_kg: '1.00', fee_rm: '1.50' },
+    zipCodesText: '',
+  });
+});
+
+router.get('/site/shipping-zones/:id', (req, res) => {
+  const id = String(req.params.id || '').trim();
+  const zones = shippingService.getZones() || [];
+  const zone = zones.find((z) => String(z.id || '') === id);
+  if (!zone) {
+    req.session.flash = { type: 'error', message: 'Shipping zone not found.' };
+    return res.redirect('/admin/site/shipping-zones');
+  }
+
+  const baseMethod = Array.isArray(zone.methods) ? zone.methods.find((m) => String(m.type || 'BASE').toUpperCase() === 'BASE') : null;
+  const rangeMethod = Array.isArray(zone.methods) ? zone.methods.find((m) => String(m.type || '').toUpperCase() === 'PER_STEP') : null;
+
+  return res.render('admin/shipping_zone_form', {
+    title: 'Edit shipping zone',
+    action: `/admin/site/shipping-zones/${encodeURIComponent(id)}`,
+    zone,
+    malaysiaStates: MALAYSIA_STATES,
+    base: {
+      first_weight_kg: baseMethod && baseMethod.first_weight_kg != null ? String(baseMethod.first_weight_kg) : '1.00',
+      first_fee_rm: centsToRmFixed(baseMethod ? baseMethod.first_fee_cents : 0),
+      additional_weight_kg: baseMethod && baseMethod.additional_weight_kg != null ? String(baseMethod.additional_weight_kg) : '1.00',
+      additional_fee_rm: centsToRmFixed(baseMethod ? baseMethod.additional_fee_cents : 0),
+    },
+    range: {
+      enabled: Boolean(rangeMethod),
+      min_weight_kg: rangeMethod && rangeMethod.min_weight_kg != null ? String(rangeMethod.min_weight_kg) : '10.00',
+      step_kg: rangeMethod && rangeMethod.step_kg != null ? String(rangeMethod.step_kg) : '1.00',
+      fee_rm: centsToRmFixed(rangeMethod ? rangeMethod.fee_cents_per_step : 0),
+    },
+    zipCodesText: Array.isArray(zone.zip_codes) ? zone.zip_codes.join('\n') : '',
+  });
+});
+
+router.post(
+  '/site/shipping-zones',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({
+        name: z.string().trim().min(2).max(80),
+        match_by: z.enum(['SUBREGIONS', 'ZIP_CODES']),
+        subregions: z.any().optional(),
+        zip_codes_text: z.string().optional().or(z.literal('')),
+        first_weight_kg: z.string().trim().min(1).max(32),
+        first_fee_rm: z.string().trim().min(1).max(32),
+        additional_weight_kg: z.string().trim().min(1).max(32),
+        additional_fee_rm: z.string().trim().min(1).max(32),
+        range_enabled: z.string().optional(),
+        range_min_weight_kg: z.string().optional().or(z.literal('')),
+        range_step_kg: z.string().optional().or(z.literal('')),
+        range_fee_rm: z.string().optional().or(z.literal('')),
+      }),
+      params: z.any().optional(),
+      query: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const zones = shippingService.getZones() || [];
+
+      const matchBy = String(req.validated.body.match_by).toUpperCase();
+      const subregionsRaw = req.validated.body.subregions;
+      const subregions = matchBy === 'SUBREGIONS'
+        ? (Array.isArray(subregionsRaw) ? subregionsRaw : subregionsRaw ? [subregionsRaw] : [])
+            .map((s) => String(s || '').trim())
+            .filter((s) => MALAYSIA_STATES.includes(s))
+        : [];
+
+      const zip_codes = matchBy === 'ZIP_CODES' ? parseZipCodesText(req.validated.body.zip_codes_text) : [];
+      if (matchBy === 'SUBREGIONS' && subregions.length === 0) {
+        const err = new Error('Select at least 1 sub-region (state).');
+        err.status = 400;
+        throw err;
+      }
+      if (matchBy === 'ZIP_CODES' && zip_codes.length === 0) {
+        const err = new Error('Enter at least 1 zip code or prefix.');
+        err.status = 400;
+        throw err;
+      }
+
+      const firstWeightKg = parseNonNegativeNumberOrNull(req.validated.body.first_weight_kg, { label: 'First weight (kg)' });
+      const addWeightKg = parseNonNegativeNumberOrNull(req.validated.body.additional_weight_kg, { label: 'Every additional weight (kg)' });
+      if (!firstWeightKg || firstWeightKg <= 0) {
+        const err = new Error('First weight (kg) must be greater than 0.');
+        err.status = 400;
+        throw err;
+      }
+      if (!addWeightKg || addWeightKg <= 0) {
+        const err = new Error('Every additional weight (kg) must be greater than 0.');
+        err.status = 400;
+        throw err;
+      }
+
+      const firstFeeCents = parseMoneyToCentsAllowZero(req.validated.body.first_fee_rm);
+      const addFeeCents = parseMoneyToCentsAllowZero(req.validated.body.additional_fee_rm);
+      if (firstFeeCents == null || addFeeCents == null) {
+        const err = new Error('Fees are required.');
+        err.status = 400;
+        throw err;
+      }
+
+      const methods = [
+        {
+          id: crypto.randomUUID(),
+          type: 'BASE',
+          min_weight_kg: 0,
+          first_weight_kg: firstWeightKg,
+          first_fee_cents: firstFeeCents,
+          additional_weight_kg: addWeightKg,
+          additional_fee_cents: addFeeCents,
+        },
+      ];
+
+      const rangeEnabled = String(req.validated.body.range_enabled || '') === '1';
+      if (rangeEnabled) {
+        const minWeightKg = parseNonNegativeNumberOrNull(req.validated.body.range_min_weight_kg, { label: 'When weight ≥ (kg)' });
+        const stepKg = parseNonNegativeNumberOrNull(req.validated.body.range_step_kg, { label: 'Per set (kg)' });
+        const feeCents = req.validated.body.range_fee_rm ? parseMoneyToCentsAllowZero(req.validated.body.range_fee_rm) : null;
+        if (minWeightKg == null || minWeightKg <= 0 || stepKg == null || stepKg <= 0 || feeCents == null) {
+          const err = new Error('Range fields are required and must be > 0.');
+          err.status = 400;
+          throw err;
+        }
+        methods.push({
+          id: crypto.randomUUID(),
+          type: 'PER_STEP',
+          min_weight_kg: minWeightKg,
+          step_kg: stepKg,
+          fee_cents_per_step: feeCents,
+        });
+      }
+
+      zones.push({
+        id: crypto.randomUUID(),
+        name: String(req.validated.body.name || '').trim(),
+        match_by: matchBy,
+        subregions,
+        zip_codes,
+        methods,
+      });
+
+      shippingService.saveZones(zones);
+      req.session.flash = { type: 'success', message: 'Shipping zone saved.' };
+      return res.redirect('/admin/site/shipping-zones');
+    } catch (e) {
+      if (e && e.status === 400) {
+        req.session.flash = { type: 'error', message: e.message };
+        return res.redirect('/admin/site/shipping-zones/new');
+      }
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/site/shipping-zones/:id',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({
+        name: z.string().trim().min(2).max(80),
+        match_by: z.enum(['SUBREGIONS', 'ZIP_CODES']),
+        subregions: z.any().optional(),
+        zip_codes_text: z.string().optional().or(z.literal('')),
+        first_weight_kg: z.string().trim().min(1).max(32),
+        first_fee_rm: z.string().trim().min(1).max(32),
+        additional_weight_kg: z.string().trim().min(1).max(32),
+        additional_fee_rm: z.string().trim().min(1).max(32),
+        range_enabled: z.string().optional(),
+        range_min_weight_kg: z.string().optional().or(z.literal('')),
+        range_step_kg: z.string().optional().or(z.literal('')),
+        range_fee_rm: z.string().optional().or(z.literal('')),
+      }),
+      params: z.object({ id: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const zones = shippingService.getZones() || [];
+      const idx = zones.findIndex((z) => String(z.id || '') === id);
+      if (idx < 0) {
+        const err = new Error('Shipping zone not found.');
+        err.status = 400;
+        throw err;
+      }
+
+      const matchBy = String(req.validated.body.match_by).toUpperCase();
+      const subregionsRaw = req.validated.body.subregions;
+      const subregions = matchBy === 'SUBREGIONS'
+        ? (Array.isArray(subregionsRaw) ? subregionsRaw : subregionsRaw ? [subregionsRaw] : [])
+            .map((s) => String(s || '').trim())
+            .filter((s) => MALAYSIA_STATES.includes(s))
+        : [];
+
+      const zip_codes = matchBy === 'ZIP_CODES' ? parseZipCodesText(req.validated.body.zip_codes_text) : [];
+      if (matchBy === 'SUBREGIONS' && subregions.length === 0) {
+        const err = new Error('Select at least 1 sub-region (state).');
+        err.status = 400;
+        throw err;
+      }
+      if (matchBy === 'ZIP_CODES' && zip_codes.length === 0) {
+        const err = new Error('Enter at least 1 zip code or prefix.');
+        err.status = 400;
+        throw err;
+      }
+
+      const firstWeightKg = parseNonNegativeNumberOrNull(req.validated.body.first_weight_kg, { label: 'First weight (kg)' });
+      const addWeightKg = parseNonNegativeNumberOrNull(req.validated.body.additional_weight_kg, { label: 'Every additional weight (kg)' });
+      if (!firstWeightKg || firstWeightKg <= 0) {
+        const err = new Error('First weight (kg) must be greater than 0.');
+        err.status = 400;
+        throw err;
+      }
+      if (!addWeightKg || addWeightKg <= 0) {
+        const err = new Error('Every additional weight (kg) must be greater than 0.');
+        err.status = 400;
+        throw err;
+      }
+
+      const firstFeeCents = parseMoneyToCentsAllowZero(req.validated.body.first_fee_rm);
+      const addFeeCents = parseMoneyToCentsAllowZero(req.validated.body.additional_fee_rm);
+      if (firstFeeCents == null || addFeeCents == null) {
+        const err = new Error('Fees are required.');
+        err.status = 400;
+        throw err;
+      }
+
+      const methods = [
+        {
+          id: crypto.randomUUID(),
+          type: 'BASE',
+          min_weight_kg: 0,
+          first_weight_kg: firstWeightKg,
+          first_fee_cents: firstFeeCents,
+          additional_weight_kg: addWeightKg,
+          additional_fee_cents: addFeeCents,
+        },
+      ];
+
+      const rangeEnabled = String(req.validated.body.range_enabled || '') === '1';
+      if (rangeEnabled) {
+        const minWeightKg = parseNonNegativeNumberOrNull(req.validated.body.range_min_weight_kg, { label: 'When weight ≥ (kg)' });
+        const stepKg = parseNonNegativeNumberOrNull(req.validated.body.range_step_kg, { label: 'Per set (kg)' });
+        const feeCents = req.validated.body.range_fee_rm ? parseMoneyToCentsAllowZero(req.validated.body.range_fee_rm) : null;
+        if (minWeightKg == null || minWeightKg <= 0 || stepKg == null || stepKg <= 0 || feeCents == null) {
+          const err = new Error('Range fields are required and must be > 0.');
+          err.status = 400;
+          throw err;
+        }
+        methods.push({
+          id: crypto.randomUUID(),
+          type: 'PER_STEP',
+          min_weight_kg: minWeightKg,
+          step_kg: stepKg,
+          fee_cents_per_step: feeCents,
+        });
+      }
+
+      zones[idx] = {
+        ...zones[idx],
+        name: String(req.validated.body.name || '').trim(),
+        match_by: matchBy,
+        subregions,
+        zip_codes,
+        methods,
+      };
+
+      shippingService.saveZones(zones);
+      req.session.flash = { type: 'success', message: 'Shipping zone updated.' };
+      return res.redirect('/admin/site/shipping-zones');
+    } catch (e) {
+      if (e && e.status === 400) {
+        req.session.flash = { type: 'error', message: e.message };
+        return res.redirect(`/admin/site/shipping-zones/${encodeURIComponent(String(req.params.id || ''))}`);
+      }
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/site/shipping-zones/:id/delete',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(z.object({ body: z.any().optional(), params: z.object({ id: z.string() }), query: z.any().optional() })),
+  (req, res, next) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const zones = shippingService.getZones() || [];
+      const nextZones = zones.filter((z) => String(z.id || '') !== id);
+      shippingService.saveZones(nextZones);
+      req.session.flash = { type: 'success', message: 'Shipping zone deleted.' };
+      return res.redirect('/admin/site/shipping-zones');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
 
 router.get('/promos', (req, res) => {
   // Promos are managed inside Settings now.
@@ -312,6 +717,318 @@ router.get('/reports/sales.csv', (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${label}"`);
   return res.send(csv);
+});
+
+router.get('/exports/users.csv', (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const status = String(req.query.status || '').trim() || 'ALL';
+
+  const label = `users_${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${label}"`);
+  res.write('\ufeff');
+
+  const header = [
+    'user_id',
+    'username',
+    'email',
+    'phone',
+    'address',
+    'address_line1',
+    'address_line2',
+    'city',
+    'state',
+    'postcode',
+    'is_closed',
+    'closed_at',
+    'created_at',
+    'orders_count',
+    'last_order_at',
+  ];
+  res.write(`${header.join(',')}\n`);
+
+  const limit = 500;
+  for (let offset = 0; ; offset += limit) {
+    const batch = userRepo.listAdmin({ q: q || null, status, limit, offset });
+    if (!batch.length) break;
+    for (const u of batch) {
+      const row = [
+        u.user_id,
+        u.username,
+        u.email,
+        u.phone || '',
+        u.address || '',
+        u.address_line1 || '',
+        u.address_line2 || '',
+        u.city || '',
+        u.state || '',
+        u.postcode || '',
+        u.is_closed ? 1 : 0,
+        u.closed_at || '',
+        u.created_at || '',
+        Number(u.orders_count || 0),
+        u.last_order_at || '',
+      ].map(csvCell);
+      res.write(`${row.join(',')}\n`);
+    }
+  }
+
+  return res.end();
+});
+
+router.get('/exports/products.csv', (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const category = String(req.query.category || '').trim() || null;
+  const visibility = String(req.query.visibility || '').trim() || null;
+  const archived = String(req.query.archived || '').trim() || null;
+  const stock = String(req.query.stock || '').trim() || null;
+  const sort = String(req.query.sort || '').trim() || 'NEWEST';
+
+  const minRaw = String(req.query.min_price || '').trim();
+  const maxRaw = String(req.query.max_price || '').trim();
+  const minPriceCents = minRaw ? parseMoneyToCentsAllowZero(minRaw) : null;
+  const maxPriceCents = maxRaw ? parseMoneyToCentsAllowZero(maxRaw) : null;
+
+  const label = `products_${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${label}"`);
+  res.write('\ufeff');
+
+  const header = [
+    'product_id',
+    'name',
+    'category',
+    'selling_price_rm',
+    'selling_price_cents',
+    'cost_price_rm',
+    'cost_price_cents',
+    'weight_kg',
+    'stock',
+    'availability',
+    'visibility',
+    'archived',
+    'created_at',
+    'updated_at',
+  ];
+  res.write(`${header.join(',')}\n`);
+
+  const limit = 500;
+  for (let offset = 0; ; offset += limit) {
+    const batch = inventoryRepo.listAdmin({
+      q: q || null,
+      includeArchived: true,
+      archived: archived || 'ALL',
+      category,
+      visibility,
+      stock,
+      minPriceCents,
+      maxPriceCents,
+      sort,
+      limit,
+      offset,
+    });
+    if (!batch.length) break;
+
+    for (const p of batch) {
+      const priceCents = Number(p.price || 0);
+      const costCents = p.cost_price == null ? null : Number(p.cost_price || 0);
+      const row = [
+        p.product_id,
+        p.name,
+        p.category,
+        formatMoneyRm2(priceCents),
+        priceCents,
+        costCents == null ? '' : formatMoneyRm2(costCents),
+        costCents == null ? '' : costCents,
+        p.weight_kg == null ? '' : p.weight_kg,
+        p.stock,
+        p.availability ? 1 : 0,
+        p.visibility ? 1 : 0,
+        p.archived ? 1 : 0,
+        p.created_at || '',
+        p.updated_at || '',
+      ].map(csvCell);
+      res.write(`${row.join(',')}\n`);
+    }
+  }
+
+  return res.end();
+});
+
+router.get('/exports/orders.csv', (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const payment_status = String(req.query.payment_status || '').trim() || null;
+  const payment_method = String(req.query.payment_method || '').trim() || null;
+  const fulfilment_status = String(req.query.fulfilment_status || '').trim() || null;
+  const refund_status = String(req.query.refund_status || '').trim() || null;
+  const date_from = String(req.query.date_from || '').trim();
+  const date_to = String(req.query.date_to || '').trim();
+
+  const where = [];
+  const params = {};
+  if (q) {
+    where.push('(o.order_code LIKE @q OR o.customer_name LIKE @q OR o.email LIKE @q)');
+    params.q = `%${q}%`;
+  }
+  if (payment_status) {
+    where.push('o.payment_status=@ps');
+    params.ps = payment_status;
+  }
+  if (payment_method) {
+    where.push('o.payment_method=@pm');
+    params.pm = payment_method;
+  }
+  if (fulfilment_status) {
+    where.push('o.fulfilment_status=@fs');
+    params.fs = fulfilment_status;
+  }
+  if (refund_status) {
+    where.push("COALESCE(o.refund_status,'NONE')=@rs");
+    params.rs = refund_status;
+  }
+  if (date_from) {
+    where.push('date(o.created_at) >= date(@df)');
+    params.df = date_from;
+  }
+  if (date_to) {
+    where.push('date(o.created_at) <= date(@dt)');
+    params.dt = date_to;
+  }
+
+  const label = `orders_${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${label}"`);
+  res.write('\ufeff');
+
+  const header = [
+    'order_id',
+    'order_code',
+    'created_at',
+    'user_id',
+    'username',
+    'customer_name',
+    'customer_email',
+    'customer_phone',
+    'payment_method',
+    'payment_channel',
+    'payment_status',
+    'refund_status',
+    'fulfilment_status',
+    'delivery_address_line1',
+    'delivery_address_line2',
+    'delivery_city',
+    'delivery_state',
+    'delivery_postcode',
+    'delivery_region',
+    'items_subtotal_rm',
+    'discount_amount_rm',
+    'shipping_fee_rm',
+    'total_amount_rm',
+    'promo_code',
+    'promo_discount_type',
+    'promo_discount_amount_rm',
+    'promo_applies_to_shipping',
+    'order_item_id',
+    'product_id',
+    'product_name',
+    'unit_price_rm',
+    'quantity',
+    'line_subtotal_rm',
+    'weight_kg',
+    'admin_note',
+  ];
+  res.write(`${header.join(',')}\n`);
+
+  const db = getDb();
+  const sql = `
+    SELECT
+      o.order_id,
+      o.order_code,
+      o.created_at,
+      o.user_id,
+      u.username,
+      o.customer_name,
+      o.email as customer_email,
+      o.phone as customer_phone,
+      o.payment_method,
+      o.payment_channel,
+      o.payment_status,
+      o.refund_status,
+      o.fulfilment_status,
+      o.delivery_address_line1,
+      o.delivery_address_line2,
+      o.delivery_city,
+      o.delivery_state,
+      o.delivery_postcode,
+      o.delivery_region,
+      o.items_subtotal,
+      o.discount_amount,
+      o.shipping_fee,
+      o.total_amount,
+      op.code as promo_code,
+      op.discount_type as promo_discount_type,
+      op.discount_amount as promo_discount_amount,
+      op.applies_to_shipping as promo_applies_to_shipping,
+      oi.id as order_item_id,
+      oi.product_id,
+      oi.product_name_snapshot as product_name,
+      oi.price_snapshot as unit_price,
+      oi.quantity,
+      oi.subtotal as line_subtotal,
+      i.weight_kg,
+      o.admin_note
+    FROM orders o
+    LEFT JOIN users u ON u.user_id = o.user_id
+    LEFT JOIN order_promos op ON op.order_id = o.order_id
+    LEFT JOIN order_items oi ON oi.order_id = o.order_id
+    LEFT JOIN inventory i ON i.product_id = oi.product_id
+    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    ORDER BY datetime(o.created_at) DESC, o.order_id DESC, oi.id ASC
+  `;
+
+  const stmt = db.prepare(sql);
+  for (const r of stmt.iterate(params)) {
+    const row = [
+      r.order_id,
+      r.order_code || '',
+      r.created_at || '',
+      r.user_id == null ? '' : r.user_id,
+      r.username || '',
+      r.customer_name || '',
+      r.customer_email || '',
+      r.customer_phone || '',
+      r.payment_method || '',
+      r.payment_channel || '',
+      r.payment_status || '',
+      r.refund_status || 'NONE',
+      r.fulfilment_status || '',
+      r.delivery_address_line1 || '',
+      r.delivery_address_line2 || '',
+      r.delivery_city || '',
+      r.delivery_state || '',
+      r.delivery_postcode || '',
+      r.delivery_region || '',
+      formatMoneyRm2(r.items_subtotal),
+      formatMoneyRm2(r.discount_amount),
+      formatMoneyRm2(r.shipping_fee),
+      formatMoneyRm2(r.total_amount),
+      r.promo_code || '',
+      r.promo_discount_type || '',
+      r.promo_discount_amount == null ? '' : formatMoneyRm2(r.promo_discount_amount),
+      r.promo_applies_to_shipping ? 1 : 0,
+      r.order_item_id == null ? '' : r.order_item_id,
+      r.product_id == null ? '' : r.product_id,
+      r.product_name || '',
+      r.unit_price == null ? '' : formatMoneyRm2(r.unit_price),
+      r.quantity == null ? '' : r.quantity,
+      r.line_subtotal == null ? '' : formatMoneyRm2(r.line_subtotal),
+      r.weight_kg == null ? '' : r.weight_kg,
+      r.admin_note || '',
+    ].map(csvCell);
+    res.write(`${row.join(',')}\n`);
+  }
+
+  return res.end();
 });
 
 router.post(
@@ -889,6 +1606,7 @@ router.post(
           discount_type: z.enum(['PERCENT', 'FIXED']),
           percent_off: z.string().trim().max(8).optional().or(z.literal('')),
           amount_off_rm: z.string().trim().max(32).optional().or(z.literal('')),
+          applies_to_shipping: z.string().optional(),
           active: z.string().optional(),
           max_redemptions: z.string().trim().max(20).optional().or(z.literal('')),
           start_date: z.string().trim().max(32).optional().or(z.literal('')),
@@ -922,6 +1640,7 @@ router.post(
       }
       const type = req.validated.body.discount_type;
       const active = String(req.validated.body.active || '1') === '1';
+      const appliesToShipping = String(req.validated.body.applies_to_shipping || '') === '1';
 
       const pctRaw = String(req.validated.body.percent_off || '').trim();
       const amtRaw = String(req.validated.body.amount_off_rm || '').trim();
@@ -957,6 +1676,7 @@ router.post(
         discount_type: type,
         percent_off: type === 'PERCENT' ? percentOff : null,
         amount_off_cents: type === 'FIXED' ? amountOffCents : null,
+        applies_to_shipping: appliesToShipping,
         active,
         archived: false,
         max_redemptions: max,
@@ -987,6 +1707,7 @@ router.post(
           discount_type: z.enum(['PERCENT', 'FIXED']),
           percent_off: z.string().trim().max(8).optional().or(z.literal('')),
           amount_off_rm: z.string().trim().max(32).optional().or(z.literal('')),
+          applies_to_shipping: z.string().optional(),
           active: z.string().optional(),
           max_redemptions: z.string().trim().max(20).optional().or(z.literal('')),
           start_date: z.string().trim().max(32).optional().or(z.literal('')),
@@ -1012,6 +1733,7 @@ router.post(
       const newCode = String(req.validated.body.new_code || '').trim().toUpperCase();
       const type = req.validated.body.discount_type;
       const active = String(req.validated.body.active || '1') === '1';
+      const appliesToShipping = String(req.validated.body.applies_to_shipping || '') === '1';
 
       const pctRaw = String(req.validated.body.percent_off || '').trim();
       const amtRaw = String(req.validated.body.amount_off_rm || '').trim();
@@ -1051,6 +1773,7 @@ router.post(
         discount_type: type,
         percent_off: type === 'PERCENT' ? percentOff : null,
         amount_off_cents: type === 'FIXED' ? amountOffCents : null,
+        applies_to_shipping: appliesToShipping,
         active,
         max_redemptions: max,
         start_date: startDate,
@@ -1577,6 +2300,11 @@ router.post(
         description_html: z.string().trim().max(200000).optional().or(z.literal('')),
         category: z.string().trim().min(2).max(80),
         price: z.string(),
+        cost_price: z.string().optional().or(z.literal('')),
+        weight_kg: z.string().optional().or(z.literal('')),
+        height_cm: z.string().optional().or(z.literal('')),
+        length_cm: z.string().optional().or(z.literal('')),
+        width_cm: z.string().optional().or(z.literal('')),
         stock: z.string(),
         visibility: z.string().optional(),
         archived: z.string().optional(),
@@ -1588,6 +2316,11 @@ router.post(
   async (req, res, next) => {
     try {
       const priceCents = parsePriceToCentsMinRM1(req.validated.body.price);
+      const costPriceCents = req.validated.body.cost_price ? parseMoneyToCentsAllowZero(req.validated.body.cost_price) : null;
+      const weightKg = parseNonNegativeNumberOrNull(req.validated.body.weight_kg, { label: 'Weight (kg)' });
+      const heightCm = parseNonNegativeNumberOrNull(req.validated.body.height_cm, { label: 'Height (cm)' });
+      const lengthCm = parseNonNegativeNumberOrNull(req.validated.body.length_cm, { label: 'Length (cm)' });
+      const widthCm = parseNonNegativeNumberOrNull(req.validated.body.width_cm, { label: 'Width (cm)' });
       const stock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
 
       const cat = categoryRepo.getBySlug(req.validated.body.category);
@@ -1603,6 +2336,11 @@ router.post(
         description_html: '',
         category: cat.slug,
         price: priceCents,
+        cost_price: costPriceCents,
+        weight_kg: weightKg,
+        height_cm: heightCm,
+        length_cm: lengthCm,
+        width_cm: widthCm,
         stock,
         visibility: req.validated.body.visibility === '1',
         archived: req.validated.body.archived === '1',
@@ -1679,6 +2417,11 @@ router.post(
         description_html: z.string().trim().max(200000).optional().or(z.literal('')),
         category: z.string().trim().min(2).max(80),
         price: z.string(),
+        cost_price: z.string().optional().or(z.literal('')),
+        weight_kg: z.string().optional().or(z.literal('')),
+        height_cm: z.string().optional().or(z.literal('')),
+        length_cm: z.string().optional().or(z.literal('')),
+        width_cm: z.string().optional().or(z.literal('')),
         stock: z.string(),
         visibility: z.string().optional(),
         archived: z.string().optional(),
@@ -1696,6 +2439,11 @@ router.post(
       }
 
       const priceCents = parsePriceToCentsMinRM1(req.validated.body.price);
+      const costPriceCents = req.validated.body.cost_price ? parseMoneyToCentsAllowZero(req.validated.body.cost_price) : null;
+      const weightKg = parseNonNegativeNumberOrNull(req.validated.body.weight_kg, { label: 'Weight (kg)' });
+      const heightCm = parseNonNegativeNumberOrNull(req.validated.body.height_cm, { label: 'Height (cm)' });
+      const lengthCm = parseNonNegativeNumberOrNull(req.validated.body.length_cm, { label: 'Length (cm)' });
+      const widthCm = parseNonNegativeNumberOrNull(req.validated.body.width_cm, { label: 'Width (cm)' });
       const stock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
 
       const cat = categoryRepo.getBySlug(req.validated.body.category);
@@ -1740,6 +2488,11 @@ router.post(
         description_html: cleanHtml,
         category: cat.slug,
         price: priceCents,
+        cost_price: costPriceCents,
+        weight_kg: weightKg,
+        height_cm: heightCm,
+        length_cm: lengthCm,
+        width_cm: widthCm,
         stock,
         visibility: req.validated.body.visibility === '1',
         archived: req.validated.body.archived === '1',
@@ -1875,6 +2628,36 @@ router.get('/orders/:id', (req, res) => {
     refundByItemConfirmed,
   });
 });
+
+router.post(
+  '/orders/:id/admin-note',
+  csrfProtection(),
+  validate(
+    z.object({
+      body: z.object({
+        admin_note: z.string().trim().max(4000).optional().or(z.literal('')),
+      }),
+      params: z.object({ id: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const orderId = Number(req.params.id);
+      if (!Number.isFinite(orderId) || orderId <= 0) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid order id.' });
+      }
+      const order = orderRepo.getById(orderId);
+      if (!order) return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+
+      orderRepo.updateAdminNote(orderId, req.validated.body.admin_note || '');
+      req.session.flash = { type: 'success', message: 'Internal note updated.' };
+      return res.redirect(`/admin/orders/${orderId}`);
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
 
 router.post(
   '/orders/:id/items/:itemId/refund',
@@ -2112,6 +2895,16 @@ router.post(
       req.session.flash = { type: 'success', message: 'Refund recorded (manual).' };
       return res.redirect(`/admin/orders/${orderId}`);
     } catch (e) {
+      // For expected validation failures (e.g. exceeding refundable amount), don't send admins
+      // to the generic error page; show a flash message and return to the order view.
+      if (e && (e.status === 400 || e.status === 422)) {
+        req.session.flash = {
+          type: 'error',
+          message: String(e && e.message ? e.message : 'Failed to record refund.'),
+        };
+        return res.redirect(`/admin/orders/${Number(req.params.id)}`);
+      }
+
       return next(e);
     }
   }
@@ -2361,6 +3154,15 @@ router.post(
       req.session.flash = { type: 'success', message: 'Refund recorded (manual).' };
       return res.redirect(`/admin/orders/${orderId}`);
     } catch (e) {
+      // For expected validation failures (e.g. exceeding refundable amount), don't send admins
+      // to the generic error page; show a flash message and return to the order view.
+      if (e && (e.status === 400 || e.status === 422)) {
+        req.session.flash = {
+          type: 'error',
+          message: String(e && e.message ? e.message : 'Failed to record refund.'),
+        };
+        return res.redirect(`/admin/orders/${Number(req.params.id)}`);
+      }
       return next(e);
     }
   }

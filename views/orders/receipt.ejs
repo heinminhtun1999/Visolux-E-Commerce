@@ -14,36 +14,42 @@
   </div>
 </div>
 
-<div class="card" id="receipt" style="padding:16px; background:#fff">
-  <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap">
-    <div>
-      <div style="font-weight:900; font-size:16px"><%= siteName || 'Visolux' %></div>
-      <div class="muted small">Receipt</div>
+<div id="receipt" class="receipt-sheet">
+  <div class="receipt-header">
+    <div class="receipt-brand">
+      <% if (siteLogoUrl) { %>
+        <img class="receipt-logo" src="<%= siteLogoUrl %>" alt="<%= siteName || 'Visolux' %>" loading="lazy" decoding="async" />
+      <% } %>
+      <div>
+        <div class="receipt-site-name"><%= siteName || 'Visolux' %></div>
+        <div class="muted small">Receipt</div>
+      </div>
     </div>
-    <div style="text-align:right">
+
+    <div class="receipt-meta">
       <div class="muted small">Order</div>
-      <div style="font-weight:800"><%= order.order_code || ('#' + order.order_id) %></div>
+      <div class="receipt-order-code"><%= order.order_code || ('#' + order.order_id) %></div>
       <div class="muted small" style="margin-top:4px"><%= formatDateTime(order.created_at) %></div>
     </div>
   </div>
 
-  <div class="row" style="gap:18px; margin-top:14px">
-    <div class="col" style="min-width:280px">
+  <div class="receipt-grid">
+    <div class="receipt-block">
       <div class="muted small">Bill to</div>
-      <div style="font-weight:800"><%= order.customer_name %></div>
+      <div class="receipt-strong"><%= order.customer_name %></div>
       <div class="muted small"><%= order.email %> · <%= order.phone %></div>
       <div class="muted small" style="margin-top:6px"><%= order.address %></div>
     </div>
-    <div style="min-width:240px">
+    <div class="receipt-block">
       <div class="muted small">Payment</div>
-      <div style="font-weight:800"><%= order.payment_method %></div>
+      <div class="receipt-strong"><%= order.payment_method %></div>
       <div class="muted small" style="margin-top:8px">Status</div>
-      <div style="font-weight:800"><%= order.payment_status %></div>
+      <div class="receipt-strong"><%= order.payment_status %></div>
     </div>
   </div>
 
-  <h2 class="h2" style="margin-top:14px">Items</h2>
-  <table class="table" style="margin-top:8px">
+  <h2 class="h2" style="margin-top:16px">Items</h2>
+  <table class="table receipt-table" style="margin-top:8px">
     <thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Subtotal</th></tr></thead>
     <tbody>
       <% (order.items || []).forEach(it => { %>
@@ -60,14 +66,16 @@
   <% const itemsSubtotal = (order.items_subtotal != null ? order.items_subtotal : (order.items || []).reduce((a, it) => a + Number(it.subtotal || 0), 0)); %>
   <% const discountAmount = Number(order.discount_amount || 0); %>
   <% const shippingFee = Number(order.shipping_fee || 0); %>
+  <% const totalWeightKg = (order.items || []).reduce((sum, it) => sum + (Number(it.weight_kg || 0) * Number(it.quantity || 0)), 0); %>
 
-  <div class="row" style="justify-content:flex-end; margin-top:12px">
-    <div class="card" style="padding:12px; min-width:300px">
+  <div class="receipt-summary">
+    <div class="card" style="padding:12px; min-width:320px; box-shadow:none">
       <div class="kv"><span class="muted">Items subtotal</span> <strong><%= formatMoney(itemsSubtotal) %></strong></div>
       <% if (discountAmount > 0) { %>
         <div class="kv" style="margin-top:6px"><span class="muted">Discount</span> <strong>-<%= formatMoney(discountAmount) %></strong></div>
       <% } %>
       <div class="kv" style="margin-top:6px"><span class="muted">Shipping</span> <strong><%= formatMoney(shippingFee) %></strong></div>
+      <div class="kv" style="margin-top:6px"><span class="muted">Total weight</span> <strong><%= Number(totalWeightKg || 0).toFixed(2) %> kg</strong></div>
       <div class="kv" style="margin-top:6px"><span class="muted">Total</span> <strong><%= formatMoney(order.total_amount) %></strong></div>
     </div>
   </div>

@@ -127,7 +127,14 @@
     <% } %>
 
     <% if (typeof flash !== 'undefined' && flash) { %>
-      <div class="flash <%= flash.type %>"><%= flash.message %></div>
+      <div class="flash <%= flash.type %>" data-flash role="status" aria-live="polite">
+        <div class="flash__row">
+          <div class="flash__msg"><%= flash.message %></div>
+          <button class="flash__close" type="button" data-flash-close aria-label="Dismiss">
+            <%- icon('x', { size: 18 }) %>
+          </button>
+        </div>
+      </div>
     <% } %>
 
     <% if (isAdminArea) { %>

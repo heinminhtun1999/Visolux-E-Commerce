@@ -22,7 +22,10 @@
       <% const qs = new URLSearchParams(); %>
       <% if (date_from) qs.set('date_from', date_from); %>
       <% if (date_to) qs.set('date_to', date_to); %>
-      <a class="btn btn-secondary" href="/admin/reports/sales.csv?<%= qs.toString() %>">Download CSV</a>
+      <a class="btn btn-secondary btn-icon" href="/admin/reports/sales.csv?<%= qs.toString() %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
+        <%- icon('file-text') %>
+        <span class="btn-text">Export</span>
+      </a>
     </div>
   </form>
 </div>

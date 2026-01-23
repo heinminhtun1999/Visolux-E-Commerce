@@ -83,6 +83,7 @@
   <% const itemsSubtotal = (order.items_subtotal != null ? order.items_subtotal : (order.items || []).reduce((a, it) => a + Number(it.subtotal || 0), 0)); %>
   <% const discountAmount = (order.discount_amount != null ? order.discount_amount : (promo ? promo.discount_amount : 0)); %>
   <% const shippingFee = Number(order.shipping_fee || 0); %>
+  <% const totalWeightKg = (order.items || []).reduce((sum, it) => sum + (Number(it.weight_kg || 0) * Number(it.quantity || 0)), 0); %>
 
   <div class="row" style="justify-content:flex-end; margin-top:10px">
     <div class="card" style="padding:12px; min-width:280px">
@@ -91,6 +92,7 @@
         <div class="kv" style="margin-top:6px"><span class="muted">Discount</span> <strong>-<%= formatMoney(discountAmount) %></strong></div>
       <% } %>
       <div class="kv" style="margin-top:6px"><span class="muted">Courier charge</span> <strong><%= formatMoney(shippingFee) %></strong></div>
+      <div class="kv" style="margin-top:6px"><span class="muted">Total weight</span> <strong><%= Number(totalWeightKg || 0).toFixed(2) %> kg</strong></div>
       <div class="kv" style="margin-top:6px"><span class="muted">Total</span> <strong><%= formatMoney(order.total_amount) %></strong></div>
       <% if (order.delivery_region) { %>
         <div class="muted small" style="margin-top:8px">Delivery region: <strong><%= order.delivery_region === 'EAST' ? 'East Malaysia' : 'West Malaysia' %></strong></div>

@@ -261,6 +261,15 @@
         </select>
       </div>
 
+      <div class="field is-sm">
+        <label>Applies to</label>
+        <label style="display:flex; gap:8px; align-items:center; margin-top:2px">
+          <input type="checkbox" name="applies_to_shipping" value="1" />
+          <span>Shipping only</span>
+        </label>
+        <div class="muted small" style="margin-top:6px">If checked, the discount applies to courier charges instead of items.</div>
+      </div>
+
       <div class="actions">
         <button class="btn btn-primary" type="submit">Create</button>
       </div>
@@ -314,6 +323,14 @@
                 <div style="min-width:150px">
                   <label class="muted small">Max uses</label>
                   <input class="input" name="max_redemptions" form="<%= promoFormId %>" inputmode="numeric" value="<%= p.max_redemptions == null ? '' : p.max_redemptions %>" placeholder="unlimited" />
+                </div>
+
+                <div style="min-width:180px">
+                  <label class="muted small">Applies to</label>
+                  <label style="display:flex; gap:8px; align-items:center; margin-top:2px">
+                    <input type="checkbox" name="applies_to_shipping" form="<%= promoFormId %>" value="1" <%= p.applies_to_shipping ? 'checked' : '' %> />
+                    <span class="muted small">Shipping only</span>
+                  </label>
                 </div>
               </div>
             </td>

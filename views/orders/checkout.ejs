@@ -4,7 +4,7 @@
   <div class="col" style="min-width:320px">
     <div class="card" style="padding:16px">
       <h1 class="h1">Checkout</h1>
-      <form method="post" action="/checkout">
+      <form method="post" action="/checkout" id="checkoutForm" novalidate>
         <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
         <label>Customer name</label>
         <input class="input" name="customer_name" minlength="2" required value="<%= prefill ? (prefill.customer_name || '') : '' %>" />
@@ -38,7 +38,8 @@
         <input class="input" name="postcode" inputmode="numeric" pattern="\d{5}" required value="<%= prefill ? (prefill.postcode || '') : '' %>" />
 
         <div class="muted small" style="margin-top:6px">
-          Region: <strong id="regionLabel"><%= prefillRegion ? (prefillRegion === 'EAST' ? 'East Malaysia' : 'West Malaysia') : '-' %></strong>
+          Delivery zone: <strong id="regionLabel"><%= (typeof prefillShippingLabel !== 'undefined' && prefillShippingLabel) ? prefillShippingLabel : '-' %></strong>
+          <span id="shippingMessage" class="muted" style="margin-left:8px"></span>
         </div>
 
         <label>Promo code (optional)</label>
@@ -67,9 +68,11 @@
         </div>
 
         <div class="actions" style="margin-top:12px">
-          <button class="btn btn-primary" type="submit">Place order</button>
+          <button class="btn btn-primary" id="placeOrderBtn" type="submit">Place order</button>
           <a class="btn" href="/">Cancel</a>
         </div>
+
+        <div id="checkoutFormMessage" class="muted small" style="margin-top:8px"></div>
 
         <div class="muted small" style="margin-top:10px">
           <% if (!canOnlinePay) { %>
@@ -86,8 +89,6 @@
       <div
         id="checkoutTotals"
         data-items-total-cents="<%= Number(cart.total || 0) %>"
-        data-west-fee-cents="<%= (courierFees && courierFees.west != null) ? Number(courierFees.west) : 800 %>"
-        data-east-fee-cents="<%= (courierFees && courierFees.east != null) ? Number(courierFees.east) : 1800 %>"
         data-discount-cents="0"
         data-csrf-token="<%= csrfToken %>"
         style="display:none"
@@ -102,6 +103,9 @@
               <td>
                 <div style="font-weight:700"><%= line.product.name %></div>
                 <div class="muted small"><%= formatMoney(line.product.price) %> each</div>
+                <% if (line.product && line.product.weight_kg != null) { %>
+                  <div class="muted small">Weight: <%= Number(line.product.weight_kg || 0).toFixed(2) %> kg</div>
+                <% } %>
               </td>
               <td><%= line.quantity %></td>
               <td><%= formatMoney(line.subtotal) %></td>
@@ -109,19 +113,23 @@
           <% }) %>
         </tbody>
       </table>
+      <div class="kv" style="margin-top:10px">
+        <span class="muted">Total weight</span>
+        <strong><%= (typeof totalWeightKg !== 'undefined' ? Number(totalWeightKg || 0) : 0).toFixed(2) %> kg</strong>
+      </div>
       <div class="kv" style="margin-top:10px"><span class="muted">Total</span> <strong><%= formatMoney(cart.total) %></strong></div>
       <div class="kv" style="margin-top:6px"><span class="muted">Courier charge</span> <strong id="shippingFee"><%= formatMoney(prefillShippingFee || 0) %></strong></div>
       <div class="kv" style="margin-top:6px"><span class="muted">Before discount</span> <strong id="preDiscountTotal"><%= formatMoney(cart.total + (prefillShippingFee || 0)) %></strong></div>
       <div class="kv" style="margin-top:6px"><span class="muted">Discount</span> <strong id="discountAmount"><%= formatMoney(0) %></strong></div>
       <div class="kv" style="margin-top:6px"><span class="muted">Grand total</span> <strong id="grandTotal"><%= formatMoney(cart.total + (prefillShippingFee || 0)) %></strong></div>
       <div class="muted small" style="margin-top:8px">
-        Courier charge depends on delivery state (West Malaysia <%= formatMoney((courierFees && courierFees.west != null) ? Number(courierFees.west) : 800) %> / East Malaysia <%= formatMoney((courierFees && courierFees.east != null) ? Number(courierFees.east) : 1800) %>).
+        Courier charge depends on your delivery zone and total cart weight.
       </div>
     </div>
   </div>
 </div>
 
-<script src="/public/js/checkout-shipping.js?v=2" defer></script>
-<script src="/public/js/checkout-promo.js?v=2" defer></script>
+<script src="/public/js/checkout-shipping.js?v=3" defer></script>
+<script src="/public/js/checkout-promo.js?v=3" defer></script>
 
 <%- include('../shared/bottom') %>

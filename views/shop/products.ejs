@@ -1,15 +1,16 @@
 <%- include('../shared/top', { title }) %>
 
-<div>
-  <h1 class="h1">Products</h1>
-  <div class="muted small">Browse parts and components.</div>
-</div>
-
-<div class="row" style="justify-content:flex-end; margin-top:12px">
-  <button class="btn btn-secondary btn-icon" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true">
-    <%- icon('filter') %>
-    <span class="btn-text">Filters</span>
-  </button>
+<div class="row" style="justify-content:space-between; align-items:flex-end; gap:12px">
+  <div>
+    <h1 class="h1">Products</h1>
+    <div class="muted small">Browse parts and components.</div>
+  </div>
+  <div class="actions icon-row">
+    <button class="btn btn-secondary btn-icon" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true">
+      <%- icon('filter') %>
+      <span class="btn-text">Filters</span>
+    </button>
+  </div>
 </div>
 
 <div class="card card--pad card--mt filters-panel" id="filters-panel" data-filters-panel>

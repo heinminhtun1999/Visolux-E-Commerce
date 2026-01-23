@@ -74,6 +74,15 @@
           <button class="btn btn-primary" type="submit">Update fulfilment</button>
         </div>
       </form>
+
+      <form method="post" action="/admin/orders/<%= order.order_id %>/admin-note" class="col" style="min-width:320px">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <label>Internal note (admin only)</label>
+        <textarea class="input" name="admin_note" rows="6" maxlength="4000" placeholder="Private notes about this order..."><%= order.admin_note || '' %></textarea>
+        <div class="actions" style="margin-top:10px">
+          <button class="btn btn-primary" type="submit">Save note</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -227,9 +236,11 @@
 
   <div class="row" style="justify-content:flex-end; margin-top:10px; gap:10px">
     <div class="card" style="padding:12px; min-width:320px">
+      <% const totalWeightKg = (order.items || []).reduce((sum, it) => sum + (Number(it.weight_kg || 0) * Number(it.quantity || 0)), 0); %>
       <div class="kv"><span class="muted">Items subtotal</span> <strong>RM <%= formatMoney(order.items_subtotal || 0) %></strong></div>
       <div class="kv" style="margin-top:6px"><span class="muted">Shipping</span> <strong>RM <%= formatMoney(order.shipping_fee || 0) %></strong></div>
       <div class="kv" style="margin-top:6px"><span class="muted">Discount (subtotal only)</span> <strong>- RM <%= formatMoney(order.discount_amount || 0) %></strong></div>
+      <div class="kv" style="margin-top:6px"><span class="muted">Total weight</span> <strong><%= Number(totalWeightKg || 0).toFixed(2) %> kg</strong></div>
       <div class="kv" style="margin-top:10px"><span class="muted">Grand total (paid)</span> <strong>RM <%= formatMoney(order.total_amount) %></strong></div>
 
       <% const requestedAll = combinedRefundSummary ? Number(combinedRefundSummary.amount_refunded || 0) : 0; %>

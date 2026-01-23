@@ -24,7 +24,19 @@
     <% const listHref = `/admin/products?${listQs.toString()}`; %>
     <% const gridHref = `/admin/products?${gridQs.toString()}`; %>
 
+    <% const exportHref = `/admin/exports/products.csv?${baseQs.toString()}`; %>
+
     <div class="actions-group">
+      <a class="btn btn-secondary btn-icon" href="<%= exportHref %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
+        <%- icon('file-text') %>
+        <span class="btn-text">Export</span>
+      </a>
+
+      <button class="btn btn-secondary btn-icon" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true">
+        <%- icon('filter') %>
+        <span class="btn-text">Filters</span>
+      </button>
+
       <label class="sr-only" for="viewSelect">View</label>
       <select id="viewSelect" class="select-compact" aria-label="View" onchange="if (this.value) window.location.href = this.value">
         <option value="<%= listHref %>" <%= view === 'list' ? 'selected' : '' %>>List view</option>
@@ -34,13 +46,6 @@
       <a class="btn btn-primary btn-icon" href="/admin/products/new" title="New product" aria-label="New product" data-label="New"><%- icon('plus') %></a>
     </div>
   </div>
-</div>
-
-<div class="row" style="justify-content:flex-end; margin-top:12px">
-  <button class="btn btn-secondary btn-icon" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true">
-    <%- icon('filter') %>
-    <span class="btn-text">Filters</span>
-  </button>
 </div>
 
 <div class="card card--pad card--mt filters-panel" id="filters-panel" data-filters-panel>

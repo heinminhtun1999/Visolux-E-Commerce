@@ -9,6 +9,7 @@ const SQLiteStoreFactory = require('connect-sqlite3');
 const { env } = require('./config/env');
 const { getDb } = require('./db/db');
 const { attachLocals } = require('./middleware/locals');
+const { logoutClosedAccountSessions } = require('./middleware/auth');
 const { ensureCsrfToken, csrfProtection } = require('./middleware/csrf');
 const { notFoundHandler, errorHandler } = require('./middleware/errors');
 const settingsRepo = require('./repositories/settingsRepo');
@@ -156,6 +157,10 @@ function createApp() {
       },
     })
   );
+
+  // If an account is closed after a session was created, clear the session user.
+  // Keep it before attachLocals so the UI immediately reflects the logged-out state.
+  app.use(logoutClosedAccountSessions);
 
   // Attach view locals early so error pages render safely.
   app.use(attachLocals);

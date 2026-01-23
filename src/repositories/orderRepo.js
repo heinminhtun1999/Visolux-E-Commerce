@@ -26,6 +26,7 @@ function mapOrder(row) {
     discount_amount: row.discount_amount,
     shipping_fee: row.shipping_fee,
     total_amount: row.total_amount,
+    admin_note: row.admin_note || '',
     created_at: row.created_at,
   };
 }
@@ -41,7 +42,14 @@ function updatePaymentChannel(orderId, paymentChannel) {
 function listItems(orderId) {
   const db = getDb();
   return db
-    .prepare('SELECT * FROM order_items WHERE order_id=? ORDER BY id ASC')
+    .prepare(
+      `SELECT
+        oi.*, i.weight_kg
+       FROM order_items oi
+       LEFT JOIN inventory i ON i.product_id = oi.product_id
+       WHERE oi.order_id=?
+       ORDER BY oi.id ASC`
+    )
     .all(orderId)
     .map((r) => ({
       id: r.id,
@@ -51,6 +59,7 @@ function listItems(orderId) {
       price_snapshot: r.price_snapshot,
       quantity: r.quantity,
       subtotal: r.subtotal,
+      weight_kg: r.weight_kg == null ? null : Number(r.weight_kg),
     }));
 }
 
@@ -70,6 +79,13 @@ function getWithItems(orderId) {
   const order = getById(orderId);
   if (!order) return null;
   return { ...order, items: listItems(orderId) };
+}
+
+function updateAdminNote(orderId, adminNote) {
+  const db = getDb();
+  const note = String(adminNote == null ? '' : adminNote).trim();
+  db.prepare('UPDATE orders SET admin_note=? WHERE order_id=?').run(note, orderId);
+  return getById(orderId);
 }
 
 function listByUser(userId, { limit, offset }) {
@@ -417,14 +433,15 @@ function createOrder({
 
     if (promo) {
       db.prepare(
-        `INSERT INTO order_promos (order_id, code, discount_type, percent_off, amount_off_cents, discount_amount)
-         VALUES (?,?,?,?,?,?)`
+        `INSERT INTO order_promos (order_id, code, discount_type, percent_off, amount_off_cents, applies_to_shipping, discount_amount)
+         VALUES (?,?,?,?,?,?,?)`
       ).run(
         orderId,
         promo.code,
         String(promo.discount_type || 'PERCENT'),
         promo.percent_off == null ? null : promo.percent_off,
         promo.amount_off_cents == null ? null : promo.amount_off_cents,
+        promo.applies_to_shipping ? 1 : 0,
         promo.discount_amount
       );
 
@@ -478,6 +495,7 @@ function getPromoForOrder(orderId) {
     discount_type: r.discount_type || 'PERCENT',
     percent_off: r.percent_off,
     amount_off_cents: r.amount_off_cents,
+    applies_to_shipping: Boolean(r.applies_to_shipping),
     discount_amount: r.discount_amount,
   };
 }
@@ -778,6 +796,7 @@ module.exports = {
   insertStatusHistory,
   listStatusHistory,
   updatePaymentChannel,
+  updateAdminNote,
   getPromoForOrder,
   getOfflineTransfer,
   getOfflineTransferBySlipPath,

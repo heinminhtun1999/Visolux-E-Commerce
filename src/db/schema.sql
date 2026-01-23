@@ -10,6 +10,11 @@ CREATE TABLE IF NOT EXISTS inventory (
   -- Category slug (managed via categories table)
   category TEXT NOT NULL,
   price INTEGER NOT NULL CHECK (price >= 100), -- stored in cents (min RM 1.00)
+  cost_price INTEGER CHECK (cost_price IS NULL OR cost_price >= 0), -- stored in cents
+  weight_kg REAL CHECK (weight_kg IS NULL OR weight_kg >= 0),
+  height_cm REAL CHECK (height_cm IS NULL OR height_cm >= 0),
+  length_cm REAL CHECK (length_cm IS NULL OR length_cm >= 0),
+  width_cm REAL CHECK (width_cm IS NULL OR width_cm >= 0),
   stock INTEGER NOT NULL CHECK (stock >= 0),
   availability INTEGER NOT NULL DEFAULT 0 CHECK (availability IN (0,1)),
   visibility INTEGER NOT NULL DEFAULT 1 CHECK (visibility IN (0,1)),
@@ -150,6 +155,7 @@ CREATE TABLE IF NOT EXISTS orders (
   discount_amount INTEGER NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
   shipping_fee INTEGER NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
   total_amount INTEGER NOT NULL CHECK (total_amount >= 0),
+  admin_note TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
@@ -265,6 +271,7 @@ CREATE TABLE IF NOT EXISTS promo_codes (
   discount_type TEXT NOT NULL DEFAULT 'PERCENT' CHECK (discount_type IN ('PERCENT','FIXED')),
   percent_off INTEGER CHECK (percent_off BETWEEN 1 AND 100),
   amount_off_cents INTEGER CHECK (amount_off_cents > 0),
+  applies_to_shipping INTEGER NOT NULL DEFAULT 0 CHECK (applies_to_shipping IN (0,1)),
   active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
   archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0,1)),
   max_redemptions INTEGER,
@@ -280,6 +287,7 @@ CREATE TABLE IF NOT EXISTS order_promos (
   discount_type TEXT NOT NULL,
   percent_off INTEGER,
   amount_off_cents INTEGER,
+  applies_to_shipping INTEGER NOT NULL DEFAULT 0,
   discount_amount INTEGER NOT NULL,
   FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
   FOREIGN KEY (code) REFERENCES promo_codes(code)

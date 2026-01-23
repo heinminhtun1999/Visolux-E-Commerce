@@ -7,6 +7,7 @@ function mapPromo(row) {
     discount_type: row.discount_type,
     percent_off: row.percent_off == null ? null : Number(row.percent_off),
     amount_off_cents: row.amount_off_cents == null ? null : Number(row.amount_off_cents),
+    applies_to_shipping: Boolean(row.applies_to_shipping),
     active: Boolean(row.active),
     archived: Boolean(row.archived),
     max_redemptions: row.max_redemptions == null ? null : Number(row.max_redemptions),
@@ -45,6 +46,7 @@ function create({
   discount_type,
   percent_off,
   amount_off_cents,
+  applies_to_shipping,
   active,
   archived,
   max_redemptions,
@@ -108,13 +110,14 @@ function create({
 
   const db = getDb();
   db.prepare(
-    `INSERT INTO promo_codes (code, discount_type, percent_off, amount_off_cents, active, archived, max_redemptions, redeemed_count, start_date, end_date)
-     VALUES (@code, @discount_type, @percent_off, @amount_off_cents, @active, @archived, @max_redemptions, 0, @start_date, @end_date)`
+    `INSERT INTO promo_codes (code, discount_type, percent_off, amount_off_cents, applies_to_shipping, active, archived, max_redemptions, redeemed_count, start_date, end_date)
+     VALUES (@code, @discount_type, @percent_off, @amount_off_cents, @applies_to_shipping, @active, @archived, @max_redemptions, 0, @start_date, @end_date)`
   ).run({
     code: c,
     discount_type: dt,
     percent_off: dt === 'PERCENT' ? Math.floor(pct) : null,
     amount_off_cents: dt === 'FIXED' ? Math.floor(amt) : null,
+    applies_to_shipping: applies_to_shipping ? 1 : 0,
     active: active ? 1 : 0,
     archived: archived ? 1 : 0,
     max_redemptions: max,
@@ -134,6 +137,7 @@ function update(code, patch = {}) {
      SET discount_type=@discount_type,
          percent_off=@percent_off,
          amount_off_cents=@amount_off_cents,
+         applies_to_shipping=@applies_to_shipping,
          active=@active,
          archived=@archived,
          max_redemptions=@max_redemptions,
@@ -145,6 +149,7 @@ function update(code, patch = {}) {
     discount_type: next.discount_type,
     percent_off: next.percent_off,
     amount_off_cents: next.amount_off_cents,
+    applies_to_shipping: next.applies_to_shipping ? 1 : 0,
     active: next.active ? 1 : 0,
     archived: next.archived ? 1 : 0,
     max_redemptions: next.max_redemptions,
@@ -187,13 +192,14 @@ function renameCode(oldCode, newCode) {
   db.exec('BEGIN');
   try {
     db.prepare(
-      `INSERT INTO promo_codes (code, discount_type, percent_off, amount_off_cents, active, archived, max_redemptions, redeemed_count, start_date, end_date, created_at)
-       VALUES (@code, @discount_type, @percent_off, @amount_off_cents, @active, @archived, @max_redemptions, @redeemed_count, @start_date, @end_date, @created_at)`
+      `INSERT INTO promo_codes (code, discount_type, percent_off, amount_off_cents, applies_to_shipping, active, archived, max_redemptions, redeemed_count, start_date, end_date, created_at)
+       VALUES (@code, @discount_type, @percent_off, @amount_off_cents, @applies_to_shipping, @active, @archived, @max_redemptions, @redeemed_count, @start_date, @end_date, @created_at)`
     ).run({
       code: to,
       discount_type: current.discount_type,
       percent_off: current.percent_off,
       amount_off_cents: current.amount_off_cents,
+      applies_to_shipping: current.applies_to_shipping ? 1 : 0,
       active: current.active ? 1 : 0,
       archived: current.archived ? 1 : 0,
       max_redemptions: current.max_redemptions,

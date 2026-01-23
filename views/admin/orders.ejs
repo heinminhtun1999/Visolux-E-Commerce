@@ -5,6 +5,20 @@
     <h1 class="h1">Admin – Orders</h1>
     <div class="muted small"><%= total %> orders</div>
   </div>
+  <div class="actions icon-row">
+    <% const exportQs = new URLSearchParams(); %>
+    <% if (q) exportQs.set('q', q); %>
+    <% if (payment_status) exportQs.set('payment_status', payment_status); %>
+    <% if (payment_method) exportQs.set('payment_method', payment_method); %>
+    <% if (refund_status) exportQs.set('refund_status', refund_status); %>
+    <% if (fulfilment_status) exportQs.set('fulfilment_status', fulfilment_status); %>
+    <% if (date_from) exportQs.set('date_from', date_from); %>
+    <% if (date_to) exportQs.set('date_to', date_to); %>
+    <a class="btn btn-secondary btn-icon" href="/admin/exports/orders.csv?<%= exportQs.toString() %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
+      <%- icon('file-text') %>
+      <span class="btn-text">Export</span>
+    </a>
+  </div>
 </div>
 
 <div class="card" style="padding:14px; margin-top:12px">
