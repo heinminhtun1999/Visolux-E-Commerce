@@ -1,6 +1,6 @@
 # Visolux E-Commerce — Project Documentation
 
-**Generated:** 2026-01-15
+**Generated:** 2026-01-23
 
 ## 1. Purpose & scope
 
@@ -21,6 +21,11 @@ Visolux E-Commerce is a server-rendered Node.js + Express + SQLite e-commerce ap
   - Slip verification queue (approve/reject)
 
 This document describes how the system is structured and how to operate it.
+
+Recent additions (high level):
+- Weight-based Shipping Zones (match by sub-regions/states or zip codes)
+- Admin contact messages inbox
+- Admin in-app notifications
 
 ## 2. High-level architecture
 

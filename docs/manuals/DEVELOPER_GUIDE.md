@@ -144,6 +144,10 @@ This app is server-rendered, but these routes are still the primary HTTP contrac
 - Auth: normal users only (admins blocked)
 - Response: HTML
 
+Notes:
+- Checkout calculates `totalWeightKg` from hydrated cart items (`weight_kg × quantity`).
+- Shipping quotes come from the Shipping Zones engine (see section 7.5).
+
 #### `POST /checkout/promo-check`
 - Auth: normal users only
 - CSRF: required
@@ -217,12 +221,20 @@ Main areas:
 - Categories and content blocks
 - Settings:
   - branding (`site.logo.image`)
-  - shipping fees
+  - shipping zones (weight-based)
   - promos
   - footer/pages
 - Reports:
   - `GET /admin/reports/sales`
   - `GET /admin/reports/sales.csv`
+
+Shipping configuration routes:
+- `GET /admin/site/shipping-zones`
+- `GET /admin/site/shipping-zones/new`
+- `POST /admin/site/shipping-zones`
+- `GET /admin/site/shipping-zones/:id`
+- `POST /admin/site/shipping-zones/:id`
+- `POST /admin/site/shipping-zones/:id/delete`
 
 ---
 
@@ -243,6 +255,35 @@ Main areas:
 - Refund requests create refund records.
 - Notify callback updates status when provider confirms.
 - FPX refunds are blocked by rule.
+
+### 7.5 Shipping zones (weight-based)
+
+Code:
+- Engine: `src/services/shippingService.js`
+- Admin CRUD: `src/routes/admin.js` and `views/admin/shipping_zone_form.ejs`
+- Checkout quoting: `POST /checkout/quote` in `src/routes/orders.js`
+- Final order totals: `placeOrder()` in `src/services/orderService.js`
+
+Storage:
+- Shipping zones are stored in `site_settings` under key `shipping.zones.v1` as JSON:
+  - `{ version: 1, zones: [...] }`
+
+Zone model (conceptual):
+- `match_by`: `SUBREGIONS` (Malaysia states) or `ZIP_CODES`
+- `subregions`: string[] (states)
+- `zip_codes`: string[] (exact codes or prefix patterns like `88*`)
+- `methods`: array of pricing methods
+
+Pricing methods:
+- `BASE`: first weight+fee, then additional steps
+- `PER_STEP`: for weights >= `min_weight_kg`, shipping = `ceil(totalWeight / step_kg) × fee_cents_per_step`
+
+Selection:
+- A zone matches by state or postcode.
+- When multiple methods exist, the highest eligible `min_weight_kg` wins.
+
+No-match behavior:
+- If no zone matches, quoting returns `{ noMatch: true }` and checkout blocks submission.
 
 ---
 

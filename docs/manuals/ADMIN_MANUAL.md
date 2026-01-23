@@ -74,8 +74,10 @@ Main admin pages:
 - **Products:** `/admin/products`
 - **Orders:** `/admin/orders`
 - **Categories & home layout:** `/admin/categories`
-- **Settings (logo, shipping, promos, pages):** `/admin/settings`
+- **Shipping (zones / weight-based):** `/admin/site/shipping-zones`
+- **Settings (logo, promos, pages, legacy shipping link):** `/admin/settings`
 - **Notifications:** `/admin/notifications`
+- **Contact messages:** `/admin/contact-messages`
 - **Sales report:** `/admin/reports/sales`
 
 ---
@@ -156,6 +158,9 @@ Refunds are used when:
 - Customer cancelled after payment
 - Shipping adjustments
 
+Note:
+- When a refund is confirmed by the payment provider, the customer can be notified by email.
+
 **Cautions:**
 - Do not refund more than the order total.
 - Some payment channels (example: FPX) may not allow refunds by policy.
@@ -174,7 +179,42 @@ Best practices:
 
 ---
 
-## 10) Branding and site pages
+## 10) Shipping zones (by state or zip code)
+
+Where: **Admin → Shipping** (`/admin/site/shipping-zones`)
+
+Shipping is calculated by **total cart weight** and the delivery address.
+
+### 10.1 Match by sub-regions (states)
+- Choose **By sub-regions**.
+- Select one or more states.
+
+### 10.2 Match by zip codes
+- Choose **By zip codes**.
+- Enter one zip code per line, or comma-separated.
+- Prefix patterns like `88*` are supported.
+
+### 10.3 Weight rates
+Each zone supports:
+- **First**: set weight (kg) + amount (RM)
+- **Every additional**: per (kg) + add (RM)
+- Optional: **“kg and above” range** (calculate by amount per set kg)
+
+### 10.4 How the system calculates shipping
+1) The system sums all product weights in the cart.
+2) It selects the first shipping zone that matches the delivery address.
+3) If total weight is within the **First** weight, shipping = First amount.
+4) If total weight exceeds First, shipping adds **Every additional** steps.
+5) If the optional **range** is enabled and the weight is at/above the configured threshold, shipping is calculated as:
+
+   shipping = ceil(totalWeight / perSetKg) × amountPerSet
+
+Important:
+- If no zone matches the address, checkout will show **shipping not available**.
+
+---
+
+## 11) Branding and site pages
 
 ### 10.1 Logo
 Where: **Admin → Settings → Branding**
@@ -188,7 +228,17 @@ Update them in admin settings.
 
 ---
 
-## 11) Notifications
+## 12) Contact messages
+
+Where: `/admin/contact-messages`
+
+- Opening a message will mark it as **Read**.
+- Use filters (**New / Read / All**) to find messages.
+- Use **Delete** only if you want to permanently remove the message.
+
+---
+
+## 13) Notifications
 
 Where: `/admin/notifications`
 
@@ -198,7 +248,7 @@ Notifications are reminders for important events.
 
 ---
 
-## 12) Common problems (Troubleshooting)
+## 14) Common problems (Troubleshooting)
 
 ### The product does not show on the store
 Check:
@@ -217,7 +267,7 @@ Check:
 
 ---
 
-## 13) Safety rules (must follow)
+## 15) Safety rules (must follow)
 
 - Never share admin passwords.
 - Don’t use admin accounts to shop.
