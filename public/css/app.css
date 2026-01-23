@@ -404,6 +404,7 @@ html.admin-sidebar-collapsed .admin-nav__item{justify-content:center}
 .btn:focus-visible{outline:none; box-shadow:var(--ring)}
 .icon{display:inline-block; width:18px; height:18px; vertical-align:middle; flex-shrink:0}
 .btn .icon{display:inline-block}
+#add-to-cart .btn {height:auto}
 .btn-icon{position:relative; z-index:0}
 .btn-icon:hover,
 .btn-icon:focus-visible{z-index:50}
