@@ -57,29 +57,27 @@
 
 <section id="shipping" class="card" style="padding:14px; margin-top:12px">
   <h2 class="h2" style="margin-top:0">Shipping</h2>
-  <div class="muted small">Configure courier charges for West/East Malaysia (RM). Used for checkout preview and final order totals.</div>
+  <div class="muted small">Configure shipping rates by sub-regions (states) or zip code groups, based on total cart weight.</div>
 
-  <form method="post" action="/admin/site/shipping" style="margin-top:12px; width:100%">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-
-    <div class="row" style="gap:14px; align-items:flex-start">
-      <div class="col" style="min-width:280px">
-        <label>West Malaysia (RM)</label>
-        <input class="input" name="west_fee_rm" inputmode="decimal" value="<%= westFeeRm %>" required />
-        <div class="muted small" style="margin-top:6px">Example: 8.00</div>
+  <div class="card" style="padding:12px; margin-top:12px">
+    <div class="row" style="justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap">
+      <div>
+        <div style="font-weight:800">Shipping zones (recommended)</div>
+        <div class="muted small">Each zone can match multiple states or multiple zip codes, with weight-based rates (first + additional + optional “kg and above” range).</div>
       </div>
-
-      <div class="col" style="min-width:280px">
-        <label>East Malaysia (RM)</label>
-        <input class="input" name="east_fee_rm" inputmode="decimal" value="<%= eastFeeRm %>" required />
-        <div class="muted small" style="margin-top:6px">Example: 18.00</div>
+      <div class="actions" style="gap:8px">
+        <a class="btn btn-primary" href="/admin/site/shipping-zones">Manage zones</a>
       </div>
     </div>
+  </div>
 
-    <div class="row" style="justify-content:flex-end; margin-top:14px">
-      <button class="btn btn-primary" type="submit">Save Shipping</button>
+  <div class="card" style="padding:12px; margin-top:12px">
+    <div style="font-weight:800">Legacy courier fees</div>
+    <div class="muted small" style="margin-top:6px">If you still need the old flat West/East settings, you can edit them here. Weight-based zones are used for checkout shipping calculations.</div>
+    <div class="row" style="justify-content:flex-end; margin-top:10px">
+      <a class="btn" href="/admin/site/shipping">Edit legacy courier fees</a>
     </div>
-  </form>
+  </div>
 </section>
 
 <section id="security" class="card" style="padding:14px; margin-top:12px">

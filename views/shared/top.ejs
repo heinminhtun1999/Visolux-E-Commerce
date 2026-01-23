@@ -192,6 +192,10 @@
             </a>
 
             <div class="admin-nav__section">System</div>
+            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/site/shipping-zones') ? 'is-active' : '' %>" href="/admin/site/shipping-zones">
+              <span class="admin-nav__icon"><%- icon('sliders-horizontal') %></span>
+              <span class="admin-nav__label">Shipping</span>
+            </a>
             <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings">
               <span class="admin-nav__icon"><%- icon('settings') %></span>
               <span class="admin-nav__label">Settings</span>

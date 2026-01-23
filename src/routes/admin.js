@@ -3419,8 +3419,8 @@ router.get('/contact-messages', (req, res) => {
   res.setHeader('Cache-Control', 'private, no-store');
 
   const q = String(req.query.q || '').trim() || '';
-  const statusRaw = String(req.query.status || 'NEW').trim().toUpperCase();
-  const status = statusRaw === 'NEW' || statusRaw === 'READ' || statusRaw === 'ALL' ? statusRaw : 'NEW';
+  const statusRaw = String(req.query.status || 'ALL').trim().toUpperCase();
+  const status = statusRaw === 'NEW' || statusRaw === 'READ' || statusRaw === 'ALL' ? statusRaw : 'ALL';
 
   const { page, pageSize, offset, limit } = getPagination({ page: req.query.page, pageSize: 20 });
   const total = contactMessageRepo.countAdmin({ q: q || null, status });
