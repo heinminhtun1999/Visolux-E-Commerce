@@ -1,6 +1,34 @@
 const { env } = require('../config/env');
 const userRepo = require('../repositories/userRepo');
 
+function logoutClosedAccountSessions(req, _res, next) {
+  if (!req.session || !req.session.user) return next();
+  if (req.session.user.isAdmin) return next();
+
+  // Throttle DB checks per-session to reduce load.
+  const now = Date.now();
+  const last = Number(req.session.user._activeCheckedAt || 0);
+  if (Number.isFinite(last) && last > 0 && now - last < 30_000) return next();
+  req.session.user._activeCheckedAt = now;
+
+  try {
+    const u = userRepo.getById(req.session.user.user_id);
+    if (!u || u.is_closed) {
+      req.session.user = null;
+      req.session.flash = { type: 'error', message: 'This account has been closed.' };
+      return next();
+    }
+
+    // Keep session identity in sync.
+    req.session.user.username = u.username;
+    req.session.user.email = u.email;
+  } catch (_) {
+    // ignore and allow request
+  }
+
+  return next();
+}
+
 function requireUser(req, res, next) {
   if (!req.session.user) {
     req.session.flash = { type: 'error', message: 'Please sign in first.' };
@@ -42,4 +70,4 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
-module.exports = { requireUser, requireAdmin, computeIsAdmin };
+module.exports = { requireUser, requireAdmin, computeIsAdmin, logoutClosedAccountSessions };

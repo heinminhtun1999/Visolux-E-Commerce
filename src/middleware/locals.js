@@ -4,6 +4,7 @@ const { formatDateTime } = require('../utils/datetime');
 const adminNotificationRepo = require('../repositories/adminNotificationRepo');
 const settingsRepo = require('../repositories/settingsRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
+const categoryRepo = require('../repositories/categoryRepo');
 
 function titleCase(s) {
   return String(s || '')
@@ -79,6 +80,17 @@ function attachLocals(req, res, next) {
   res.locals.flash = req.session.flash || null;
   req.session.flash = null;
   res.locals.breadcrumbs = buildBreadcrumbs(req.path);
+
+  // Store navigation: categories dropdown (public pages only)
+  if (!String(req.path || '').startsWith('/admin')) {
+    try {
+      res.locals.navCategories = categoryRepo.listPublic();
+    } catch (_) {
+      res.locals.navCategories = [];
+    }
+  } else {
+    res.locals.navCategories = [];
+  }
 
   // Site branding
   try {

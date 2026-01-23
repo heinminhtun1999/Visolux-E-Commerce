@@ -81,8 +81,8 @@
       return;
     }
 
-    // Keep extra room at the bottom so the Y-min label and X-date labels don't overlap.
-    var padding = { l: 10, r: 10, t: 10, b: 36 };
+    // Keep extra room so the Y-min label and X-date labels don't overlap (esp. on small screens).
+    var padding = { l: 44, r: 12, t: 10, b: 46 };
     var x0 = padding.l;
     var y0 = padding.t;
     var w = cssWidth - padding.l - padding.r;
@@ -121,8 +121,8 @@
     ctx.fillStyle = 'rgba(100,116,139,.9)';
     ctx.font = '11px system-ui, -apple-system, Segoe UI, Roboto, Arial';
     var yLabelTopY = y0 + 10;
-    var yLabelBottomY = y0 + h + 14;
-    var xLabelY = y0 + h + 30;
+    var yLabelBottomY = y0 + h + 18;
+    var xLabelY = y0 + h + 38;
     ctx.fillText(formatRM(maxY), x0 + 2, yLabelTopY);
     ctx.fillText(formatRM(0), x0 + 2, yLabelBottomY);
 

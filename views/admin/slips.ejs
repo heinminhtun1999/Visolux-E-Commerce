@@ -5,13 +5,6 @@
     <h1 class="h1">Admin – Bank slips</h1>
     <div class="muted small"><%= total %> slips</div>
   </div>
-  <div class="actions icon-row">
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/orders') ? 'is-active' : '' %>" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/products') ? 'is-active' : '' %>" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/slips') ? 'is-active' : '' %>" href="/admin/slips" title="Bank slips" aria-label="Bank slips" data-label="Bank slips"><%- icon('slip') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
-    <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
-  </div>
 </div>
 
 <div class="card" style="padding:14px; margin-top:12px">
@@ -60,11 +53,11 @@
           <td class="muted"><%= r.slip.uploaded_at %></td>
           <td>
             <% if (r.slip.slip_deleted) { %>
-              <span class="badge">Purged</span>
+              <span class="badge neutral">Purged</span>
             <% } else if (r.slip.verified) { %>
               <span class="badge ok">Verified</span>
             <% } else { %>
-              <span class="badge">Pending</span>
+              <span class="badge warn">Pending</span>
             <% } %>
           </td>
           <td><%= r.slip.bank_name %></td>
@@ -72,7 +65,7 @@
           <td><strong><%= r.order.customer_name %></strong><div class="muted small"><%= r.order.email %></div></td>
           <td>
             <div class="actions icon-row">
-              <a class="btn btn-icon icon-only" href="/admin/orders/<%= r.order.order_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></a>
+              <a class="btn" href="/admin/orders/<%= r.order.order_id %>">View</a>
               <% if (!r.slip.verified && !r.slip.slip_deleted) { %>
                 <form method="post" action="/admin/slips/<%= r.order.order_id %>/approve" style="display:inline">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />

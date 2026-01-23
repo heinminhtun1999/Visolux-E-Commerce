@@ -13,18 +13,21 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    var el = document.querySelector('.flash');
+    var el = document.querySelector('[data-flash]');
     if (!el) return;
 
-    // Let errors stay a little longer.
-    var ms = el.classList.contains('error') ? 6500 : 3500;
-    window.setTimeout(function () {
-      dismissFlash(el);
-    }, ms);
+    var closeBtn = el.querySelector('[data-flash-close]');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dismissFlash(el);
+      });
+    }
 
-    // Allow click to dismiss.
-    el.addEventListener('click', function () {
-      dismissFlash(el);
+    document.addEventListener('keydown', function (e) {
+      if (!el || el.dataset.dismissed === '1') return;
+      if (e && (e.key === 'Escape' || e.key === 'Esc')) dismissFlash(el);
     });
   });
 })();

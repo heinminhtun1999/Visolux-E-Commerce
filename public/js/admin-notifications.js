@@ -127,11 +127,8 @@
   });
 
   let toastEl = null;
-  let toastCloseTimer = null;
 
   function removeToast() {
-    if (toastCloseTimer) window.clearTimeout(toastCloseTimer);
-    toastCloseTimer = null;
     if (toastEl) toastEl.remove();
     toastEl = null;
   }
@@ -142,38 +139,37 @@
     removeToast();
 
     const root = document.createElement('div');
-    root.className = 'admin-notify-toast';
+    root.className = 'flash info admin-notify-toast';
     root.setAttribute('role', 'status');
     root.tabIndex = 0;
 
     const row = document.createElement('div');
-    row.className = 'admin-notify-toast__row';
+    row.className = 'flash__row';
 
-    const text = document.createElement('div');
+    const msg = document.createElement('div');
+    msg.className = 'flash__msg';
 
     const title = document.createElement('div');
-    title.className = 'admin-notify-toast__title';
     title.textContent = latest.title || 'New notification';
+    msg.appendChild(title);
 
     const body = document.createElement('div');
     body.className = 'admin-notify-toast__body';
     body.textContent = latest.body || '';
-
-    text.appendChild(title);
-    if (body.textContent) text.appendChild(body);
+    if (body.textContent) msg.appendChild(body);
 
     const close = document.createElement('button');
     close.type = 'button';
-    close.className = 'admin-notify-toast__close';
+    close.className = 'flash__close';
     close.setAttribute('aria-label', 'Dismiss');
-      close.textContent = '\u00D7';
+    close.textContent = '\u00D7';
     close.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
       removeToast();
     });
 
-    row.appendChild(text);
+    row.appendChild(msg);
     row.appendChild(close);
     root.appendChild(row);
 
@@ -185,43 +181,27 @@
         window.location.href = openUrl;
       });
       root.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          removeToast();
+          return;
+        }
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           window.location.href = openUrl;
+        }
+      });
+    } else {
+      root.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          removeToast();
         }
       });
     }
 
     document.body.appendChild(root);
     toastEl = root;
-
-    // Position near the bell.
-    const rect = bell.getBoundingClientRect();
-    root.style.left = `${Math.max(12, rect.left)}px`;
-    root.style.top = `${Math.min(window.innerHeight - 12, rect.bottom + 10)}px`;
-
-    window.requestAnimationFrame(function () {
-      if (!toastEl) return;
-      const r = toastEl.getBoundingClientRect();
-      const left = Math.min(
-        Math.max(12, rect.right - r.width),
-        Math.max(12, window.innerWidth - r.width - 12)
-      );
-      let top = rect.bottom + 10;
-      if (top + r.height + 12 > window.innerHeight) top = rect.top - r.height - 10;
-      top = Math.min(Math.max(12, top), Math.max(12, window.innerHeight - r.height - 12));
-      toastEl.style.left = `${left}px`;
-      toastEl.style.top = `${top}px`;
-    });
-
-    toastCloseTimer = window.setTimeout(removeToast, 9000);
-    root.addEventListener('mouseenter', function () {
-      if (toastCloseTimer) window.clearTimeout(toastCloseTimer);
-      toastCloseTimer = null;
-    });
-    root.addEventListener('mouseleave', function () {
-      if (!toastCloseTimer) toastCloseTimer = window.setTimeout(removeToast, 5000);
-    });
   }
 
   function applyPollData(data) {

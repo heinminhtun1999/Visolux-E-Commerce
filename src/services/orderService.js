@@ -50,6 +50,17 @@ function buildOrderFromCart({ cartItems }) {
   return { items, subtotal };
 }
 
+function computeTotalWeightKgFromCartItems(cartItems) {
+  let total = 0;
+  for (const line of cartItems || []) {
+    const w = Number(line?.product?.weight_kg || 0);
+    const q = Number(line?.quantity || 0);
+    if (!Number.isFinite(w) || !Number.isFinite(q) || q <= 0) continue;
+    total += w * q;
+  }
+  return Math.max(0, total);
+}
+
 function placeOrder({
   user,
   customer,
@@ -59,25 +70,42 @@ function placeOrder({
 }) {
   const built = buildOrderFromCart({ cartItems });
 
+  const totalWeightKg = computeTotalWeightKgFromCartItems(cartItems);
+
   const deliveryRegion = getMalaysiaRegionForState(customer?.state);
   if (!deliveryRegion) {
     const err = new Error('Delivery state is required.');
     err.status = 400;
     throw err;
   }
-  const shippingFee = shippingService.getCourierFeeCentsForState(customer.state);
-  const preDiscountGrandTotal = Math.max(0, built.subtotal + shippingFee);
+  const shippingQuote = shippingService.quoteShippingCents({
+    state: customer.state,
+    postcode: customer.postcode,
+    weightKg: totalWeightKg,
+  });
+  if (shippingQuote && shippingQuote.noMatch) {
+    const err = new Error('Shipping is not available for the selected delivery address.');
+    err.status = 400;
+    throw err;
+  }
+  const shippingFeeCents = Number(shippingQuote?.shippingCents || 0);
+  const preDiscountGrandTotal = Math.max(0, built.subtotal + shippingFeeCents);
 
   let promo = null;
   let discount = 0;
   if (promoCode) {
-    // Promo applies to items subtotal only (shipping excluded).
-    const applied = promoService.applyPromoToTotal({ promoCodeInput: promoCode, totalCents: built.subtotal });
+    // Promo can apply to items subtotal (default) or shipping fee.
+    // Still a single promo code per checkout.
+    const candidate = promoService.applyPromoToTotal({ promoCodeInput: promoCode, totalCents: built.subtotal });
+    const appliesToShipping = Boolean(candidate?.promo?.applies_to_shipping);
+    const applied = appliesToShipping
+      ? promoService.applyPromoToTotal({ promoCodeInput: promoCode, totalCents: shippingFeeCents })
+      : candidate;
     promo = applied.promo;
     discount = applied.discount;
   }
 
-  const grandTotal = Math.max(0, built.subtotal - discount + shippingFee);
+  const grandTotal = Math.max(0, built.subtotal + shippingFeeCents - discount);
 
   const payment_status = payment_method === 'OFFLINE_TRANSFER' ? 'AWAITING_VERIFICATION' : 'PENDING';
   const fulfilment_status = 'NEW';
@@ -99,7 +127,7 @@ function placeOrder({
     fulfilment_status,
     items_subtotal: built.subtotal,
     discount_amount: discount,
-    shipping_fee: shippingFee,
+    shipping_fee: shippingFeeCents,
     total_amount: grandTotal,
     items: built.items,
     promo,

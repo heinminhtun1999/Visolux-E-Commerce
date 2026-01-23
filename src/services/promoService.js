@@ -39,6 +39,7 @@ function applyPromoToTotal({ promoCodeInput, totalCents }) {
       discount_type: type,
       percent_off: type === 'PERCENT' ? Number(p.percent_off || 0) : 0,
       amount_off_cents: type === 'FIXED' ? Number(p.amount_off_cents || 0) : null,
+      applies_to_shipping: Boolean(p.applies_to_shipping),
       discount_amount: discount,
     },
     discount,

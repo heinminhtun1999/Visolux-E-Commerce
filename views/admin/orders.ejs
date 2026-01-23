@@ -6,12 +6,18 @@
     <div class="muted small"><%= total %> orders</div>
   </div>
   <div class="actions icon-row">
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/users') ? 'is-active' : '' %>" href="/admin/users" title="Users" aria-label="Users" data-label="Users"><%- icon('user') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/orders') ? 'is-active' : '' %>" href="/admin/orders" title="Orders" aria-label="Orders" data-label="Orders"><%- icon('orders') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/products') ? 'is-active' : '' %>" href="/admin/products" title="Products" aria-label="Products" data-label="Products"><%- icon('store') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/reports/sales') ? 'is-active' : '' %>" href="/admin/reports/sales" title="Sales report" aria-label="Sales report" data-label="Sales report"><%- icon('chart') %></a>
-    <a class="btn btn-icon icon-only <%= (currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
-    <a class="btn btn-icon icon-only" href="/" title="Home" aria-label="Home" data-label="Home"><%- icon('home') %></a>
+    <% const exportQs = new URLSearchParams(); %>
+    <% if (q) exportQs.set('q', q); %>
+    <% if (payment_status) exportQs.set('payment_status', payment_status); %>
+    <% if (payment_method) exportQs.set('payment_method', payment_method); %>
+    <% if (refund_status) exportQs.set('refund_status', refund_status); %>
+    <% if (fulfilment_status) exportQs.set('fulfilment_status', fulfilment_status); %>
+    <% if (date_from) exportQs.set('date_from', date_from); %>
+    <% if (date_to) exportQs.set('date_to', date_to); %>
+    <a class="btn btn-secondary btn-icon" href="/admin/exports/orders.csv?<%= exportQs.toString() %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
+      <%- icon('file-text') %>
+      <span class="btn-text">Export</span>
+    </a>
   </div>
 </div>
 
@@ -69,7 +75,7 @@
       <label>To</label>
       <input class="input" type="date" name="date_to" value="<%= date_to || '' %>" />
     </div>
-    <div style="width:140px">
+    <div style="width:140px;height:max-content;align-self: end;">
       <label>&nbsp;</label>
       <button class="btn btn-primary" type="submit">Apply</button>
     </div>
@@ -92,7 +98,7 @@
             <% if ((o.refund_status || 'NONE') === 'FULL_REFUND') { %>
               <span class="badge ok">FULL</span>
             <% } else if ((o.refund_status || 'NONE') === 'PARTIAL_REFUND') { %>
-              <span class="badge">PARTIAL</span>
+              <span class="badge warn">PARTIAL</span>
             <% } else { %>
               <span class="muted">—</span>
             <% } %>

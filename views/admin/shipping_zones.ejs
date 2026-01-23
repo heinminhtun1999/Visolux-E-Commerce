@@ -1,0 +1,58 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Shipping Zones</h1>
+    <div class="muted small">Configure shipping fees by sub-regions or zip codes (based on total cart weight).</div>
+  </div>
+  <div class="actions icon-row">
+    <div class="actions-group">
+      <a class="btn" href="/admin/site/shipping">Courier fees</a>
+      <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+      <a class="btn btn-primary" href="/admin/site/shipping-zones/new">New zone</a>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <% if (!(zones || []).length) { %>
+    <div class="muted">No shipping zones configured yet.</div>
+    <div style="margin-top:10px">
+      <a class="btn btn-primary" href="/admin/site/shipping-zones/new">Create first zone</a>
+    </div>
+  <% } else { %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Zone</th>
+          <th>Match</th>
+          <th>Coverage</th>
+          <th>Methods</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% zones.forEach(z => { %>
+          <tr>
+            <td>
+              <div style="font-weight:800"><%= z.name || 'Untitled' %></div>
+              <div class="muted small"><%= z.id %></div>
+            </td>
+            <td><%= String(z.match_by || 'SUBREGIONS').toUpperCase() === 'ZIP_CODES' ? 'By zip codes' : 'By sub-regions' %></td>
+            <td class="muted"><%= z.coverageText %></td>
+            <td><%= z.methodsCount %> method<%= z.methodsCount === 1 ? '' : 's' %></td>
+            <td style="text-align:right">
+              <a class="btn" href="/admin/site/shipping-zones/<%= z.id %>">Edit</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <div class="muted small" style="margin-top:10px">
+    Shipping fees are calculated only from zones. Ensure your zones cover all delivery addresses you want to support.
+  </div>
+</div>
+
+<%- include('../shared/bottom') %>

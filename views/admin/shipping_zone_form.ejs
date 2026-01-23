@@ -1,0 +1,172 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1"><%= zone && zone.id ? 'Edit shipping zone' : 'New shipping zone' %></h1>
+    <div class="muted small">Configure shipping by sub-regions (states) or zip codes, using total cart weight.</div>
+  </div>
+  <div class="actions icon-row">
+    <div class="actions-group">
+      <a class="btn btn-icon" href="/admin/site/shipping-zones" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></a>
+      <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
+    </div>
+  </div>
+</div>
+
+<form method="post" action="<%= action %>" class="card" style="padding:14px; margin-top:12px">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+  <div class="row" style="gap:14px; align-items:flex-start">
+    <div class="col" style="min-width:320px">
+      <label>Zone name</label>
+      <input class="input" name="name" maxlength="80" required value="<%= zone ? (zone.name || '') : '' %>" placeholder="Peninsular (weight-based)" />
+    </div>
+
+    <div class="col" style="min-width:320px">
+      <label>Match by</label>
+      <div class="row" style="gap:12px; align-items:center; margin-top:6px">
+        <label class="small" style="display:flex; gap:8px; align-items:center">
+          <input type="radio" name="match_by" value="SUBREGIONS" <%= (zone && String(zone.match_by||'').toUpperCase()==='ZIP_CODES') ? '' : 'checked' %> />
+          By sub-regions
+        </label>
+        <label class="small" style="display:flex; gap:8px; align-items:center">
+          <input type="radio" name="match_by" value="ZIP_CODES" <%= (zone && String(zone.match_by||'').toUpperCase()==='ZIP_CODES') ? 'checked' : '' %> />
+          By zip codes
+        </label>
+      </div>
+      <div class="muted small" style="margin-top:6px">Zip codes accept exact codes or prefixes like <strong>88*</strong>.</div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px; margin-top:12px" id="subregionsBox">
+    <div style="font-weight:800; margin-bottom:6px">Sub-regions (states)</div>
+    <div class="muted small" style="margin-bottom:10px">Select multiple states for this zone.</div>
+
+    <div class="row" style="gap:10px; flex-wrap:wrap">
+      <% (malaysiaStates || []).forEach(s => { %>
+        <% const checked = zone && Array.isArray(zone.subregions) && zone.subregions.includes(s); %>
+        <label class="small" style="display:flex; gap:8px; align-items:center; min-width:220px">
+          <input type="checkbox" name="subregions" value="<%= s %>" <%= checked ? 'checked' : '' %> />
+          <span><%= s %></span>
+        </label>
+      <% }) %>
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px; margin-top:12px" id="zipcodesBox" hidden>
+    <div style="font-weight:800; margin-bottom:6px">Zip codes</div>
+    <div class="muted small" style="margin-bottom:10px">Enter multiple zip codes separated by new lines or commas. Prefix patterns like <strong>88*</strong> are supported.</div>
+    <textarea class="input" name="zip_codes_text" rows="5" placeholder="88000\n88100\n88*"><%= zipCodesText %></textarea>
+  </div>
+
+  <div class="card" style="padding:12px; margin-top:12px">
+    <div style="font-weight:800; margin-bottom:6px">Weight rate (base)</div>
+    <div class="muted small" style="margin-bottom:10px">First kg + every additional kg.</div>
+
+    <div class="row" style="gap:14px; align-items:flex-start; flex-wrap:wrap">
+      <div class="col" style="min-width:220px">
+        <label>First: set weight (kg)</label>
+        <input class="input" name="first_weight_kg" type="number" min="0" step="0.01" required value="<%= base.first_weight_kg %>" />
+      </div>
+      <div class="col" style="min-width:220px">
+        <label>First: amount (RM)</label>
+        <input class="input" name="first_fee_rm" type="number" min="0" step="0.01" required value="<%= base.first_fee_rm %>" />
+      </div>
+    </div>
+
+    <div class="row" style="gap:14px; align-items:flex-start; flex-wrap:wrap; margin-top:10px">
+      <div class="col" style="min-width:220px">
+        <label>Every additional: per (kg)</label>
+        <input class="input" name="additional_weight_kg" type="number" min="0.01" step="0.01" required value="<%= base.additional_weight_kg %>" />
+      </div>
+      <div class="col" style="min-width:220px">
+        <label>Every additional: add (RM)</label>
+        <input class="input" name="additional_fee_rm" type="number" min="0" step="0.01" required value="<%= base.additional_fee_rm %>" />
+      </div>
+    </div>
+
+    <div class="card" style="padding:12px; margin-top:12px">
+      <label class="small" style="display:flex; gap:10px; align-items:center">
+        <input type="checkbox" name="range_enabled" value="1" id="rangeEnabled" <%= range && range.enabled ? 'checked' : '' %> />
+        Set more range: <strong>kg and above</strong> (calculate by amount per set kg)
+      </label>
+
+      <div id="rangeFields" style="margin-top:10px" <%= (range && range.enabled) ? '' : 'hidden' %>>
+        <div class="row" style="gap:14px; align-items:flex-start; flex-wrap:wrap">
+          <div class="col" style="min-width:220px">
+            <label>When weight ≥ (kg)</label>
+            <input class="input" name="range_min_weight_kg" type="number" min="0" step="0.01" value="<%= range.min_weight_kg %>" />
+          </div>
+          <div class="col" style="min-width:220px">
+            <label>Per set (kg)</label>
+            <input class="input" name="range_step_kg" type="number" min="0.01" step="0.01" value="<%= range.step_kg %>" />
+          </div>
+          <div class="col" style="min-width:220px">
+            <label>Amount per set (RM)</label>
+            <input class="input" name="range_fee_rm" type="number" min="0" step="0.01" value="<%= range.fee_rm %>" />
+          </div>
+        </div>
+        <div class="muted small" style="margin-top:8px">If enabled, shipping = ceil(totalWeight / perSetKg) × amountPerSet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="justify-content:space-between; margin-top:14px">
+    <div>
+      <% if (zone && zone.id) { %>
+        <button class="btn" type="submit" form="deleteZoneForm" onclick="return confirm('Delete this shipping zone?')">Delete zone</button>
+      <% } %>
+    </div>
+
+    <div class="row" style="gap:10px">
+      <a class="btn" href="/admin/site/shipping-zones">Cancel</a>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+  </div>
+</form>
+
+<% if (zone && zone.id) { %>
+  <form id="deleteZoneForm" method="post" action="/admin/site/shipping-zones/<%= zone.id %>/delete" style="display:none">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  </form>
+<% } %>
+
+<script>
+(function () {
+  function q(sel) { return document.querySelector(sel); }
+  function show(el, on) {
+    if (!el) return;
+    if (on) {
+      el.hidden = false;
+      el.style.display = '';
+    } else {
+      el.hidden = true;
+      el.style.display = 'none';
+    }
+  }
+
+  var subBox = q('#subregionsBox');
+  var zipBox = q('#zipcodesBox');
+
+  function updateMatchBy() {
+    var checked = q('input[name="match_by"]:checked');
+    var mode = checked ? String(checked.value || '') : 'SUBREGIONS';
+    show(subBox, mode !== 'ZIP_CODES');
+    show(zipBox, mode === 'ZIP_CODES');
+  }
+
+  var radios = Array.prototype.slice.call(document.querySelectorAll('input[name="match_by"]'));
+  radios.forEach(function (r) { r.addEventListener('change', updateMatchBy); });
+  updateMatchBy();
+
+  var rangeEnabled = q('#rangeEnabled');
+  var rangeFields = q('#rangeFields');
+  function updateRange() {
+    show(rangeFields, rangeEnabled && rangeEnabled.checked);
+  }
+  if (rangeEnabled) rangeEnabled.addEventListener('change', updateRange);
+  updateRange();
+})();
+</script>
+
+<%- include('../shared/bottom') %>
