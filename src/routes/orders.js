@@ -98,11 +98,12 @@ router.get('/checkout', async (req, res) => {
     return res.redirect('/admin/orders');
   }
 
+  cartService.sanitizeCart(req.session);
   const cart = cartService.getCart(req.session);
   const hydrated = await cartService.hydrateCart(cart);
   if (hydrated.items.length === 0) {
     req.session.flash = { type: 'error', message: 'Your cart is empty.' };
-    return res.redirect('/');
+    return res.redirect('/cart');
   }
 
   let prefill = null;
@@ -462,6 +463,11 @@ router.post(
           type: 'error',
           message: String(e && e.message ? e.message : 'Insufficient stock for one or more items.'),
         };
+        return res.redirect('/cart');
+      }
+
+      if (e && (e.status === 400 || e.status === 422) && String(e.message || '').toLowerCase().includes('cart is empty')) {
+        req.session.flash = { type: 'error', message: 'Your cart is empty.' };
         return res.redirect('/cart');
       }
 

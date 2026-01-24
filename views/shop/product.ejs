@@ -19,8 +19,9 @@
               <button class="product-carousel__btn product-carousel__btn--next" type="button" data-carousel-next aria-label="Next image">›</button>
             <% } %>
           </div>
-          <% if (product.stock <= 0) { %>
-            <div class="product-stock-overlay" aria-label="Out of stock">Out of stock</div>
+          <% const effStock = (product.available_stock == null ? product.stock : product.available_stock); %>
+          <% if (effStock <= 0) { %>
+            <div class="product-stock-overlay" aria-label="Out of stock"><%= (Number(product.stock || 0) > 0) ? 'Temporarily out of stock' : 'Out of stock' %></div>
           <% } %>
         </div>
 
@@ -42,10 +43,10 @@
       <div class="muted"><%= product.category_name || product.category %></div>
       <div style="margin-top:10px; font-size:18px; font-weight:800"><%= formatMoney(product.price) %></div>
       <div style="margin-top:10px">
-        <% if (product.stock > 0) { %>
-          <span class="badge ok">In stock: <%= product.stock %></span>
+        <% if (effStock > 0) { %>
+          <span class="badge ok">In stock: <%= effStock %></span>
         <% } else { %>
-          <span class="badge no">Out of stock</span>
+          <span class="badge no"><%= (Number(product.stock || 0) > 0) ? 'Temporarily out of stock' : 'Out of stock' %></span>
         <% } %>
       </div>
       <div style="margin-top:12px" class="muted">
@@ -63,11 +64,11 @@
           <input type="hidden" name="return_to" value="<%= currentUrl %>" />
           <div style="width:140px">
             <label>Qty</label>
-            <input class="input" type="number" name="quantity" min="1" max="99" value="1" />
+            <input class="input" type="number" name="quantity" min="1" max="<%= Math.min(99, Math.max(1, effStock || 1)) %>" value="1" <%= effStock > 0 ? '' : 'disabled' %> />
           </div>
           <div style="flex:1" id="add-to-cart">
             <label>&nbsp;</label>
-            <button class="btn btn-primary" type="submit" <%= product.stock > 0 ? '' : 'disabled' %>>Add to cart</button>
+            <button class="btn btn-primary" type="submit" <%= effStock > 0 ? '' : 'disabled' %>>Add to cart</button>
           </div>
         </form>
       <% } %>

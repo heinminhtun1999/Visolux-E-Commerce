@@ -5,6 +5,7 @@ const adminNotificationRepo = require('../repositories/adminNotificationRepo');
 const settingsRepo = require('../repositories/settingsRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
 const categoryRepo = require('../repositories/categoryRepo');
+const cartService = require('../services/cartService');
 
 function titleCase(s) {
   return String(s || '')
@@ -64,6 +65,33 @@ function buildBreadcrumbs(pathname) {
 }
 
 function attachLocals(req, res, next) {
+  // Keep cart consistent with current effective stock (stock - reservations).
+  // This prevents "ghost" cart counts when items become unavailable.
+  if (!req.session.user?.isAdmin) {
+    try {
+      const result = cartService.sanitizeCart(req.session);
+      if (result?.changed && !req.session.flash) {
+        const removedCount = (result.removed || []).length;
+        const adjustedCount = (result.adjusted || []).length;
+        const removed = Array.isArray(result.removed) ? result.removed : [];
+        const anyTemp = removed.some((r) => String(r?.reason || '') === 'temporarily_out_of_stock');
+        let message = '';
+        if (removedCount > 0 && adjustedCount > 0) {
+          message = 'Some items were removed and some quantities were adjusted due to stock changes.';
+        } else if (removedCount > 0) {
+          message = anyTemp
+            ? 'Some items were removed from your cart because they are temporarily out of stock.'
+            : 'Some items were removed from your cart because they are out of stock.';
+        } else if (adjustedCount > 0) {
+          message = 'Some cart quantities were reduced due to limited stock.';
+        }
+        if (message) req.session.flash = { type: 'error', message };
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
   res.locals.currentPath = req.path;
   res.locals.currentUrl = req.originalUrl;
   res.locals.formatMoney = formatMoney;

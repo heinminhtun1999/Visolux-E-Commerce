@@ -183,7 +183,7 @@ router.get(
       minPriceCents,
       maxPriceCents,
     });
-    const products = inventoryRepo.listPublic({
+    let products = inventoryRepo.listPublic({
       q,
       category,
       availability,
@@ -193,6 +193,11 @@ router.get(
       limit,
       offset,
     });
+
+    products = (products || []).map((p) => ({
+      ...p,
+      available_stock: inventoryRepo.getEffectiveAvailableStock(p.product_id),
+    }));
     const pageCount = getPageCount(total, pageSize);
 
     const categorySections = category
@@ -234,6 +239,8 @@ router.get('/products/:id', (req, res, next) => {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
   }
 
+  product.available_stock = inventoryRepo.getEffectiveAvailableStock(id);
+
   const cat = categoryRepo.getBySlug(product.category);
   if (!cat || cat.archived || !cat.visible) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
@@ -249,6 +256,7 @@ router.get('/cart', async (req, res) => {
     return res.redirect('/admin/orders');
   }
 
+  cartService.sanitizeCart(req.session);
   const cart = cartService.getCart(req.session);
   const hydrated = await cartService.hydrateCart(cart);
   res.render('shop/cart', { title: 'Cart', cart: hydrated });

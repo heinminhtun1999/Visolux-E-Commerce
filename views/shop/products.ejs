@@ -72,8 +72,9 @@
       <a href="/products/<%= p.product_id %>" style="text-decoration:none; color:inherit">
         <div class="product-img-wrap">
           <img class="product-img" src="<%= p.product_image || '/public/placeholder.svg' %>" alt="<%= p.name %>" />
-          <% if (p.stock <= 0) { %>
-            <div class="product-stock-overlay" aria-label="Out of stock">Out of stock</div>
+          <% const effStock = (p.available_stock == null ? p.stock : p.available_stock); %>
+          <% if (effStock <= 0) { %>
+            <div class="product-stock-overlay" aria-label="Out of stock"><%= (Number(p.stock || 0) > 0) ? 'Temporarily out of stock' : 'Out of stock' %></div>
           <% } %>
         </div>
         <div style="margin-top:10px; font-weight:700"><%= p.name %></div>
@@ -81,10 +82,10 @@
         <div class="kv">
           <div><span class="muted">Price</span> <strong><%= formatMoney(p.price) %></strong></div>
           <div>
-            <% if (p.stock > 0) { %>
+            <% if (effStock > 0) { %>
               <span class="badge ok">In stock</span>
             <% } else { %>
-              <span class="badge no">Out of stock</span>
+              <span class="badge no"><%= (Number(p.stock || 0) > 0) ? 'Temporarily out of stock' : 'Out of stock' %></span>
             <% } %>
           </div>
         </div>
@@ -96,7 +97,7 @@
             <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
             <input type="hidden" name="product_id" value="<%= p.product_id %>" />
             <input type="hidden" name="return_to" value="<%= currentUrl %>" />
-            <button class="btn btn-primary" type="submit" <%= p.stock > 0 ? '' : 'disabled' %>>Add to cart</button>
+            <button class="btn btn-primary" type="submit" <%= effStock > 0 ? '' : 'disabled' %>>Add to cart</button>
           </form>
         <% } %>
         <a class="btn" href="/products/<%= p.product_id %>" style="flex:1">View</a>
