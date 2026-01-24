@@ -282,7 +282,7 @@ router.post(
       return res.redirect('/');
     }
 
-    const availableStock = Math.max(0, Math.floor(Number(product.stock || 0)));
+    const availableStock = inventoryRepo.getEffectiveAvailableStock(productId);
     if (availableStock <= 0) {
       req.session.flash = { type: 'error', message: 'This product is out of stock.' };
       const returnTo = safeReturnTo(req.validated.body.return_to, '');
@@ -339,7 +339,7 @@ router.post(
       return res.redirect('/cart');
     }
 
-    const availableStock = Math.max(0, Math.floor(Number(product.stock || 0)));
+    const availableStock = inventoryRepo.getEffectiveAvailableStock(productId);
     const desiredQty = Math.max(0, Math.min(99, Math.floor(quantity)));
 
     if (desiredQty > 0 && availableStock <= 0) {

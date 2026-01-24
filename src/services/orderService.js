@@ -31,7 +31,7 @@ function buildOrderFromCart({ cartItems }) {
     const qty = Number(line.quantity);
     if (!Number.isFinite(qty) || qty <= 0) continue;
 
-    const availableStock = Math.max(0, Math.floor(Number(p.stock || 0)));
+    const availableStock = inventoryRepo.getEffectiveAvailableStock(p.product_id);
     if (availableStock <= 0) {
       throw new StockInsufficientError(`"${p.name}" is out of stock.`);
     }

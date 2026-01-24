@@ -357,7 +357,55 @@ function createOrder({
 }) {
   const db = getDb();
 
+  function getReservedOpenQtyForProduct(productId, { pendingOnlineMinutes = 30 } = {}) {
+    const pid = Number(productId);
+    if (!Number.isFinite(pid) || pid <= 0) return 0;
+    const mins = Math.max(1, Math.floor(Number(pendingOnlineMinutes || 30)));
+    const pendingWindow = `-${mins} minutes`;
+    const row = db
+      .prepare(
+        `SELECT COALESCE(SUM(oi.quantity), 0) as q
+         FROM order_items oi
+         JOIN orders o ON o.order_id = oi.order_id
+         WHERE oi.product_id = @pid
+           AND o.fulfilment_status <> 'CANCELLED'
+           AND (
+             (o.payment_method = 'ONLINE' AND o.payment_status = 'PENDING' AND datetime(o.created_at) >= datetime('now', @pendingWindow))
+             OR (o.payment_method = 'OFFLINE_TRANSFER' AND o.payment_status = 'AWAITING_VERIFICATION')
+           )`
+      )
+      .get({ pid, pendingWindow });
+    return Math.max(0, Math.floor(Number(row?.q || 0)));
+  }
+
   const tx = db.transaction(() => {
+    // Atomic stock reservation check: treat open/unpaid orders as reserving stock.
+    // This prevents two concurrent checkouts from both placing an order for the last unit.
+    for (const it of items || []) {
+      const pid = Number(it.product_id);
+      if (!Number.isFinite(pid) || pid <= 0) continue;
+
+      const inv = db.prepare('SELECT stock, archived, visibility FROM inventory WHERE product_id=?').get(pid);
+      const stock = Math.max(0, Math.floor(Number(inv?.stock || 0)));
+
+      if (!inv || Number(inv.archived) === 1 || Number(inv.visibility) === 0) {
+        const err = new Error(`Product "${it.product_name_snapshot || `#${pid}`}" is not available.`);
+        err.status = 400;
+        throw err;
+      }
+
+      const reserved = getReservedOpenQtyForProduct(pid, { pendingOnlineMinutes: 30 });
+      const effectiveAvailable = Math.max(0, stock - reserved);
+      const desiredQty = Math.max(0, Math.floor(Number(it.quantity || 0)));
+
+      if (desiredQty <= 0) continue;
+      if (desiredQty > effectiveAvailable) {
+        const err = new Error(`Only ${effectiveAvailable} of "${it.product_name_snapshot || `#${pid}`}" is available.`);
+        err.status = 409;
+        throw err;
+      }
+    }
+
     let inserted;
     let orderCode;
 

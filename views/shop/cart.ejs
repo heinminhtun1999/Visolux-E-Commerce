@@ -39,7 +39,7 @@
                   class="input"
                   type="number"
                   min="0"
-                  max="<%= Math.min(99, Math.max(0, Number(line.product.stock || 0))) %>"
+                  max="<%= Math.min(99, Math.max(0, Number(line.available_stock == null ? 0 : line.available_stock))) %>"
                   name="quantity"
                   value="<%= line.quantity %>"
                   inputmode="numeric"

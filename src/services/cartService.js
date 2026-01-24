@@ -32,13 +32,13 @@ async function hydrateCart(cart) {
     const product = inventoryRepo.getById(productId);
     if (!product || product.archived) continue;
 
-    const availableStock = Math.max(0, Math.floor(Number(product.stock || 0)));
+    const availableStock = inventoryRepo.getEffectiveAvailableStock(productId);
     const lineQty = Math.min(Math.min(Number(qty || 0), 999), availableStock || 0);
     if (lineQty <= 0) continue;
 
     const subtotal = product.price * lineQty;
     total += subtotal;
-    items.push({ product, quantity: lineQty, subtotal });
+    items.push({ product, quantity: lineQty, subtotal, available_stock: availableStock });
   }
 
   return { items, total };

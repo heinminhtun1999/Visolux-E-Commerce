@@ -377,6 +377,37 @@ function updateCategorySlug(oldSlug, newSlug) {
   db.prepare('UPDATE inventory SET category=? WHERE category=?').run(nextValue, oldValue);
 }
 
+function getReservedQuantityInOpenOrders(productId, { pendingOnlineMinutes = 30 } = {}) {
+  const pid = Number(productId);
+  if (!Number.isFinite(pid) || pid <= 0) return 0;
+
+  const mins = Math.max(1, Math.floor(Number(pendingOnlineMinutes || 30)));
+  const pendingWindow = `-${mins} minutes`;
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT COALESCE(SUM(oi.quantity), 0) as q
+       FROM order_items oi
+       JOIN orders o ON o.order_id = oi.order_id
+       WHERE oi.product_id = @pid
+         AND o.fulfilment_status <> 'CANCELLED'
+         AND (
+           (o.payment_method = 'ONLINE' AND o.payment_status = 'PENDING' AND datetime(o.created_at) >= datetime('now', @pendingWindow))
+           OR (o.payment_method = 'OFFLINE_TRANSFER' AND o.payment_status = 'AWAITING_VERIFICATION')
+         )`
+    )
+    .get({ pid, pendingWindow });
+  return Math.max(0, Math.floor(Number(row?.q || 0)));
+}
+
+function getEffectiveAvailableStock(productId, { pendingOnlineMinutes = 30 } = {}) {
+  const product = getById(productId);
+  if (!product) return 0;
+  const stock = Math.max(0, Math.floor(Number(product.stock || 0)));
+  const reserved = getReservedQuantityInOpenOrders(productId, { pendingOnlineMinutes });
+  return Math.max(0, stock - reserved);
+}
+
 module.exports = {
   countPublic,
   listPublic,
@@ -386,4 +417,6 @@ module.exports = {
   create,
   update,
   updateCategorySlug,
+  getReservedQuantityInOpenOrders,
+  getEffectiveAvailableStock,
 };
