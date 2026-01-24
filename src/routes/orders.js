@@ -457,6 +457,14 @@ router.post(
         debugFiuu: Boolean(env.fiuu.logRequests),
       });
     } catch (e) {
+      if (e && (e.status === 409 || e.name === 'StockInsufficientError')) {
+        req.session.flash = {
+          type: 'error',
+          message: String(e && e.message ? e.message : 'Insufficient stock for one or more items.'),
+        };
+        return res.redirect('/cart');
+      }
+
       if (e && e.status === 400 && String(e.message || '').toLowerCase().includes('shipping')) {
         req.session.flash = { type: 'error', message: String(e.message || 'Shipping is not available for the selected address.') };
         return res.redirect('/checkout');

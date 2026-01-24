@@ -31,6 +31,14 @@ function buildOrderFromCart({ cartItems }) {
     const qty = Number(line.quantity);
     if (!Number.isFinite(qty) || qty <= 0) continue;
 
+    const availableStock = Math.max(0, Math.floor(Number(p.stock || 0)));
+    if (availableStock <= 0) {
+      throw new StockInsufficientError(`"${p.name}" is out of stock.`);
+    }
+    if (qty > availableStock) {
+      throw new StockInsufficientError(`Only ${availableStock} of "${p.name}" is available.`);
+    }
+
     items.push({
       product_id: p.product_id,
       product_name_snapshot: p.name,

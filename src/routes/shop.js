@@ -282,9 +282,29 @@ router.post(
       return res.redirect('/');
     }
 
+    const availableStock = Math.max(0, Math.floor(Number(product.stock || 0)));
+    if (availableStock <= 0) {
+      req.session.flash = { type: 'error', message: 'This product is out of stock.' };
+      const returnTo = safeReturnTo(req.validated.body.return_to, '');
+      if (returnTo) return res.redirect(returnTo);
+      return res.redirect(safeRedirectBack(req, '/'));
+    }
+
     const q = Math.max(1, Math.min(99, Math.floor(quantity)));
-    cartService.setQty(req.session, productId, (req.session.cart?.items?.[String(productId)] || 0) + q);
-    req.session.flash = { type: 'success', message: 'Added to cart.' };
+
+    const currentQty = Number(req.session.cart?.items?.[String(productId)] || 0);
+    const desiredQty = Math.max(0, Math.floor(currentQty) + q);
+    const cappedQty = Math.min(desiredQty, availableStock);
+    cartService.setQty(req.session, productId, cappedQty);
+
+    if (cappedQty < desiredQty) {
+      req.session.flash = {
+        type: 'error',
+        message: `Only ${availableStock} in stock. Your cart quantity was adjusted.`,
+      };
+    } else {
+      req.session.flash = { type: 'success', message: 'Added to cart.' };
+    }
     const returnTo = safeReturnTo(req.validated.body.return_to, '');
     if (returnTo) return res.redirect(returnTo);
     return res.redirect(safeRedirectBack(req, '/'));
@@ -311,7 +331,32 @@ router.post(
 
     const productId = Number(req.validated.body.product_id);
     const quantity = Number(req.validated.body.quantity);
-    cartService.setQty(req.session, productId, quantity);
+
+    const product = inventoryRepo.getById(productId);
+    if (!product || product.archived || !product.visibility) {
+      cartService.setQty(req.session, productId, 0);
+      req.session.flash = { type: 'error', message: 'Product is no longer available and was removed from your cart.' };
+      return res.redirect('/cart');
+    }
+
+    const availableStock = Math.max(0, Math.floor(Number(product.stock || 0)));
+    const desiredQty = Math.max(0, Math.min(99, Math.floor(quantity)));
+
+    if (desiredQty > 0 && availableStock <= 0) {
+      cartService.setQty(req.session, productId, 0);
+      req.session.flash = { type: 'error', message: 'This product is out of stock and was removed from your cart.' };
+      return res.redirect('/cart');
+    }
+
+    const cappedQty = Math.min(desiredQty, availableStock);
+    cartService.setQty(req.session, productId, cappedQty);
+
+    if (desiredQty !== cappedQty) {
+      req.session.flash = {
+        type: 'error',
+        message: `Only ${availableStock} in stock. Your cart quantity was adjusted.`,
+      };
+    }
     return res.redirect('/cart');
   }
 );

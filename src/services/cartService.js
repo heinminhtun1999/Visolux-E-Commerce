@@ -32,7 +32,8 @@ async function hydrateCart(cart) {
     const product = inventoryRepo.getById(productId);
     if (!product || product.archived) continue;
 
-    const lineQty = Math.min(Number(qty || 0), 999);
+    const availableStock = Math.max(0, Math.floor(Number(product.stock || 0)));
+    const lineQty = Math.min(Math.min(Number(qty || 0), 999), availableStock || 0);
     if (lineQty <= 0) continue;
 
     const subtotal = product.price * lineQty;

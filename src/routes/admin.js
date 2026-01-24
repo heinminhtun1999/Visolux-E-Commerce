@@ -3051,11 +3051,13 @@ router.post(
       if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(q) || q <= 0) return 0;
 
       const items = Array.isArray(order.items) ? order.items : [];
-      const discountAmount = promo ? Number(promo.discount_amount || 0) : 0;
+      const discountAmount = promo && !promo.applies_to_shipping ? Number(promo.discount_amount || 0) : 0;
       const allocations = allocateDiscountAcrossItems({ items, discountAmount });
       const alloc = allocations.find((a) => a.orderItemId === orderItem.id);
       const allocatedDiscount = alloc ? Number(alloc.allocatedDiscount || 0) : 0;
-      const netPaidForLine = Math.max(0, Number(orderItem.subtotal || 0) - allocatedDiscount);
+      const unitPrice = Math.max(0, Number(orderItem.price_snapshot || 0));
+      const lineSubtotal = unitPrice * qty;
+      const netPaidForLine = Math.max(0, lineSubtotal - allocatedDiscount);
       return Math.round((netPaidForLine * q) / qty);
     }
 

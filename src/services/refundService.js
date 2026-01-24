@@ -37,7 +37,11 @@ function computeDefaultRefundAmountCents({ order, promo, orderItem, quantityToRe
   const allocations = allocateDiscountAcrossItems({ items, discountAmount });
   const alloc = allocations.find((a) => a.orderItemId === orderItem.id);
   const allocatedDiscount = alloc ? Number(alloc.allocatedDiscount || 0) : 0;
-  const netPaidForLine = Math.max(0, Number(orderItem.subtotal || 0) - allocatedDiscount);
+  // Derive line subtotal from unit price snapshot to avoid accidentally refunding the full line
+  // when the stored subtotal is inconsistent.
+  const unitPrice = Math.max(0, Number(orderItem.price_snapshot || 0));
+  const lineSubtotal = unitPrice * qty;
+  const netPaidForLine = Math.max(0, lineSubtotal - allocatedDiscount);
   return Math.round((netPaidForLine * q) / qty);
 }
 

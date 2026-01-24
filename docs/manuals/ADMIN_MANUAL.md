@@ -14,8 +14,10 @@ Visolux Store lets you:
 - Receive orders from customers
 - Confirm payments (online or bank transfer slip)
 - Prepare and fulfil orders (pack/ship)
+- Configure shipping fees by weight (Shipping Zones)
 - Manage promotions (discount codes)
 - Update branding (logo) and basic site pages
+- Review admin notifications and contact messages
 
 ---
 
@@ -74,6 +76,7 @@ Main admin pages:
 - **Products:** `/admin/products`
 - **Orders:** `/admin/orders`
 - **Categories & home layout:** `/admin/categories`
+- **Users:** `/admin/users`
 - **Shipping (zones / weight-based):** `/admin/site/shipping-zones`
 - **Settings (logo, promos, pages, legacy shipping link):** `/admin/settings`
 - **Notifications:** `/admin/notifications`
@@ -133,6 +136,8 @@ Use this for:
    - Payment status
    - Customer details (name/phone/address)
    - Items and quantities
+   - Total weight (used for shipping)
+   - Shipping fee and delivery area
 
 ### 7.2 When payment is **Paid**
 1. Set fulfilment to **Processing**
@@ -185,13 +190,18 @@ Where: **Admin → Shipping** (`/admin/site/shipping-zones`)
 
 Shipping is calculated by **total cart weight** and the delivery address.
 
+Important concept:
+- A **Shipping Zone** is a “group” (of states or zip codes) with its own weight-based rates.
+- If you have multiple zones that could match, the system uses the **first matching zone**.
+   - Best practice: create more specific zones first (example: Sabah-only), then broader zones (example: Peninsular).
+
 ### 10.1 Match by sub-regions (states)
 - Choose **By sub-regions**.
-- Select one or more states.
+- Select one or more states (a group).
 
 ### 10.2 Match by zip codes
 - Choose **By zip codes**.
-- Enter one zip code per line, or comma-separated.
+- Enter one zip code per line, or comma-separated (a group).
 - Prefix patterns like `88*` are supported.
 
 ### 10.3 Weight rates
@@ -216,29 +226,38 @@ Important:
 
 ## 11) Branding and site pages
 
-### 10.1 Logo
+### 11.1 Logo
 Where: **Admin → Settings → Branding**
 
 - Upload your logo.
 - The same logo is used for the browser tab icon.
 
-### 10.2 Basic pages
+### 11.2 Basic pages
 The store includes basic pages like Privacy/Terms/How to Order.
 Update them in admin settings.
 
 ---
 
-## 12) Contact messages
+## 12) Users
+
+Where: `/admin/users`
+
+- Use this page to manage customer accounts.
+- If an account is closed/disabled by admin, the user will be forced to log out on their next request.
+
+---
+
+## 13) Contact messages
 
 Where: `/admin/contact-messages`
 
-- Opening a message will mark it as **Read**.
+- Opening a message will mark it as **Read** (it is not deleted).
 - Use filters (**New / Read / All**) to find messages.
 - Use **Delete** only if you want to permanently remove the message.
 
 ---
 
-## 13) Notifications
+## 14) Notifications
 
 Where: `/admin/notifications`
 
@@ -246,9 +265,12 @@ Notifications are reminders for important events.
 - Check this page daily.
 - Clear items after handling.
 
+Tip:
+- You may also see a small in-app notification card when a new order arrives.
+
 ---
 
-## 14) Common problems (Troubleshooting)
+## 15) Common problems (Troubleshooting)
 
 ### The product does not show on the store
 Check:
@@ -267,7 +289,7 @@ Check:
 
 ---
 
-## 15) Safety rules (must follow)
+## 16) Safety rules (must follow)
 
 - Never share admin passwords.
 - Don’t use admin accounts to shop.
