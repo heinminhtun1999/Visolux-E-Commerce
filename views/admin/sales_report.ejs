@@ -40,6 +40,22 @@
     <div class="stat__value">RM <%= formatMoney((summary && summary.gross_cents) ? summary.gross_cents : 0) %></div>
   </div>
   <div class="card card--pad">
+    <div class="stat__label">Avg order value</div>
+    <div class="stat__value">RM <%= formatMoney((summary && summary.avg_order_value_cents) ? summary.avg_order_value_cents : 0) %></div>
+  </div>
+  <div class="card card--pad">
+    <div class="stat__label">Units sold</div>
+    <div class="stat__value"><%= (summary && summary.units_sold != null) ? summary.units_sold : 0 %></div>
+  </div>
+  <div class="card card--pad">
+    <div class="stat__label">Discounts</div>
+    <div class="stat__value">RM <%= formatMoney((summary && summary.discount_cents) ? summary.discount_cents : 0) %></div>
+  </div>
+  <div class="card card--pad">
+    <div class="stat__label">Shipping collected</div>
+    <div class="stat__value">RM <%= formatMoney((summary && summary.shipping_cents) ? summary.shipping_cents : 0) %></div>
+  </div>
+  <div class="card card--pad">
     <div class="stat__label">Refunds (confirmed)</div>
     <div class="stat__value">RM <%= formatMoney((summary && summary.refund_cents) ? summary.refund_cents : 0) %></div>
   </div>
@@ -47,15 +63,27 @@
     <div class="stat__label">Net</div>
     <div class="stat__value">RM <%= formatMoney((summary && summary.net_cents) ? summary.net_cents : 0) %></div>
   </div>
+  <div class="card card--pad">
+    <div class="stat__label">Gross profit (est.)</div>
+    <div class="stat__value">RM <%= formatMoney((summary && summary.profit_cents) ? summary.profit_cents : 0) %></div>
+    <div class="muted small" style="margin-top:6px">
+      <% const unknown = (summary && summary.profit_unknown_cost_units) ? Number(summary.profit_unknown_cost_units || 0) : 0; %>
+      <% if (unknown > 0) { %>
+        Cost missing for <strong><%= unknown %></strong> unit(s).
+      <% } else { %>
+        Based on inventory cost price.
+      <% } %>
+    </div>
+  </div>
 </div>
 
 <div class="card card--pad card--mt">
   <div class="card__header">
     <div>
       <div class="card__title">Trend</div>
-      <div class="card__subtitle">Gross and net over the selected date range.</div>
+      <div class="card__subtitle">Gross, net, and estimated profit over the selected date range (hover for details).</div>
     </div>
-    <div class="muted small" style="text-align:right">Blue: Gross, Gray: Net</div>
+    <div class="muted small" style="text-align:right">Blue: Gross, Gray: Net, Green: Profit (est.)</div>
   </div>
 
   <canvas class="report-chart" data-sales-daily='<%- JSON.stringify(daily || []) %>' height="180" aria-label="Sales trend chart" role="img"></canvas>
@@ -72,7 +100,7 @@
   <div class="table-scroll" style="margin-top:10px">
     <table class="table">
       <thead>
-        <tr><th>Date</th><th>Paid orders</th><th>Gross</th><th>Refunds</th><th>Net</th></tr>
+        <tr><th>Date</th><th>Paid orders</th><th>Gross</th><th>Refunds</th><th>Net</th><th>Profit (est.)</th></tr>
       </thead>
       <tbody>
         <% if (daily && daily.length) { %>
@@ -83,10 +111,11 @@
               <td>RM <%= formatMoney(r.gross_cents || 0) %></td>
               <td>RM <%= formatMoney(r.refund_cents || 0) %></td>
               <td>RM <%= formatMoney(r.net_cents || 0) %></td>
+              <td>RM <%= formatMoney(r.profit_cents || 0) %></td>
             </tr>
           <% }) %>
         <% } else { %>
-          <tr><td colspan="5" class="muted">No data for this range.</td></tr>
+          <tr><td colspan="6" class="muted">No data for this range.</td></tr>
         <% } %>
       </tbody>
     </table>
@@ -104,7 +133,7 @@
   <div class="table-scroll" style="margin-top:10px">
     <table class="table">
       <thead>
-        <tr><th>Product</th><th>Qty</th><th>Subtotal</th></tr>
+        <tr><th>Product</th><th>Qty</th><th>Subtotal</th><th>Profit (est.)</th></tr>
       </thead>
       <tbody>
         <% if (topProducts && topProducts.length) { %>
@@ -113,10 +142,16 @@
               <td><%= p.product_name %></td>
               <td><%= p.quantity %></td>
               <td>RM <%= formatMoney(p.subtotal_cents || 0) %></td>
+              <td>
+                RM <%= formatMoney(p.profit_cents || 0) %>
+                <% if (p.profit_unknown_cost_units && Number(p.profit_unknown_cost_units || 0) > 0) { %>
+                  <span class="badge warn badge--ml" title="Cost price missing for some units">partial</span>
+                <% } %>
+              </td>
             </tr>
           <% }) %>
         <% } else { %>
-          <tr><td colspan="3" class="muted">No data for this range.</td></tr>
+          <tr><td colspan="4" class="muted">No data for this range.</td></tr>
         <% } %>
       </tbody>
     </table>

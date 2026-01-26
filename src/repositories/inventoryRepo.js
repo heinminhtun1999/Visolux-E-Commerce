@@ -115,10 +115,12 @@ function listPublic({ q, category, availability, minPriceCents, maxPriceCents, s
   return stmt.all(params).map(mapProduct);
 }
 
-function countAdmin({ q, includeArchived, archived, category, visibility, stock, minPriceCents, maxPriceCents }) {
+function countAdmin({ q, includeArchived, archived, category, visibility, stock, minPriceCents, maxPriceCents, lowStockThreshold }) {
   const db = getDb();
   const where = [];
   const params = {};
+
+  const lowStock = Number.isFinite(Number(lowStockThreshold)) && Number(lowStockThreshold) >= 0 ? Math.floor(Number(lowStockThreshold)) : 5;
 
   const archivedMode = String(archived || (includeArchived ? 'ALL' : 'ACTIVE')).toUpperCase();
   if (archivedMode === 'ACTIVE') where.push('i.archived=0');
@@ -138,7 +140,7 @@ function countAdmin({ q, includeArchived, archived, category, visibility, stock,
   if (stockMode === 'OUT_OF_STOCK') where.push('i.stock <= 0');
   if (stockMode === 'LOW_STOCK') {
     where.push('i.stock > 0 AND i.stock <= @lowStock');
-    params.lowStock = 5;
+    params.lowStock = lowStock;
   }
 
   if (Number.isFinite(minPriceCents) && minPriceCents !== null) {
@@ -161,10 +163,12 @@ function countAdmin({ q, includeArchived, archived, category, visibility, stock,
   return db.prepare(sql).get(params).c;
 }
 
-function listAdmin({ q, includeArchived, archived, category, visibility, stock, minPriceCents, maxPriceCents, sort, limit, offset }) {
+function listAdmin({ q, includeArchived, archived, category, visibility, stock, minPriceCents, maxPriceCents, sort, limit, offset, lowStockThreshold }) {
   const db = getDb();
   const where = [];
   const params = { limit, offset };
+
+  const lowStock = Number.isFinite(Number(lowStockThreshold)) && Number(lowStockThreshold) >= 0 ? Math.floor(Number(lowStockThreshold)) : 5;
 
   const archivedMode = String(archived || (includeArchived ? 'ALL' : 'ACTIVE')).toUpperCase();
   if (archivedMode === 'ACTIVE') where.push('i.archived=0');
@@ -184,7 +188,7 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
   if (stockMode === 'OUT_OF_STOCK') where.push('i.stock <= 0');
   if (stockMode === 'LOW_STOCK') {
     where.push('i.stock > 0 AND i.stock <= @lowStock');
-    params.lowStock = 5;
+    params.lowStock = lowStock;
   }
 
   if (Number.isFinite(minPriceCents) && minPriceCents !== null) {
@@ -264,6 +268,16 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
                ${where.length ? ` WHERE ${where.join(' AND ')}` : ''}
                ORDER BY ${orderBy} LIMIT @limit OFFSET @offset`;
   return db.prepare(sql).all(params).map(mapProduct);
+}
+
+function countLowStockAdmin({ includeArchived, lowStockThreshold }) {
+  const db = getDb();
+  const lowStock = Number.isFinite(Number(lowStockThreshold)) && Number(lowStockThreshold) >= 0 ? Math.floor(Number(lowStockThreshold)) : 5;
+  const where = ['stock > 0 AND stock <= @lowStock'];
+  const params = { lowStock };
+  if (!includeArchived) where.push('archived = 0');
+  const sql = `SELECT COUNT(*) as c FROM inventory WHERE ${where.join(' AND ')}`;
+  return db.prepare(sql).get(params).c;
 }
 
 function getById(productId) {
@@ -413,6 +427,7 @@ module.exports = {
   listPublic,
   countAdmin,
   listAdmin,
+  countLowStockAdmin,
   getById,
   create,
   update,

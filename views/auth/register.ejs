@@ -11,7 +11,10 @@
     <input class="input" type="email" name="email" required />
 
     <label>Password</label>
-    <input class="input" type="password" name="password" required />
+    <div class="password-field" data-password-field>
+      <input class="input" type="password" name="password" required />
+      <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
+    </div>
 
     <label>Phone (optional)</label>
     <input class="input" name="phone" />

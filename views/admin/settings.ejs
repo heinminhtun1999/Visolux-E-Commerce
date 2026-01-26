@@ -12,6 +12,7 @@
     <a class="btn" href="/admin/categories">Categories</a>
     <a class="btn" href="#branding">Branding</a>
     <a class="btn" href="#shipping">Shipping</a>
+    <a class="btn" href="#inventory">Inventory</a>
     <a class="btn" href="#footer-pages">Footer & Pages</a>
     <a class="btn" href="#promos">Promos</a>
     <a class="btn" href="#security">Security</a>
@@ -71,13 +72,27 @@
     </div>
   </div>
 
-  <div class="card" style="padding:12px; margin-top:12px">
-    <div style="font-weight:800">Legacy courier fees</div>
-    <div class="muted small" style="margin-top:6px">If you still need the old flat West/East settings, you can edit them here. Weight-based zones are used for checkout shipping calculations.</div>
-    <div class="row" style="justify-content:flex-end; margin-top:10px">
-      <a class="btn" href="/admin/site/shipping">Edit legacy courier fees</a>
+</section>
+
+<section id="inventory" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Inventory</h2>
+  <div class="muted small">Configure stock alerts and defaults.</div>
+
+  <form method="post" action="/admin/site/inventory" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="row" style="gap:14px; align-items:flex-start">
+      <div class="col" style="min-width:320px">
+        <label>Low stock threshold</label>
+        <input class="input" name="low_stock_threshold" inputmode="numeric" value="<%= (lowStockThreshold != null) ? String(lowStockThreshold) : '5' %>" maxlength="5" />
+        <div class="muted small" style="margin-top:6px">Products with stock ≤ this value will show a warning badge and appear in the “Low stock” filter.</div>
+      </div>
     </div>
-  </div>
+
+    <div class="row" style="justify-content:flex-end; margin-top:14px">
+      <button class="btn btn-primary" type="submit">Save Inventory Settings</button>
+    </div>
+  </form>
 </section>
 
 <section id="security" class="card" style="padding:14px; margin-top:12px">
@@ -88,14 +103,23 @@
     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
 
     <label>Current password</label>
-    <input class="input" type="password" name="current_password" required autocomplete="current-password" />
+    <div class="password-field" data-password-field>
+      <input class="input" type="password" name="current_password" required autocomplete="current-password" />
+      <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
+    </div>
 
     <label style="margin-top:10px">New password</label>
-    <input class="input" type="password" name="new_password" required minlength="8" autocomplete="new-password" />
+    <div class="password-field" data-password-field>
+      <input class="input" type="password" name="new_password" required minlength="8" autocomplete="new-password" />
+      <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
+    </div>
     <div class="muted small" style="margin-top:6px">Minimum 8 characters.</div>
 
     <label style="margin-top:10px">Confirm new password</label>
-    <input class="input" type="password" name="confirm_password" required minlength="8" autocomplete="new-password" />
+    <div class="password-field" data-password-field>
+      <input class="input" type="password" name="confirm_password" required minlength="8" autocomplete="new-password" />
+      <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
+    </div>
 
     <div class="row" style="justify-content:flex-end; margin-top:14px">
       <button class="btn btn-primary" type="submit">Change password</button>

@@ -1,5 +1,7 @@
 <%- include('../shared/top', { title }) %>
 
+<% const lowT = Number(lowStockThreshold || 5); %>
+
 <div class="row" style="justify-content:space-between; align-items:flex-end">
   <div>
     <h1 class="h1">Admin – Products</h1>
@@ -48,6 +50,25 @@
   </div>
 </div>
 
+<% if (Number(lowStockCount || 0) > 0) { %>
+  <%
+    const lowStockQs = new URLSearchParams(baseQs);
+    lowStockQs.set('view', view || 'list');
+    lowStockQs.set('stock', 'LOW_STOCK');
+    lowStockQs.set('page', '1');
+    const lowStockHref = `/admin/products?${lowStockQs.toString()}`;
+  %>
+  <div class="card card--pad card--mt" style="display:flex; gap:10px; align-items:center; justify-content:space-between">
+    <div>
+      <span class="badge warn">Low stock</span>
+      <span class="muted" style="margin-left:8px">
+        <strong><%= Number(lowStockCount || 0) %></strong> product(s) at or below <strong><%= lowT %></strong> units
+      </span>
+    </div>
+    <a class="btn btn-secondary" href="<%= lowStockHref %>">View low stock</a>
+  </div>
+<% } %>
+
 <div class="card card--pad card--mt filters-panel" id="filters-panel" data-filters-panel>
   <div class="filters-panel__top">
     <div class="filters-panel__title">Filters</div>
@@ -77,7 +98,7 @@
         <option value="ALL" <%= stock === 'ALL' ? 'selected' : '' %>>All</option>
         <option value="IN_STOCK" <%= stock === 'IN_STOCK' ? 'selected' : '' %>>In stock</option>
         <option value="OUT_OF_STOCK" <%= stock === 'OUT_OF_STOCK' ? 'selected' : '' %>>Out of stock</option>
-        <option value="LOW_STOCK" <%= stock === 'LOW_STOCK' ? 'selected' : '' %>>Low stock (≤5)</option>
+        <option value="LOW_STOCK" <%= stock === 'LOW_STOCK' ? 'selected' : '' %>>Low stock (≤<%= lowT %>)</option>
       </select>
     </div>
 
@@ -159,6 +180,9 @@
               <div><span class="muted">Stock</span> <strong><%= p.stock %></strong></div>
             </div>
             <div class="admin-product-meta">
+              <% if (Number(p.stock || 0) <= lowT) { %>
+                <span class="badge warn">Low</span>
+              <% } %>
               <% if (p.visibility) { %>
                 <span class="badge ok">Visible</span>
               <% } else { %>
@@ -222,7 +246,12 @@
             <td><strong><%= p.name %></strong></td>
             <td class="muted"><%= p.category_name || p.category %></td>
             <td><%= formatMoney(p.price) %></td>
-            <td><%= p.stock %></td>
+            <td>
+              <%= p.stock %>
+              <% if (Number(p.stock || 0) <= lowT) { %>
+                <span class="badge warn" style="margin-left:6px">Low</span>
+              <% } %>
+            </td>
             <td><%= p.visibility ? 'Yes' : 'No' %></td>
             <td><%= p.archived ? 'Yes' : 'No' %></td>
             <td class="muted"><%= formatDateTime(p.updated_at) %></td>

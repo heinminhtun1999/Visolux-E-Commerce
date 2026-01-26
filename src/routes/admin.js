@@ -142,19 +142,6 @@ router.get('/', (req, res) => res.redirect('/admin/products'));
 router.get('/site/home', (req, res) => res.redirect('/admin/categories'));
 router.get('/site/branding', (req, res) => res.redirect('/admin/settings#branding'));
 
-router.get('/site/shipping', (req, res) => {
-  const westCents = Number(settingsRepo.get('shipping.courier.west_fee_cents', '800'));
-  const eastCents = Number(settingsRepo.get('shipping.courier.east_fee_cents', '1800'));
-  const westFeeRm = Number.isFinite(westCents) ? (westCents / 100).toFixed(2) : '8.00';
-  const eastFeeRm = Number.isFinite(eastCents) ? (eastCents / 100).toFixed(2) : '18.00';
-
-  return res.render('admin/shipping_settings', {
-    title: 'Admin – Shipping',
-    westFeeRm,
-    eastFeeRm,
-  });
-});
-
 function centsToRmFixed(cents) {
   const n = Number(cents || 0) / 100;
   return Number.isFinite(n) ? n.toFixed(2) : '0.00';
@@ -538,10 +525,11 @@ router.get('/settings', (req, res) => {
   const contactAddress = settingsRepo.get('site.contact.address', '');
   const contactFacebookUrl = settingsRepo.get('site.contact.facebook_url', '');
 
-  const westCents = Number(settingsRepo.get('shipping.courier.west_fee_cents', '800'));
-  const eastCents = Number(settingsRepo.get('shipping.courier.east_fee_cents', '1800'));
-  const westFeeRm = Number.isFinite(westCents) ? (westCents / 100).toFixed(2) : '8.00';
-  const eastFeeRm = Number.isFinite(eastCents) ? (eastCents / 100).toFixed(2) : '18.00';
+  const lowStockThreshold = (() => {
+    const raw = String(settingsRepo.get('inventory.low_stock_threshold', '5') || '').trim();
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 5;
+  })();
 
   const promosView = String(req.query.promos_view || 'ACTIVE').trim().toUpperCase();
   const allPromos = promoRepo.listAdmin({ includeArchived: true });
@@ -561,12 +549,43 @@ router.get('/settings', (req, res) => {
     contactEmail,
     contactAddress,
     contactFacebookUrl,
-    westFeeRm,
-    eastFeeRm,
+    lowStockThreshold,
     promos,
     promosView: promosView === 'ALL' || promosView === 'ARCHIVED' || promosView === 'ACTIVE' ? promosView : 'ACTIVE',
   });
 });
+
+router.post(
+  '/site/inventory',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z
+        .object({
+          low_stock_threshold: z.string().trim().max(10).optional().or(z.literal('')),
+        })
+        .passthrough(),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const raw = String(req.validated.body.low_stock_threshold || '').trim();
+      const n = raw ? Number(raw) : 5;
+      const threshold = Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+      if (threshold == null) {
+        req.session.flash = { type: 'error', message: 'Low stock threshold must be a non-negative integer.' };
+        return res.redirect('/admin/settings#inventory');
+      }
+      settingsRepo.set('inventory.low_stock_threshold', String(threshold));
+      req.session.flash = { type: 'success', message: 'Inventory settings saved.' };
+      return res.redirect('/admin/settings#inventory');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
 
 router.get('/reports/sales', (req, res) => {
   const date_from = String(req.query.date_from || '').trim();
@@ -703,12 +722,13 @@ router.get('/reports/sales.csv', (req, res) => {
   const report = reportRepo.getSalesReport({ dateFrom: date_from, dateTo: date_to });
 
   const lines = [];
-  lines.push(['Date', 'PaidOrders', 'GrossRM', 'RefundsRM', 'NetRM'].join(','));
+  lines.push(['Date', 'PaidOrders', 'GrossRM', 'RefundsRM', 'NetRM', 'ProfitRM'].join(','));
   for (const r of report.daily || []) {
     const grossRm = (Number(r.gross_cents || 0) / 100).toFixed(2);
     const refundRm = (Number(r.refund_cents || 0) / 100).toFixed(2);
     const netRm = (Number(r.net_cents || 0) / 100).toFixed(2);
-    lines.push([String(r.day), String(r.orders_count || 0), grossRm, refundRm, netRm].join(','));
+    const profitRm = (Number(r.profit_cents || 0) / 100).toFixed(2);
+    lines.push([String(r.day), String(r.orders_count || 0), grossRm, refundRm, netRm, profitRm].join(','));
   }
 
   const label = `sales_report_${report.date_from || 'all'}_${report.date_to || 'all'}.csv`;
@@ -2160,40 +2180,6 @@ router.post(
 );
 
 router.post(
-  '/site/shipping',
-  csrfProtection({ ignoreMultipart: true }),
-  validate(
-    z.object({
-      body: z.object({
-        west_fee_rm: z.string().trim().min(1).max(20),
-        east_fee_rm: z.string().trim().min(1).max(20),
-      }),
-      query: z.any().optional(),
-      params: z.any().optional(),
-    })
-  ),
-  async (req, res, next) => {
-    try {
-      const west = parseMoneyToCentsAllowZero(req.validated.body.west_fee_rm);
-      const east = parseMoneyToCentsAllowZero(req.validated.body.east_fee_rm);
-      if (west == null || east == null) {
-        const err = new Error('Both courier charges are required.');
-        err.status = 400;
-        throw err;
-      }
-
-      settingsRepo.set('shipping.courier.west_fee_cents', String(west));
-      settingsRepo.set('shipping.courier.east_fee_cents', String(east));
-
-      req.session.flash = { type: 'success', message: 'Shipping settings updated.' };
-      return res.redirect('/admin/site/shipping');
-    } catch (e) {
-      return next(e);
-    }
-  }
-);
-
-router.post(
   '/site/promo',
   csrfProtection({ ignoreMultipart: true }),
   validate(z.object({ body: z.any().optional(), query: z.any().optional(), params: z.any().optional() })),
@@ -2226,6 +2212,12 @@ router.get('/products', (req, res) => {
   const maxPriceCents = parseMoneyToCents(req.query.max_price);
   const sort = String(req.query.sort || '').trim().toUpperCase() || 'NEWEST';
 
+  const lowStockThreshold = (() => {
+    const raw = String(settingsRepo.get('inventory.low_stock_threshold', '5') || '').trim();
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 5;
+  })();
+
   const { page, pageSize, offset, limit } = getPagination({
     page: req.query.page,
     pageSize: req.query.pageSize || 12,
@@ -2240,6 +2232,7 @@ router.get('/products', (req, res) => {
     stock,
     minPriceCents,
     maxPriceCents,
+    lowStockThreshold,
   });
 
   const products = inventoryRepo.listAdmin({
@@ -2254,11 +2247,14 @@ router.get('/products', (req, res) => {
     sort,
     limit,
     offset,
+    lowStockThreshold,
   });
 
   const pageCount = getPageCount(total, pageSize);
 
   const categories = categoryRepo.listAdmin({ includeArchived: true });
+
+  const lowStockCount = inventoryRepo.countLowStockAdmin({ includeArchived: false, lowStockThreshold });
 
   res.render('admin/products', {
     title: 'Admin – Products',
@@ -2278,6 +2274,8 @@ router.get('/products', (req, res) => {
     page,
     pageCount,
     total,
+    lowStockThreshold,
+    lowStockCount,
   });
 });
 

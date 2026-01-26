@@ -4,29 +4,29 @@
   <div class="col" style="min-width:320px">
     <div class="card" style="padding:16px">
       <h1 class="h1">Checkout</h1>
-      <form method="post" action="/checkout" id="checkoutForm" novalidate>
+      <form method="post" action="/checkout" id="checkoutForm">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-        <label>Customer name</label>
+        <label>Customer name <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="customer_name" minlength="2" required value="<%= prefill ? (prefill.customer_name || '') : '' %>" />
 
-        <label>Phone</label>
+        <label>Phone <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="phone" minlength="6" required value="<%= prefill ? (prefill.phone || '') : '' %>" />
 
-        <label>Email</label>
+        <label>Email <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="email" type="email" required value="<%= prefill ? (prefill.email || '') : '' %>" />
 
         <h2 class="h2" style="margin-top:12px">Delivery address (Malaysia)</h2>
 
-        <label>Address line 1</label>
+        <label>Address line 1 <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="address_line1" minlength="3" required value="<%= prefill ? (prefill.address_line1 || '') : '' %>" />
 
         <label>Address line 2 (optional)</label>
         <input class="input" name="address_line2" value="<%= prefill ? (prefill.address_line2 || '') : '' %>" />
 
-        <label>City</label>
+        <label>City <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="city" minlength="2" required value="<%= prefill ? (prefill.city || '') : '' %>" />
 
-        <label>State</label>
+        <label>State <span class="required-star" aria-hidden="true">*</span></label>
         <select class="input" name="state" id="stateSelect" required>
           <option value="">Select state</option>
           <% (malaysiaStates || []).forEach(s => { %>
@@ -34,7 +34,7 @@
           <% }) %>
         </select>
 
-        <label>Postcode</label>
+        <label>Postcode <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="postcode" inputmode="numeric" pattern="\d{5}" required value="<%= prefill ? (prefill.postcode || '') : '' %>" />
 
         <div class="muted small" style="margin-top:6px">

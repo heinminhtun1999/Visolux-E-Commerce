@@ -60,10 +60,16 @@
       <form method="post" action="/account/password">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
         <label>Current password</label>
-        <input class="input" type="password" name="current_password" required />
+        <div class="password-field" data-password-field>
+          <input class="input" type="password" name="current_password" required />
+          <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
+        </div>
 
         <label>New password</label>
-        <input class="input" type="password" name="new_password" required />
+        <div class="password-field" data-password-field>
+          <input class="input" type="password" name="new_password" required />
+          <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
+        </div>
 
         <div class="actions" style="margin-top:12px">
           <button class="btn btn-primary" type="submit">Update</button>

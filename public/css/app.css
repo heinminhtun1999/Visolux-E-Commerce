@@ -162,8 +162,11 @@ body{
   border:1px solid var(--border);
   border-radius:var(--radius);
   box-shadow:var(--shadow);
+  /* Prevent nav links from being cut off on low-height screens */
+  max-height:calc(100vh - 96px);
+  overflow:hidden;
 }
-.admin-sidebar__inner{padding:10px}
+.admin-sidebar__inner{padding:10px; max-height:calc(100vh - 96px); overflow-y:auto; overscroll-behavior:contain}
 .admin-nav__section{margin:14px 10px 8px; font-size:12px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
 .admin-nav__item{
   display:flex;
@@ -173,7 +176,8 @@ body{
   border-radius:14px;
   text-decoration:none;
   color:var(--text);
-  font-weight:800;
+  font-weight:500;
+  margin: 5px 0;
 }
 .admin-nav__item:hover{background:rgba(32,152,209,.09)}
 .admin-nav__item.is-active{background:rgba(32,152,209,.12); border:1px solid rgba(32,152,209,.22)}
@@ -530,6 +534,31 @@ html.admin-sidebar-collapsed .admin-nav__item{justify-content:center}
 .input:focus-visible, select:focus-visible, textarea:focus-visible{box-shadow:var(--ring)}
 .input::placeholder, textarea::placeholder{color:rgba(100,116,139,.75)}
 label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
+.required-star{color:var(--danger); font-weight:950; margin-left:4px}
+.password-field{display:flex; gap:10px; align-items:center}
+.password-field .input{flex:1}
+.password-toggle-btn{white-space:nowrap}
+
+.chart-tooltip{
+  position:absolute;
+  z-index:5;
+  min-width:210px;
+  max-width:260px;
+  padding:10px 10px;
+  border-radius:12px;
+  border:1px solid rgba(226,232,240,.95);
+  background:rgba(255,255,255,.97);
+  box-shadow:0 10px 28px rgba(2,6,23,.10);
+  font-size:12px;
+  color:var(--text);
+}
+.chart-tooltip__date{font-weight:950; margin-bottom:6px}
+.chart-tooltip__row{display:flex; align-items:center; gap:8px; margin-top:4px}
+.chart-tooltip__meta{margin-top:6px; color:var(--muted); font-weight:700}
+.chart-tooltip .dot{width:10px; height:10px; border-radius:999px; display:inline-block}
+.chart-tooltip .dot--gross{background:rgba(37,99,235,1)}
+.chart-tooltip .dot--net{background:rgba(100,116,139,.95)}
+.chart-tooltip .dot--profit{background:rgba(22,163,74,.95)}
 .grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:14px}
 @media (max-width: 940px){ .grid{grid-template-columns:repeat(2, 1fr)} }
 @media (max-width: 640px){ .grid{grid-template-columns:1fr} }
