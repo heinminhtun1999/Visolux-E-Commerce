@@ -25,6 +25,7 @@ const { MALAYSIA_STATES, buildMalaysiaFullAddress } = require('../utils/malaysia
 const shippingService = require('../services/shippingService');
 const promoService = require('../services/promoService');
 const offlineTransferService = require('../services/offlineTransferService');
+const fiuuAccountsService = require('../services/fiuuAccountsService');
 const { logger } = require('../utils/logger');
 const { verifyOrderViewToken } = require('../utils/orderViewToken');
 
@@ -155,7 +156,7 @@ router.get('/checkout', async (req, res) => {
   return res.render('orders/checkout', {
     title: 'Checkout',
     cart: hydrated,
-    canOnlinePay: fiuu.isConfigured(),
+    canOnlinePay: fiuuAccountsService.isOnlinePaymentConfigured(),
     prefill,
     malaysiaStates: MALAYSIA_STATES,
     prefillShippingFee,
@@ -410,6 +411,26 @@ router.post(
         postcode: customer.postcode,
       });
 
+      let online_payment_snapshot = null;
+      if (req.validated.body.payment_method === 'ONLINE') {
+        const resolved = fiuuAccountsService.resolveAccountForCartItems(hydrated.items);
+        if (!resolved.ok) {
+          if (resolved.reason === 'multiple_accounts_required') {
+            req.session.flash = {
+              type: 'error',
+              message: 'Your cart contains items that require different online payment accounts. Please place separate orders, or use offline bank transfer.',
+            };
+            return res.redirect('/checkout');
+          }
+          req.session.flash = {
+            type: 'error',
+            message: 'Online payment is not configured yet. Please use offline bank transfer.',
+          };
+          return res.redirect('/checkout');
+        }
+        online_payment_snapshot = fiuuAccountsService.buildOrderPaymentSnapshot(resolved.account);
+      }
+
       const order = orderService.placeOrder({
         user: req.session.user ? { user_id: req.session.user.user_id } : null,
         customer,
@@ -417,6 +438,7 @@ router.post(
         promoCode: req.validated.body.promo_code,
         payment_method: req.validated.body.payment_method,
         offline_transfer_recipient,
+        online_payment_snapshot,
       });
 
       // Notify staff about new orders (best-effort; do not block checkout).
@@ -438,7 +460,7 @@ router.post(
         return res.redirect(`/orders/${order.order_id}/offline-transfer`);
       }
 
-      if (!fiuu.isConfigured()) {
+      if (!fiuuAccountsService.isOnlinePaymentConfigured() || !online_payment_snapshot?.secret_key || !online_payment_snapshot?.merchant_id) {
         req.session.flash = { type: 'error', message: 'Online payment is not configured yet. Please use offline bank transfer.' };
         logger.error(
           { event: 'checkout_online_payment_not_configured', orderId: order.order_id },
@@ -449,7 +471,17 @@ router.post(
         return res.redirect(`/orders/${order.order_id}`);
       }
 
-      const reqInfo = fiuu.buildHostedPaymentRequest({ order, customer });
+      const reqInfo = fiuu.buildHostedPaymentRequest({
+        order,
+        customer,
+        fiuuConfig: {
+          merchantId: online_payment_snapshot.merchant_id,
+          verifyKey: online_payment_snapshot.verify_key,
+          secretKey: online_payment_snapshot.secret_key,
+          gatewayUrl: online_payment_snapshot.gateway_url,
+          currency: online_payment_snapshot.currency,
+        },
+      });
 
       if (env.fiuu.logRequests) {
         const encoded = new URLSearchParams(

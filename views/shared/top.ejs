@@ -3,24 +3,28 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <% const baseTitle = (siteName || 'Visolux Store'); %>
-  <% const rawTitle = (title || '').trim(); %>
+  <% const iconFn = (typeof icon !== 'undefined' && typeof icon === 'function') ? icon : function () { return ''; }; %>
+  <% const baseTitle = ((typeof siteName !== 'undefined' && siteName) ? siteName : 'Visolux Store'); %>
+  <% const rawTitle = (typeof title !== 'undefined' && title ? String(title) : '').trim(); %>
   <% const pageTitle = rawTitle ? ((rawTitle === baseTitle) ? baseTitle : `${rawTitle} | ${baseTitle}`) : baseTitle; %>
-  <% const metaDescription = (description || seoDescription || siteDescription || 'Visolux Store — shop parts and components online.'); %>
-  <% const canonical = canonicalUrl || (siteUrl ? (siteUrl.replace(/\/+$/,'') + (currentPath || '/')) : (currentPath || '/')); %>
-  <% const robots = robotsMeta || ((currentPath || '').startsWith('/admin') ? 'noindex,nofollow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'); %>
-  <% const ogTitle = ogTitleOverride || pageTitle; %>
-  <% const ogDesc = ogDescriptionOverride || metaDescription; %>
-  <% const ogUrl = ogUrlOverride || canonical; %>
-  <% const ogImage = ogImageUrl || siteOgImageUrl || siteLogoUrl || '/public/placeholder.svg'; %>
-  <% const ogType = ogTypeOverride || 'website'; %>
+  <% const metaDescription = ((typeof description !== 'undefined' && description) || (typeof seoDescription !== 'undefined' && seoDescription) || (typeof siteDescription !== 'undefined' && siteDescription) || 'Visolux Store — shop parts and components online.'); %>
+  <% const _currentPath = (typeof currentPath !== 'undefined' && currentPath) ? String(currentPath) : '/'; %>
+  <% const _siteUrl = (typeof siteUrl !== 'undefined' && siteUrl) ? String(siteUrl) : ''; %>
+  <% const canonical = ((typeof canonicalUrl !== 'undefined' && canonicalUrl) ? String(canonicalUrl) : '') || (_siteUrl ? (_siteUrl.replace(/\/+$/,'') + (_currentPath || '/')) : (_currentPath || '/')); %>
+  <% const robots = ((typeof robotsMeta !== 'undefined' && robotsMeta) ? String(robotsMeta) : '') || ((_currentPath || '').startsWith('/admin') ? 'noindex,nofollow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'); %>
+  <% const ogTitle = ((typeof ogTitleOverride !== 'undefined' && ogTitleOverride) ? String(ogTitleOverride) : '') || pageTitle; %>
+  <% const ogDesc = ((typeof ogDescriptionOverride !== 'undefined' && ogDescriptionOverride) ? String(ogDescriptionOverride) : '') || metaDescription; %>
+  <% const ogUrl = ((typeof ogUrlOverride !== 'undefined' && ogUrlOverride) ? String(ogUrlOverride) : '') || canonical; %>
+  <% const _siteLogoUrl = (typeof siteLogoUrl !== 'undefined' && siteLogoUrl) ? String(siteLogoUrl) : ''; %>
+  <% const ogImage = ((typeof ogImageUrl !== 'undefined' && ogImageUrl) ? String(ogImageUrl) : '') || ((typeof siteOgImageUrl !== 'undefined' && siteOgImageUrl) ? String(siteOgImageUrl) : '') || _siteLogoUrl || '/public/placeholder.svg'; %>
+  <% const ogType = ((typeof ogTypeOverride !== 'undefined' && ogTypeOverride) ? String(ogTypeOverride) : '') || 'website'; %>
 
   <title><%= pageTitle %></title>
   <meta name="description" content="<%= metaDescription %>" />
   <link rel="canonical" href="<%= canonical %>" />
   <meta name="robots" content="<%= robots %>" />
 
-  <meta property="og:site_name" content="<%= siteName || 'Visolux Store' %>" />
+  <meta property="og:site_name" content="<%= baseTitle %>" />
   <meta property="og:title" content="<%= ogTitle %>" />
   <meta property="og:description" content="<%= ogDesc %>" />
   <meta property="og:type" content="<%= ogType %>" />
@@ -32,7 +36,7 @@
   <meta name="twitter:description" content="<%= ogDesc %>" />
   <meta name="twitter:image" content="<%= ogImage %>" />
 
-  <% const faviconHref = siteLogoUrl || '/public/placeholder.svg'; %>
+  <% const faviconHref = _siteLogoUrl || '/public/placeholder.svg'; %>
   <link rel="icon" href="<%= faviconHref %>" />
   <link rel="apple-touch-icon" href="<%= faviconHref %>" />
   <link rel="manifest" href="/public/site.webmanifest" />
@@ -52,13 +56,13 @@
   </script>
   <link rel="stylesheet" href="/public/css/app.css" />
 
-  <% if (structuredData && Array.isArray(structuredData) && structuredData.length) { %>
+  <% if (typeof structuredData !== 'undefined' && structuredData && Array.isArray(structuredData) && structuredData.length) { %>
     <% structuredData.forEach(function(obj){ %>
       <script type="application/ld+json"><%- JSON.stringify(obj) %></script>
     <% }) %>
   <% } %>
 </head>
-<% const isAdminArea = (currentPath || '').startsWith('/admin'); %>
+<% const isAdminArea = (_currentPath || '').startsWith('/admin'); %>
 <body class="<%= isAdminArea ? 'is-admin' : 'is-store' %>">
   <div class="container <%= (typeof containerClass !== 'undefined' && containerClass) ? containerClass : '' %>">
 
@@ -66,26 +70,26 @@
     <header class="site-header site-header--sticky" style="margin-top:10px; margin-bottom:12px">
       <div class="site-header__brand">
         <% if (isAdminArea) { %>
-          <button class="btn btn-icon icon-only" type="button" data-admin-sidebar-toggle title="Toggle sidebar" aria-label="Toggle sidebar" data-label="Toggle sidebar"><%- icon('panel-left') %></button>
+          <button class="btn btn-icon icon-only" type="button" data-admin-sidebar-toggle title="Toggle sidebar" aria-label="Toggle sidebar" data-label="Toggle sidebar"><%- iconFn('panel-left') %></button>
         <% } %>
 
         <a class="site-brand" href="/" aria-label="Home">
-          <% if (siteLogoUrl) { %>
-            <img src="<%= siteLogoUrl %>" alt="<%= siteName || 'Home' %>" />
+          <% if (_siteLogoUrl) { %>
+            <img src="<%= _siteLogoUrl %>" alt="<%= baseTitle || 'Home' %>" />
           <% } else { %>
-            <span class="site-brand__text"><%= siteName || 'Visolux' %></span>
+            <span class="site-brand__text"><%= baseTitle || 'Visolux' %></span>
           <% } %>
         </a>
       </div>
 
       <% if (!isAdminArea) { %>
         <nav class="store-nav" aria-label="Store navigation">
-          <a class="store-nav__link <%= (currentPath || '') === '/' ? 'is-active' : '' %>" href="/">Home</a>
+          <a class="store-nav__link <%= (_currentPath || '') === '/' ? 'is-active' : '' %>" href="/">Home</a>
 
           <div class="store-nav__dropdown">
             <button type="button" class="store-nav__link store-nav__linkBtn" aria-haspopup="menu">
               Categories
-              <span class="store-nav__chev" aria-hidden="true"><%- icon('chevron-down', { size: 16 }) %></span>
+              <span class="store-nav__chev" aria-hidden="true"><%- iconFn('chevron-down', { size: 16 }) %></span>
             </button>
             <div class="store-nav__menu">
               <% const cats = (typeof navCategories !== 'undefined' && Array.isArray(navCategories)) ? navCategories : []; %>
@@ -99,73 +103,79 @@
             </div>
           </div>
 
-          <a class="store-nav__link <%= (currentPath || '').startsWith('/how-to-order') ? 'is-active' : '' %>" href="/how-to-order">How to order</a>
+          <a class="store-nav__link <%= (_currentPath || '').startsWith('/how-to-order') ? 'is-active' : '' %>" href="/how-to-order">How to order</a>
         </nav>
       <% } %>
 
       <div class="site-header__actions actions icon-row">
         <button class="btn btn-icon icon-only" type="button" id="themeToggle" title="Toggle Dark mode" aria-label="Toggle Dark mode" data-label="Theme">
-          <span class="theme-icon theme-icon--sun"><%- icon('sun') %></span>
-          <span class="theme-icon theme-icon--moon"><%- icon('moon') %></span>
+          <span class="theme-icon theme-icon--sun"><%- iconFn('sun') %></span>
+          <span class="theme-icon theme-icon--moon"><%- iconFn('moon') %></span>
         </button>
 
-        <% const showAdminBell = isAdmin; %>
-        <% const showAdminLink = isAdmin && !isAdminArea; %>
+        <% const _isAdmin = (typeof isAdmin !== 'undefined' && isAdmin) ? Boolean(isAdmin) : false; %>
+        <% const showAdminBell = _isAdmin; %>
+        <% const showAdminLink = _isAdmin && !isAdminArea; %>
 
-        <% if (!isAdmin) { %>
-          <a class="btn btn-icon <%= (currentPath || '').startsWith('/cart') ? 'is-active' : '' %>" href="/cart" title="Cart" aria-label="Cart" data-label="Cart">
-            <%- icon('cart') %>
+        <% if (!_isAdmin) { %>
+          <a class="btn btn-icon <%= (_currentPath || '').startsWith('/cart') ? 'is-active' : '' %>" href="/cart" title="Cart" aria-label="Cart" data-label="Cart">
+            <%- iconFn('cart') %>
             <span class="btn-text">Cart</span>
-            <% if (cartItemCount > 0) { %><span class="btn-badge" aria-label="<%= cartItemCount %> items in cart"><%= cartItemCount %></span><% } %>
+            <% const _cartItemCount = (typeof cartItemCount !== 'undefined' && Number.isFinite(Number(cartItemCount))) ? Number(cartItemCount) : 0; %>
+            <% if (_cartItemCount > 0) { %><span class="btn-badge" aria-label="<%= _cartItemCount %> items in cart"><%= _cartItemCount %></span><% } %>
           </a>
         <% } %>
 
-        <% if (currentUser && !isAdmin) { %>
-          <a class="btn btn-icon <%= (currentPath || '').startsWith('/orders') ? 'is-active' : '' %>" href="/orders/history" title="Orders" aria-label="Orders" data-label="Orders">
-            <%- icon('orders') %>
+        <% const _currentUser = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : null; %>
+        <% if (_currentUser && !_isAdmin) { %>
+          <a class="btn btn-icon <%= (_currentPath || '').startsWith('/orders') ? 'is-active' : '' %>" href="/orders/history" title="Orders" aria-label="Orders" data-label="Orders">
+            <%- iconFn('orders') %>
             <span class="btn-text">Orders</span>
           </a>
-          <a class="btn btn-icon <%= (currentPath || '').startsWith('/account') ? 'is-active' : '' %>" href="/account" title="Account" aria-label="Account" data-label="Account">
-            <%- icon('user') %>
+          <a class="btn btn-icon <%= (_currentPath || '').startsWith('/account') ? 'is-active' : '' %>" href="/account" title="Account" aria-label="Account" data-label="Account">
+            <%- iconFn('user') %>
             <span class="btn-text">Account</span>
           </a>
         <% } %>
 
-        <% if (!currentUser) { %>
-          <a class="btn btn-icon <%= (currentPath || '').startsWith('/login') ? 'is-active' : '' %>" href="/login" title="Sign in" aria-label="Sign in" data-label="Sign in">
-            <%- icon('login') %>
+        <% if (!_currentUser) { %>
+          <a class="btn btn-icon <%= (_currentPath || '').startsWith('/login') ? 'is-active' : '' %>" href="/login" title="Sign in" aria-label="Sign in" data-label="Sign in">
+            <%- iconFn('login') %>
             <span class="btn-text">Sign in</span>
           </a>
         <% } %>
 
         <% if (showAdminBell) { %>
+          <% const _adminUnreadNotificationCount = (typeof adminUnreadNotificationCount !== 'undefined' && Number.isFinite(Number(adminUnreadNotificationCount))) ? Number(adminUnreadNotificationCount) : 0; %>
           <a class="btn btn-icon icon-only" href="/admin/notifications" title="Notifications" aria-label="Notifications" data-label="Notifications" data-admin-notification-bell>
-            <%- icon('bell') %>
-            <% if ((adminUnreadNotificationCount || 0) > 0) { %><span class="btn-badge"><%= adminUnreadNotificationCount %></span><% } %>
+            <%- iconFn('bell') %>
+            <% if (_adminUnreadNotificationCount > 0) { %><span class="btn-badge"><%= _adminUnreadNotificationCount %></span><% } %>
           </a>
         <% } %>
 
-        <% if (isAdmin) { %>
+        <% if (_isAdmin) { %>
+          <% const _adminUnreadContactMessageCount = (typeof adminUnreadContactMessageCount !== 'undefined' && Number.isFinite(Number(adminUnreadContactMessageCount))) ? Number(adminUnreadContactMessageCount) : 0; %>
           <a class="btn btn-icon icon-only" href="/admin/contact-messages" title="Contact messages" aria-label="Contact messages" data-label="Contact messages">
-            <%- icon('mail') %>
-            <% if ((adminUnreadContactMessageCount || 0) > 0) { %><span class="btn-badge"><%= adminUnreadContactMessageCount %></span><% } %>
+            <%- iconFn('mail') %>
+            <% if (_adminUnreadContactMessageCount > 0) { %><span class="btn-badge"><%= _adminUnreadContactMessageCount %></span><% } %>
           </a>
         <% } %>
 
         <% if (showAdminLink) { %>
-          <a class="btn btn-icon icon-only" href="/admin" title="Admin" aria-label="Admin" data-label="Admin"><%- icon('admin') %></a>
+          <a class="btn btn-icon icon-only" href="/admin" title="Admin" aria-label="Admin" data-label="Admin"><%- iconFn('admin') %></a>
         <% } %>
 
-        <% if (currentUser) { %>
+        <% if (_currentUser) { %>
           <form method="post" action="/logout" style="display:inline">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-            <button class="btn btn-icon icon-only" type="submit" title="Sign out" aria-label="Sign out" data-label="Sign out"><%- icon('logout') %></button>
+            <% const _csrfToken = (typeof csrfToken !== 'undefined' && csrfToken) ? String(csrfToken) : ''; %>
+            <input type="hidden" name="_csrf" value="<%= _csrfToken %>" />
+            <button class="btn btn-icon icon-only" type="submit" title="Sign out" aria-label="Sign out" data-label="Sign out"><%- iconFn('logout') %></button>
           </form>
         <% } %>
       </div>
     </header>
 
-    <% if (breadcrumbs && breadcrumbs.length) { %>
+    <% if (typeof breadcrumbs !== 'undefined' && breadcrumbs && breadcrumbs.length) { %>
       <nav class="breadcrumbs" aria-label="Breadcrumb">
         <% breadcrumbs.forEach((c, idx) => { %>
           <% const isLast = idx === breadcrumbs.length - 1; %>
@@ -185,7 +195,7 @@
         <div class="flash__row">
           <div class="flash__msg"><%= flash.message %></div>
           <button class="flash__close" type="button" data-flash-close aria-label="Dismiss">
-            <%- icon('x', { size: 18 }) %>
+            <%- iconFn('x', { size: 18 }) %>
           </button>
         </div>
       </div>
@@ -196,62 +206,62 @@
         <aside class="admin-sidebar" aria-label="Admin navigation">
           <div class="admin-sidebar__inner">
             <div class="admin-nav__section">Catalog</div>
-            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/products') ? 'is-active' : '' %>" href="/admin/products">
-              <span class="admin-nav__icon"><%- icon('box') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/products') ? 'is-active' : '' %>" href="/admin/products">
+              <span class="admin-nav__icon"><%- iconFn('box') %></span>
               <span class="admin-nav__label">Products</span>
             </a>
-            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/categories') ? 'is-active' : '' %>" href="/admin/categories">
-              <span class="admin-nav__icon"><%- icon('layers') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/categories') ? 'is-active' : '' %>" href="/admin/categories">
+              <span class="admin-nav__icon"><%- iconFn('layers') %></span>
               <span class="admin-nav__label">Categories</span>
             </a>
 
             <div class="admin-nav__section">Sales</div>
-            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/orders') ? 'is-active' : '' %>" href="/admin/orders">
-              <span class="admin-nav__icon"><%- icon('shopping-bag') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/orders') ? 'is-active' : '' %>" href="/admin/orders">
+              <span class="admin-nav__icon"><%- iconFn('shopping-bag') %></span>
               <span class="admin-nav__label">Orders</span>
             </a>
-            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/reports/sales') ? 'is-active' : '' %>" href="/admin/reports/sales">
-              <span class="admin-nav__icon"><%- icon('bar-chart-3') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/reports/sales') ? 'is-active' : '' %>" href="/admin/reports/sales">
+              <span class="admin-nav__icon"><%- iconFn('bar-chart-3') %></span>
               <span class="admin-nav__label">Sales report</span>
             </a>
 
             <div class="admin-nav__section">People</div>
-            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/users') ? 'is-active' : '' %>" href="/admin/users">
-              <span class="admin-nav__icon"><%- icon('users') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/users') ? 'is-active' : '' %>" href="/admin/users">
+              <span class="admin-nav__icon"><%- iconFn('users') %></span>
               <span class="admin-nav__label">Users</span>
             </a>
 
             <div class="admin-nav__section">Comms</div>
-            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/notifications') ? 'is-active' : '' %>" href="/admin/notifications">
-              <span class="admin-nav__icon"><%- icon('bell') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/notifications') ? 'is-active' : '' %>" href="/admin/notifications">
+              <span class="admin-nav__icon"><%- iconFn('bell') %></span>
               <span class="admin-nav__label">Notifications</span>
             </a>
-            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/contact-messages') ? 'is-active' : '' %>" href="/admin/contact-messages">
-              <span class="admin-nav__icon"><%- icon('mail') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/contact-messages') ? 'is-active' : '' %>" href="/admin/contact-messages">
+              <span class="admin-nav__icon"><%- iconFn('mail') %></span>
               <span class="admin-nav__label">Contact messages</span>
             </a>
 
             <div class="admin-nav__section">Content</div>
-            <a class="admin-nav__item <%= (currentPath || '') === '/admin/pages/privacy' ? 'is-active' : '' %>" href="/admin/pages/privacy">
-              <span class="admin-nav__icon"><%- icon('file-text') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '') === '/admin/pages/privacy' ? 'is-active' : '' %>" href="/admin/pages/privacy">
+              <span class="admin-nav__icon"><%- iconFn('file-text') %></span>
               <span class="admin-nav__label">Privacy</span>
             </a>
-            <a class="admin-nav__item <%= (currentPath || '') === '/admin/pages/terms' ? 'is-active' : '' %>" href="/admin/pages/terms">
-              <span class="admin-nav__icon"><%- icon('file-text') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '') === '/admin/pages/terms' ? 'is-active' : '' %>" href="/admin/pages/terms">
+              <span class="admin-nav__icon"><%- iconFn('file-text') %></span>
               <span class="admin-nav__label">Terms</span>
             </a>
-            <a class="admin-nav__item <%= (currentPath || '') === '/admin/pages/how-to-order' ? 'is-active' : '' %>" href="/admin/pages/how-to-order">
-              <span class="admin-nav__icon"><%- icon('file-text') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '') === '/admin/pages/how-to-order' ? 'is-active' : '' %>" href="/admin/pages/how-to-order">
+              <span class="admin-nav__icon"><%- iconFn('file-text') %></span>
               <span class="admin-nav__label">How to order</span>
             </a>
 
             <div class="admin-nav__section">System</div>
-            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/site/shipping-zones') ? 'is-active' : '' %>" href="/admin/site/shipping-zones">
-              <span class="admin-nav__icon"><%- icon('sliders-horizontal') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/site/shipping-zones') ? 'is-active' : '' %>" href="/admin/site/shipping-zones">
+              <span class="admin-nav__icon"><%- iconFn('sliders-horizontal') %></span>
               <span class="admin-nav__label">Shipping</span>
             </a>
-            <a class="admin-nav__item <%= (currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings">
-              <span class="admin-nav__icon"><%- icon('settings') %></span>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings">
+              <span class="admin-nav__icon"><%- iconFn('settings') %></span>
               <span class="admin-nav__label">Settings</span>
             </a>
           </div>
@@ -262,7 +272,7 @@
     <script src="/public/js/table-sort.js" defer></script>
     <script src="/public/js/theme-toggle.js" defer></script>
     <script src="/public/js/flash-dismiss.js" defer></script>
-    <% if (isAdmin && (currentPath || '').startsWith('/admin')) { %>
+    <% if (_isAdmin && (_currentPath || '').startsWith('/admin')) { %>
       <script src="/public/js/admin-notifications.js" defer></script>
       <script src="/public/js/admin-sidebar.js" defer></script>
     <% } %>

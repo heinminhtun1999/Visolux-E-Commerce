@@ -45,12 +45,6 @@ function resolveOrderFromRef(orderRef) {
 }
 
 function processPaymentPayload(payload, source) {
-  if (!env.fiuu.secretKey) {
-    const err = new Error('Missing FIUU_SECRET_KEY');
-    err.status = 500;
-    throw err;
-  }
-
   const orderRef = parseOrderRef(payload);
   if (!orderRef) {
     const err = new Error('Invalid order reference');
@@ -60,7 +54,24 @@ function processPaymentPayload(payload, source) {
 
   const tranID = String(payload.tranID || '');
 
-  const verification = fiuu.verifySkey(payload, env.fiuu.secretKey);
+  const order = resolveOrderFromRef(orderRef);
+  if (!order) {
+    const err = new Error('Order not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const orderId = Number(order.order_id);
+  const snap = orderRepo.getOnlinePaymentSnapshot(orderId);
+
+  const secretKey = String(snap?.online_payment_secret_key || env.fiuu.secretKey || '').trim();
+  if (!secretKey) {
+    const err = new Error('Missing FIUU secret key for order');
+    err.status = 500;
+    throw err;
+  }
+
+  const verification = fiuu.verifySkey(payload, secretKey);
   if (!verification.ok) {
     if (env.fiuu.logRequests) {
       logger.warn(
@@ -90,14 +101,6 @@ function processPaymentPayload(payload, source) {
     throw err;
   }
 
-  const order = resolveOrderFromRef(orderRef);
-  if (!order) {
-    const err = new Error('Order not found');
-    err.status = 404;
-    throw err;
-  }
-
-  const orderId = Number(order.order_id);
   const previousPaymentStatus = String(order.payment_status || '');
 
   // Persist the channel used (Fiuu sends channel in callback/return payloads).
@@ -115,11 +118,11 @@ function processPaymentPayload(payload, source) {
   }
 
   const payloadCurrency = String(payload.currency || '');
-  const expectedCurrency = String(env.fiuu.currency || 'MYR');
+  const expectedCurrency = String(order.online_payment_currency || env.fiuu.currency || 'MYR');
   if (payloadCurrency && payloadCurrency !== expectedCurrency) {
     const err = new Error('Currency mismatch');
     err.status = 400;
-    throw err;
+    const expectedCurrency = String(snap?.online_payment_currency || order.online_payment_currency || env.fiuu.currency || 'MYR');
   }
 
   const payloadAmountCents = Math.round(Number(payload.amount || '0') * 100);
@@ -247,10 +250,33 @@ router.all('/payment/refund/notify', (req, res) => {
     const providerRefundId = getField(payload, ['RefundID', 'refundID', 'refundId', 'RefundId']);
     if (!providerRefId && !providerRefundId) return res.status(200).send('OK');
 
+    // Resolve the order first so we can verify using the correct per-order secret key.
+    let matchedRefund = null;
+    try {
+      if (providerRefId) {
+        matchedRefund =
+          orderRefundRepo.getByProviderRefId({ provider: 'FIUU', providerRefId }) ||
+          orderRefundExtraRepo.getByProviderRefId({ provider: 'FIUU', providerRefId });
+      }
+      if (!matchedRefund && providerRefundId) {
+        matchedRefund =
+          orderRefundRepo.getByProviderRefundId({ provider: 'FIUU', providerRefundId }) ||
+          orderRefundExtraRepo.getByProviderRefundId({ provider: 'FIUU', providerRefundId });
+      }
+    } catch (_) {
+      matchedRefund = null;
+    }
+
+    const orderIdForSig = matchedRefund && matchedRefund.order_id ? Number(matchedRefund.order_id) : null;
+    const snapForSig = orderIdForSig ? orderRepo.getOnlinePaymentSnapshot(orderIdForSig) : null;
+    const secretKey = String(snapForSig?.online_payment_secret_key || env.fiuu.secretKey || '').trim();
+
     let signatureOk = null;
     try {
-      const v = fiuu.verifyRefundSignature(payload, env.fiuu.secretKey);
-      signatureOk = v.ok;
+      if (secretKey) {
+        const v = fiuu.verifyRefundSignature(payload, secretKey);
+        signatureOk = v.ok;
+      }
     } catch (_) {
       signatureOk = null;
     }

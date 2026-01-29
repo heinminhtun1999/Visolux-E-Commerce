@@ -20,6 +20,11 @@ function mapOrder(row) {
     payment_method: row.payment_method,
     payment_channel: row.payment_channel || null,
     payment_status: row.payment_status,
+    online_payment_provider: row.online_payment_provider || null,
+    online_payment_account_id: row.online_payment_account_id || null,
+    online_payment_merchant_id: row.online_payment_merchant_id || null,
+    online_payment_gateway_url: row.online_payment_gateway_url || null,
+    online_payment_currency: row.online_payment_currency || null,
     offline_transfer_bank: row.offline_transfer_bank || null,
     offline_transfer_account_no: row.offline_transfer_account_no || null,
     offline_transfer_account_name: row.offline_transfer_account_name || null,
@@ -69,6 +74,34 @@ function listItems(orderId) {
 function getById(orderId) {
   const db = getDb();
   return mapOrder(db.prepare('SELECT * FROM orders WHERE order_id=?').get(orderId));
+}
+
+function getOnlinePaymentSnapshot(orderId) {
+  const db = getDb();
+  const r = db
+    .prepare(
+      `SELECT
+        online_payment_provider,
+        online_payment_account_id,
+        online_payment_merchant_id,
+        online_payment_verify_key,
+        online_payment_secret_key,
+        online_payment_gateway_url,
+        online_payment_currency
+       FROM orders
+       WHERE order_id=?`
+    )
+    .get(orderId);
+  if (!r) return null;
+  return {
+    online_payment_provider: r.online_payment_provider || null,
+    online_payment_account_id: r.online_payment_account_id || null,
+    online_payment_merchant_id: r.online_payment_merchant_id || null,
+    online_payment_verify_key: r.online_payment_verify_key || null,
+    online_payment_secret_key: r.online_payment_secret_key || null,
+    online_payment_gateway_url: r.online_payment_gateway_url || null,
+    online_payment_currency: r.online_payment_currency || null,
+  };
 }
 
 function getByCode(orderCode) {
@@ -351,6 +384,13 @@ function createOrder({
   payment_method,
   payment_status,
   fulfilment_status,
+  online_payment_provider,
+  online_payment_account_id,
+  online_payment_merchant_id,
+  online_payment_verify_key,
+  online_payment_secret_key,
+  online_payment_gateway_url,
+  online_payment_currency,
   offline_transfer_bank,
   offline_transfer_account_no,
   offline_transfer_account_name,
@@ -424,6 +464,7 @@ function createOrder({
               order_code, user_id, customer_name, phone, email, address,
               delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region,
               payment_method, payment_status, fulfilment_status,
+              online_payment_provider, online_payment_account_id, online_payment_merchant_id, online_payment_verify_key, online_payment_secret_key, online_payment_gateway_url, online_payment_currency,
               offline_transfer_bank, offline_transfer_account_no, offline_transfer_account_name,
               items_subtotal, discount_amount, shipping_fee,
               total_amount
@@ -432,6 +473,7 @@ function createOrder({
               @order_code, @user_id, @customer_name, @phone, @email, @address,
               @delivery_address_line1, @delivery_address_line2, @delivery_city, @delivery_state, @delivery_postcode, @delivery_region,
               @payment_method, @payment_status, @fulfilment_status,
+              @online_payment_provider, @online_payment_account_id, @online_payment_merchant_id, @online_payment_verify_key, @online_payment_secret_key, @online_payment_gateway_url, @online_payment_currency,
               @offline_transfer_bank, @offline_transfer_account_no, @offline_transfer_account_name,
               @items_subtotal, @discount_amount, @shipping_fee,
               @total_amount
@@ -453,6 +495,13 @@ function createOrder({
             payment_method,
             payment_status,
             fulfilment_status,
+            online_payment_provider: online_payment_provider || null,
+            online_payment_account_id: online_payment_account_id || null,
+            online_payment_merchant_id: online_payment_merchant_id || null,
+            online_payment_verify_key: online_payment_verify_key || null,
+            online_payment_secret_key: online_payment_secret_key || null,
+            online_payment_gateway_url: online_payment_gateway_url || null,
+            online_payment_currency: online_payment_currency || null,
             offline_transfer_bank: offline_transfer_bank || null,
             offline_transfer_account_no: offline_transfer_account_no || null,
             offline_transfer_account_name: offline_transfer_account_name || null,
@@ -839,6 +888,7 @@ function countUnverifiedSlips() {
 
 module.exports = {
   getById,
+  getOnlinePaymentSnapshot,
   getByCode,
   getWithItems,
   listByUser,

@@ -40,6 +40,7 @@ function initializeSchema(database) {
   ensureOrdersPaymentStatusEnum(database);
   ensureOrdersAdminNote(database);
   ensureOrdersOfflineTransferRecipient(database);
+  ensureOrdersOnlinePaymentSnapshot(database);
   ensureOrderItemRefunds(database);
   ensureOrderItemRefundGatewayColumns(database);
   ensureOrderRefunds(database);
@@ -257,6 +258,33 @@ function ensurePromoCodesShippingFlag(database) {
   const hasOrderPromo = (name) => orderPromoCols.some((c) => c.name === name);
   if (orderPromoCols.length && !hasOrderPromo('applies_to_shipping')) {
     database.exec('ALTER TABLE order_promos ADD COLUMN applies_to_shipping INTEGER NOT NULL DEFAULT 0');
+  }
+}
+
+function ensureOrdersOnlinePaymentSnapshot(database) {
+  const cols = database.prepare("PRAGMA table_info('orders')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+
+  if (!has('online_payment_provider')) {
+    database.exec('ALTER TABLE orders ADD COLUMN online_payment_provider TEXT');
+  }
+  if (!has('online_payment_account_id')) {
+    database.exec('ALTER TABLE orders ADD COLUMN online_payment_account_id TEXT');
+  }
+  if (!has('online_payment_merchant_id')) {
+    database.exec('ALTER TABLE orders ADD COLUMN online_payment_merchant_id TEXT');
+  }
+  if (!has('online_payment_verify_key')) {
+    database.exec('ALTER TABLE orders ADD COLUMN online_payment_verify_key TEXT');
+  }
+  if (!has('online_payment_secret_key')) {
+    database.exec('ALTER TABLE orders ADD COLUMN online_payment_secret_key TEXT');
+  }
+  if (!has('online_payment_gateway_url')) {
+    database.exec('ALTER TABLE orders ADD COLUMN online_payment_gateway_url TEXT');
+  }
+  if (!has('online_payment_currency')) {
+    database.exec('ALTER TABLE orders ADD COLUMN online_payment_currency TEXT');
   }
 }
 

@@ -76,6 +76,7 @@ function placeOrder({
   promoCode,
   payment_method,
   offline_transfer_recipient,
+  online_payment_snapshot,
 }) {
   const built = buildOrderFromCart({ cartItems });
 
@@ -134,6 +135,13 @@ function placeOrder({
     payment_method,
     payment_status,
     fulfilment_status,
+    online_payment_provider: online_payment_snapshot?.provider || null,
+    online_payment_account_id: online_payment_snapshot?.account_id || null,
+    online_payment_merchant_id: online_payment_snapshot?.merchant_id || null,
+    online_payment_verify_key: online_payment_snapshot?.verify_key || null,
+    online_payment_secret_key: online_payment_snapshot?.secret_key || null,
+    online_payment_gateway_url: online_payment_snapshot?.gateway_url || null,
+    online_payment_currency: online_payment_snapshot?.currency || null,
     offline_transfer_bank: offline_transfer_recipient?.bank || null,
     offline_transfer_account_no: offline_transfer_recipient?.account_no || null,
     offline_transfer_account_name: offline_transfer_recipient?.account_name || null,

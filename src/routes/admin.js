@@ -30,6 +30,7 @@ const categorySectionRepo = require('../repositories/categorySectionRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
 const shippingService = require('../services/shippingService');
 const offlineTransferService = require('../services/offlineTransferService');
+const fiuuAccountsService = require('../services/fiuuAccountsService');
 const { MALAYSIA_STATES } = require('../utils/malaysia');
 const { renderMarkdown, sanitizeHtmlFragment, sanitizeHtmlFragmentNoImages } = require('../utils/markdown');
 const crypto = require('crypto');
@@ -542,6 +543,8 @@ router.get('/settings', (req, res) => {
 
   const offlineTransferBanks = offlineTransferService.getBanks();
 
+  const fiuuSettings = fiuuAccountsService.getAdminSettingsViewModel();
+
   return res.render('admin/settings', {
     title: 'Admin – Settings',
     siteLogoUrl,
@@ -555,9 +558,106 @@ router.get('/settings', (req, res) => {
     lowStockThreshold,
     promos,
     offlineTransferBanks,
+    fiuuAccounts: fiuuSettings.accounts,
+    fiuuDefaultAccountId: fiuuSettings.defaultId,
+    fiuuCategoryMap: fiuuSettings.categoryMap,
+    fiuuCategories: fiuuSettings.categories,
+    fiuuEnvFallbackEnabled: fiuuSettings.envFallbackEnabled,
+    fiuuEnvAccount: fiuuSettings.envAccount,
     promosView: promosView === 'ALL' || promosView === 'ARCHIVED' || promosView === 'ACTIVE' ? promosView : 'ACTIVE',
   });
 });
+
+router.post(
+  '/site/fiuu-accounts',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.any(),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const body = req.validated.body || {};
+
+      const toArray = (v) => {
+        if (Array.isArray(v)) return v;
+        if (v == null) return [];
+        return [v];
+      };
+
+      const ids = toArray(body.account_id).map((x) => String(x || '').trim());
+      const labels = toArray(body.account_label).map((x) => String(x || '').trim());
+      const merchantIds = toArray(body.merchant_id).map((x) => String(x || '').trim());
+      const verifyKeys = toArray(body.verify_key).map((x) => String(x || '').trim());
+      const secretKeys = toArray(body.secret_key).map((x) => String(x || '').trim());
+
+      const n = Math.max(
+        ids.length,
+        labels.length,
+        merchantIds.length,
+        verifyKeys.length,
+        secretKeys.length
+      );
+
+      const accounts = [];
+      for (let i = 0; i < n; i += 1) {
+        const id = ids[i] || '';
+        const label = labels[i] || '';
+        const merchantId = merchantIds[i] || '';
+        const verifyKey = verifyKeys[i] || '';
+        const secretKey = secretKeys[i] || '';
+
+        const allBlank = !id && !label && !merchantId && !verifyKey && !secretKey;
+        if (allBlank) continue;
+
+        if (!id) {
+          req.session.flash = { type: 'error', message: 'Each FIUU account row must have an internal id. Please re-add the row.' };
+          return res.redirect('/admin/settings#payment-gateway');
+        }
+
+        accounts.push({
+          id: id.slice(0, 128),
+          label: label.slice(0, 128),
+          merchantId: merchantId.slice(0, 128),
+          verifyKey: verifyKey.slice(0, 256),
+          secretKey: secretKey.slice(0, 256),
+        });
+      }
+
+      if (accounts.length > 50) {
+        req.session.flash = { type: 'error', message: 'Too many FIUU accounts (max 50).' };
+        return res.redirect('/admin/settings#payment-gateway');
+      }
+
+      const defaultAccountId = String(body.default_account_id || '').trim();
+
+      const catSlugs = toArray(body.category_slug).map((x) => String(x || '').trim()).filter(Boolean);
+      const catAccountIds = toArray(body.category_account_id).map((x) => String(x || '').trim());
+      const categoryMap = {};
+      for (let i = 0; i < Math.min(catSlugs.length, catAccountIds.length); i += 1) {
+        categoryMap[catSlugs[i]] = catAccountIds[i] || '';
+      }
+
+      fiuuAccountsService.saveAccountsAndMappings({
+        accounts,
+        defaultId: defaultAccountId,
+        categoryMap,
+      });
+
+      req.session.flash = { type: 'success', message: 'FIUU payment accounts saved.' };
+      return res.redirect('/admin/settings#payment-gateway');
+    } catch (e) {
+      if (e && e.status === 400) {
+        req.session.flash = { type: 'error', message: e.message };
+        return res.redirect('/admin/settings#payment-gateway');
+      }
+      return next(e);
+    }
+  }
+);
 
 router.post(
   '/site/offline-transfer-banks',
@@ -1498,12 +1598,23 @@ router.get('/categories', (req, res) => {
     if (archived === 'ALL') return true;
     return !c.archived;
   });
+
+  const fiuuAccounts = fiuuAccountsService.getAccounts();
+  const fiuuEnvAccount = fiuuAccountsService.getEnvAccount();
+  const fiuuCategoryMap = fiuuAccountsService.getCategoryAccountMap();
+  const fiuuSelectableAccounts = [
+    ...(fiuuEnvAccount ? [{ id: 'env', label: 'Env (legacy)' }] : []),
+    ...fiuuAccounts.map((a) => ({ id: a.id, label: a.label })),
+  ];
+
   return res.render('admin/categories', {
     title: 'Admin – Categories',
     categories,
     total: categories.length,
     archived: archived === 'ALL' || archived === 'ARCHIVED' || archived === 'ACTIVE' ? archived : 'ACTIVE',
     includeArchived,
+    fiuuSelectableAccounts,
+    fiuuCategoryMap,
   });
 });
 
@@ -1958,6 +2069,7 @@ router.post(
         name: z.string().trim().min(2).max(80),
         slug: z.string().trim().max(80).optional().or(z.literal('')),
         visible: z.string().optional(),
+        fiuu_account_id: z.string().trim().max(128).optional().or(z.literal('')),
       }),
       params: z.any().optional(),
       query: z.any().optional(),
@@ -1985,6 +2097,14 @@ router.post(
 
       const visible = String(req.validated.body.visible || '1') === '1';
       categoryRepo.create({ slug: unique, name, visible });
+
+      const selectedAccountId = String(req.validated.body.fiuu_account_id || '').trim();
+      if (selectedAccountId) {
+        fiuuAccountsService.setCategoryAccountForSlug({ slug: unique, accountId: selectedAccountId });
+      } else {
+        fiuuAccountsService.clearCategoryMappingForSlug(unique);
+      }
+
       req.session.flash = { type: 'success', message: 'Category created.' };
       return res.redirect('/admin/categories');
     } catch (e) {
@@ -2001,6 +2121,7 @@ router.post(
       body: z.object({
         name: z.string().trim().min(2).max(80),
         slug: z.string().trim().min(2).max(80),
+        fiuu_account_id: z.string().trim().max(128).optional().or(z.literal('')),
       }),
       params: z.object({ id: z.string() }),
       query: z.any().optional(),
@@ -2033,6 +2154,17 @@ router.post(
         inventoryRepo.updateCategorySlug(current.slug, slug);
       }
       categoryRepo.update(id, { name: req.validated.body.name, slug });
+
+      const selectedAccountId = String(req.validated.body.fiuu_account_id || '').trim();
+      if (selectedAccountId) {
+        fiuuAccountsService.setCategoryAccountForSlug({ slug, accountId: selectedAccountId });
+      } else {
+        fiuuAccountsService.clearCategoryMappingForSlug(slug);
+      }
+      if (current.slug !== slug) {
+        fiuuAccountsService.clearCategoryMappingForSlug(current.slug);
+      }
+
       req.session.flash = { type: 'success', message: 'Category updated.' };
       return res.redirect('/admin/categories');
     } catch (e) {

@@ -7,6 +7,17 @@ const paymentEventRepo = require('../repositories/paymentEventRepo');
 const fiuu = require('./payments/fiuu');
 const { logger } = require('../utils/logger');
 
+function buildFiuuConfigForOrder(order) {
+  if (!order) return null;
+  const snap = orderRepo.getOnlinePaymentSnapshot(order.order_id);
+  const merchantId = String(snap?.online_payment_merchant_id || env.fiuu.merchantId || '').trim();
+  const verifyKey = String(snap?.online_payment_verify_key || env.fiuu.verifyKey || '').trim();
+  const secretKey = String(snap?.online_payment_secret_key || env.fiuu.secretKey || '').trim();
+  const gatewayUrl = String(snap?.online_payment_gateway_url || env.fiuu.gatewayUrl || '').trim();
+  const currency = String(snap?.online_payment_currency || env.fiuu.currency || 'MYR').trim();
+  return { merchantId, verifyKey, secretKey, gatewayUrl, currency };
+}
+
 function allocateDiscountAcrossItems({ items, discountAmount }) {
   const discount = Math.max(0, Number(discountAmount || 0));
   const totalSubtotal = items.reduce((sum, it) => sum + Math.max(0, Number(it.subtotal || 0)), 0);
@@ -120,8 +131,9 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
       throw err;
     }
 
-    if (!fiuu.isRefundConfigured()) {
-      const err = new Error('Fiuu refund is not configured (missing FIUU_MERCHANT_ID / FIUU_SECRET_KEY).');
+    const fiuuConfig = buildFiuuConfigForOrder(order);
+    if (!fiuu.isRefundConfigured(fiuuConfig)) {
+      const err = new Error('Fiuu refund is not configured for this order (missing merchant id / secret key).');
       err.status = 500;
       throw err;
     }
@@ -184,6 +196,7 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
       txnId,
       refId,
       notifyUrl,
+      fiuuConfig,
     };
   })();
 
@@ -196,6 +209,7 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
       amountCents: prepared.amount,
       notifyUrl: prepared.notifyUrl,
       mdrFlag: 0,
+      fiuuConfig: prepared.fiuuConfig,
     });
     logger.info(
       { event: 'refund_requested', orderId, orderItemId: prepared.item.id, amountCents: prepared.amount, qty: prepared.qty },
@@ -294,8 +308,9 @@ async function refundOrderExtraAmount({ orderId, amountRefunded, reason }) {
       throw err;
     }
 
-    if (!fiuu.isRefundConfigured()) {
-      const err = new Error('Fiuu refund is not configured (missing FIUU_MERCHANT_ID / FIUU_SECRET_KEY).');
+    const fiuuConfig = buildFiuuConfigForOrder(order);
+    if (!fiuu.isRefundConfigured(fiuuConfig)) {
+      const err = new Error('Fiuu refund is not configured for this order (missing merchant id / secret key).');
       err.status = 500;
       throw err;
     }
@@ -337,6 +352,7 @@ async function refundOrderExtraAmount({ orderId, amountRefunded, reason }) {
       txnId,
       refId,
       notifyUrl,
+      fiuuConfig,
     };
   })();
 
@@ -348,6 +364,7 @@ async function refundOrderExtraAmount({ orderId, amountRefunded, reason }) {
       amountCents: prepared.amount,
       notifyUrl: prepared.notifyUrl,
       mdrFlag: 0,
+      fiuuConfig: prepared.fiuuConfig,
     });
   } catch (e) {
     try {

@@ -12,6 +12,7 @@
     <a class="btn" href="/admin/categories">Categories</a>
     <a class="btn" href="#branding">Branding</a>
     <a class="btn" href="#shipping">Shipping</a>
+    <a class="btn" href="#payment-gateway">Payment gateway</a>
     <a class="btn" href="#offline-transfer">Offline transfer</a>
     <a class="btn" href="#inventory">Inventory</a>
     <a class="btn" href="#footer-pages">Footer & Pages</a>
@@ -19,6 +20,183 @@
     <a class="btn" href="#security">Security</a>
   </div>
 </div>
+
+<section id="payment-gateway" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Payment gateway (FIUU)</h2>
+  <div class="muted small">Configure multiple FIUU merchant accounts and optionally assign one account per category. Online payment requires that all items in a cart resolve to the same account.</div>
+
+  <form method="post" action="/admin/site/fiuu-accounts" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="card" style="padding:12px">
+      <div class="row" style="justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap">
+        <div>
+          <div style="font-weight:800">FIUU merchant accounts</div>
+          <div class="muted small" style="margin-top:4px">Add one or more accounts. Set one default account (used when a category has no mapping).</div>
+          <% if (fiuuEnvFallbackEnabled) { %>
+            <div class="muted small" style="margin-top:4px">Env fallback is available (legacy FIUU_* vars), but accounts saved here will take priority.</div>
+          <% } %>
+        </div>
+        <div class="actions" style="gap:8px">
+          <button class="btn" type="button" id="addFiuuAccountBtn">Add account</button>
+          <button class="btn btn-primary" type="submit">Save FIUU settings</button>
+        </div>
+      </div>
+
+      <div style="overflow:auto; margin-top:10px">
+        <% function maskSecret(s) {
+          var v = String(s || '');
+          if (!v) return '';
+          if (v.length <= 6) return '••••••';
+          return v.slice(0, 2) + '••••••' + v.slice(-2);
+        } %>
+
+        <% if (fiuuEnvFallbackEnabled && fiuuEnvAccount && !(fiuuAccounts || []).length) { %>
+          <div class="card" style="padding:12px; margin-bottom:10px">
+            <div style="font-weight:800">Detected current FIUU config (env)</div>
+            <div class="muted small" style="margin-top:6px">Your app has FIUU env variables configured. To manage multiple accounts, add rows below and save.</div>
+            <div class="row" style="gap:14px; margin-top:10px; flex-wrap:wrap">
+              <div class="col" style="min-width:220px"><div class="muted small">Merchant ID</div><div style="font-weight:700"><%= fiuuEnvAccount.merchantId || '-' %></div></div>
+              <div class="col" style="min-width:220px"><div class="muted small">Verify Key</div><div style="font-weight:700"><%= maskSecret(fiuuEnvAccount.verifyKey) || '-' %></div></div>
+              <div class="col" style="min-width:220px"><div class="muted small">Secret Key</div><div style="font-weight:700"><%= maskSecret(fiuuEnvAccount.secretKey) || '-' %></div></div>
+            </div>
+          </div>
+        <% } %>
+
+        <table class="table" id="fiuuAccountsTable">
+          <thead>
+            <tr>
+              <th>Default</th>
+              <th>Label</th>
+              <th>Merchant ID</th>
+              <th>Verify Key</th>
+              <th>Secret Key</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% (fiuuAccounts || []).forEach(a => { %>
+              <tr data-row>
+                <td style="width:92px">
+                  <input type="hidden" name="account_id" value="<%= a.id %>" />
+                  <label style="display:flex; gap:8px; align-items:center">
+                    <input type="radio" name="default_account_id" value="<%= a.id %>" <%= (String(fiuuDefaultAccountId || '') === String(a.id || '')) ? 'checked' : '' %> />
+                    <span class="muted small">Default</span>
+                  </label>
+                </td>
+                <td><input class="input" name="account_label" value="<%= a.label || '' %>" maxlength="128" required /></td>
+                <td><input class="input" name="merchant_id" value="<%= a.merchantId || '' %>" maxlength="128" required /></td>
+                <td><input class="input" type="password" name="verify_key" value="<%= a.verifyKey || '' %>" maxlength="256" required /></td>
+                <td><input class="input" type="password" name="secret_key" value="<%= a.secretKey || '' %>" maxlength="256" required /></td>
+                <td style="width:90px"><button class="btn btn-danger" type="button" data-remove>Remove</button></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="muted small" style="margin-top:10px">If your cart includes categories mapped to different accounts, online payment will be blocked and customers must checkout separately or use offline transfer.</div>
+    </div>
+
+    <div class="card" style="padding:12px; margin-top:12px">
+      <div style="font-weight:800">Category → FIUU account mapping</div>
+      <div class="muted small" style="margin-top:4px">Leave blank to use the default account.</div>
+
+      <div style="overflow:auto; margin-top:10px">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Slug</th>
+              <th>Assigned account</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% (fiuuCategories || []).forEach(c => { %>
+              <tr>
+                <td>
+                  <div style="font-weight:700"><%= c.name %></div>
+                  <div class="muted small"><%= c.archived ? 'Archived' : (c.visible ? 'Visible' : 'Hidden') %></div>
+                </td>
+                <td style="width:220px">
+                  <input type="hidden" name="category_slug" value="<%= c.slug %>" />
+                  <span class="muted small"><%= c.slug %></span>
+                </td>
+                <td style="min-width:320px">
+                  <% const current = (fiuuCategoryMap && fiuuCategoryMap[c.slug]) ? String(fiuuCategoryMap[c.slug]) : ''; %>
+                  <select class="input" name="category_account_id">
+                    <option value="" <%= current ? '' : 'selected' %>>Default</option>
+                    <% (fiuuAccounts || []).forEach(a => { %>
+                      <option value="<%= a.id %>" <%= (current === String(a.id)) ? 'selected' : '' %>><%= a.label %> (<%= a.id %>)</option>
+                    <% }) %>
+                  </select>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="row" style="justify-content:flex-end; margin-top:14px">
+      <button class="btn btn-primary" type="submit">Save FIUU settings</button>
+    </div>
+  </form>
+
+  <script>
+    (function () {
+      function randHex16() {
+        try {
+          var a = new Uint8Array(8);
+          crypto.getRandomValues(a);
+          return Array.from(a).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+        } catch (_) {
+          return String(Date.now()) + String(Math.random()).slice(2, 8);
+        }
+      }
+
+      var table = document.getElementById('fiuuAccountsTable');
+      var tbody = table ? table.querySelector('tbody') : null;
+      var addBtn = document.getElementById('addFiuuAccountBtn');
+
+      function wireRow(tr) {
+        var removeBtn = tr.querySelector('[data-remove]');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function () {
+            tr.remove();
+          });
+        }
+      }
+
+      if (tbody) {
+        Array.from(tbody.querySelectorAll('tr[data-row]')).forEach(wireRow);
+      }
+
+      if (addBtn && tbody) {
+        addBtn.addEventListener('click', function () {
+          var id = 'fiuu_' + randHex16();
+          var tr = document.createElement('tr');
+          tr.setAttribute('data-row', '');
+          tr.innerHTML = '' +
+            '<td style="width:92px">' +
+              '<input type="hidden" name="account_id" value="' + id + '" />' +
+              '<label style="display:flex; gap:8px; align-items:center">' +
+                '<input type="radio" name="default_account_id" value="' + id + '" />' +
+                '<span class="muted small">Default</span>' +
+              '</label>' +
+            '</td>' +
+            '<td><input class="input" name="account_label" value="" maxlength="128" required /></td>' +
+            '<td><input class="input" name="merchant_id" value="" maxlength="128" required /></td>' +
+            '<td><input class="input" type="password" name="verify_key" value="" maxlength="256" required /></td>' +
+            '<td><input class="input" type="password" name="secret_key" value="" maxlength="256" required /></td>' +
+            '<td style="width:90px"><button class="btn btn-danger" type="button" data-remove>Remove</button></td>';
+          tbody.appendChild(tr);
+          wireRow(tr);
+        });
+      }
+    })();
+  </script>
+</section>
 
 <section id="branding" class="card" style="padding:14px; margin-top:12px">
   <h2 class="h2" style="margin-top:0">Branding</h2>

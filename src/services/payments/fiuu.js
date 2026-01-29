@@ -6,17 +6,35 @@ function md5Hex(input) {
   return crypto.createHash('md5').update(String(input), 'utf8').digest('hex');
 }
 
-function isConfigured() {
+function buildConfig(override) {
+  const o = override && typeof override === 'object' ? override : {};
+  return {
+    merchantId: String(o.merchantId || env.fiuu.merchantId || '').trim(),
+    verifyKey: String(o.verifyKey || env.fiuu.verifyKey || '').trim(),
+    secretKey: String(o.secretKey || env.fiuu.secretKey || '').trim(),
+    // Default to production gateway base if not provided.
+    gatewayUrl: String(o.gatewayUrl || env.fiuu.gatewayUrl || 'https://pay.fiuu.com/RMS/pay').trim(),
+    apiBase: String(o.apiBase || env.fiuu.apiBase || '').trim(),
+    paymentMethod: String(o.paymentMethod || env.fiuu.paymentMethod || '').trim(),
+    currency: String(o.currency || env.fiuu.currency || 'MYR').trim(),
+    requestMethod: String(o.requestMethod || env.fiuu.requestMethod || 'GET').toUpperCase(),
+    vcodeMode: String(o.vcodeMode || env.fiuu.vcodeMode || 'legacy').toLowerCase(),
+  };
+}
+
+function isConfigured(fiuuConfig) {
+  const c = buildConfig(fiuuConfig);
   return Boolean(
-    env.fiuu.merchantId &&
-      env.fiuu.verifyKey &&
-      env.fiuu.secretKey &&
-      env.fiuu.gatewayUrl
+    c.merchantId &&
+      c.verifyKey &&
+      c.secretKey &&
+      c.gatewayUrl
   );
 }
 
-function isRefundConfigured() {
-  return Boolean(env.fiuu.merchantId && env.fiuu.secretKey);
+function isRefundConfigured(fiuuConfig) {
+  const c = buildConfig(fiuuConfig);
+  return Boolean(c.merchantId && c.secretKey);
 }
 
 function formatAmountFromCents(cents) {
@@ -24,11 +42,12 @@ function formatAmountFromCents(cents) {
   return v.toFixed(2);
 }
 
-function resolveNonPaymentApiBase() {
-  const fromEnv = String(env.fiuu.apiBase || '').trim();
+function resolveNonPaymentApiBase(fiuuConfig) {
+  const c = buildConfig(fiuuConfig);
+  const fromEnv = String(c.apiBase || '').trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
 
-  const gw = String(env.fiuu.gatewayUrl || '').trim();
+  const gw = String(c.gatewayUrl || '').trim();
   // Spec note: sandbox uses sandbox-payment.fiuu.com for non-payment APIs.
   if (gw.includes('sandbox-payment.fiuu.com')) return 'https://sandbox-payment.fiuu.com';
 
@@ -43,18 +62,19 @@ function buildRefundResponseSignature({ refundType, merchantId, refId, refundId,
   return md5Hex(`${refundType}${merchantId}${refId}${refundId}${txnId}${amountStr}${status}${secretKey}`);
 }
 
-async function refundPartial({ txnId, refId, amountCents, notifyUrl, mdrFlag }) {
-  if (!isRefundConfigured()) {
+async function refundPartial({ txnId, refId, amountCents, notifyUrl, mdrFlag, fiuuConfig }) {
+  const c = buildConfig(fiuuConfig);
+  if (!isRefundConfigured(c)) {
     const err = new Error('Fiuu refund is not configured. Set FIUU_MERCHANT_ID and FIUU_SECRET_KEY.');
     err.status = 500;
     throw err;
   }
 
-  const base = resolveNonPaymentApiBase();
+  const base = resolveNonPaymentApiBase(c);
   const url = `${base}/RMS/API/refundAPI/index.php`;
 
   const RefundType = 'P';
-  const MerchantID = String(env.fiuu.merchantId);
+  const MerchantID = String(c.merchantId);
   const RefID = String(refId);
   const TxnID = String(txnId);
   const Amount = formatAmountFromCents(amountCents);
@@ -64,7 +84,7 @@ async function refundPartial({ txnId, refId, amountCents, notifyUrl, mdrFlag }) 
     refId: RefID,
     txnId: TxnID,
     amountStr: Amount,
-    secretKey: String(env.fiuu.secretKey),
+    secretKey: String(c.secretKey),
   });
 
   const params = new URLSearchParams();
@@ -115,7 +135,7 @@ async function refundPartial({ txnId, refId, amountCents, notifyUrl, mdrFlag }) 
         txnId: String(json.TxnID || TxnID),
         amountStr: String(json.Amount || Amount),
         status: String(status),
-        secretKey: String(env.fiuu.secretKey),
+        secretKey: String(c.secretKey),
       });
       signatureOk = expected.toLowerCase() === respSig.toLowerCase();
     }
@@ -386,17 +406,18 @@ function statusToPaymentStatus(statCode) {
   }
 }
 
-function buildHostedPaymentRequest({ order, customer, channel }) {
-  if (!isConfigured()) {
+function buildHostedPaymentRequest({ order, customer, channel, fiuuConfig }) {
+  const c = buildConfig(fiuuConfig);
+  if (!isConfigured(c)) {
     const err = new Error('Fiuu is not configured.');
     err.status = 500;
     throw err;
   }
 
-  const merchantId = env.fiuu.merchantId;
-  const currency = env.fiuu.currency || 'MYR';
+  const merchantId = c.merchantId;
+  const currency = c.currency || 'MYR';
   const amountStr = formatAmountFromCents(order.total_amount);
-  const method = String(env.fiuu.requestMethod || 'POST').toUpperCase() === 'GET' ? 'GET' : 'POST';
+  const method = String(c.requestMethod || 'POST').toUpperCase() === 'GET' ? 'GET' : 'POST';
   // Use the same order id format shown in the dashboard (order_code), so the gateway and emails are consistent.
   // Fallback to numeric order_id only if order_code is missing.
   const orderRef = String(order.order_code || order.order_id);
@@ -421,9 +442,9 @@ function buildHostedPaymentRequest({ order, customer, channel }) {
     amountStr,
     merchantId,
     orderId: orderRef,
-    verifyKey: env.fiuu.verifyKey,
+    verifyKey: c.verifyKey,
     currency,
-    mode: env.fiuu.vcodeMode,
+    mode: c.vcodeMode,
   });
 
   // Gateway URL patterns from spec:
@@ -434,8 +455,8 @@ function buildHostedPaymentRequest({ order, customer, channel }) {
   // - a URL that ends at /RMS/pay (domain or base path)
   // - a URL that ends at /RMS/pay/<merchantId> (lets Fiuu show all available channels)
   // - a full URL /RMS/pay/<merchantId>/<method>
-  const rawGateway = String(env.fiuu.gatewayUrl || '').replace(/\/$/, '');
-  const paymentMethod = String(env.fiuu.paymentMethod || '').trim();
+  const rawGateway = String(c.gatewayUrl || '').replace(/\/$/, '');
+  const paymentMethod = String(c.paymentMethod || '').trim();
 
   const merchantInPathRegex = new RegExp(`/RMS/pay/${String(merchantId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:/|$)`, 'i');
 
@@ -509,7 +530,7 @@ function buildHostedPaymentRequest({ order, customer, channel }) {
     fullUrl = `${url}?${qs.toString()}`;
   }
 
-  return { url, fields, fullUrl, method, meta: { vcodeMode: env.fiuu.vcodeMode } };
+  return { url, fields, fullUrl, method, meta: { vcodeMode: c.vcodeMode } };
 }
 
 module.exports = {

@@ -50,6 +50,26 @@ function getById(id) {
   return db.prepare('SELECT * FROM order_item_refunds WHERE id=?').get(id) || null;
 }
 
+function getByProviderRefId({ provider, providerRefId }) {
+  const db = getDb();
+  const p = provider ? String(provider) : null;
+  const ref = providerRefId ? String(providerRefId) : null;
+  if (!p || !ref) return null;
+  return db
+    .prepare('SELECT * FROM order_item_refunds WHERE provider=? AND provider_ref_id=? ORDER BY id DESC LIMIT 1')
+    .get(p, ref) || null;
+}
+
+function getByProviderRefundId({ provider, providerRefundId }) {
+  const db = getDb();
+  const p = provider ? String(provider) : null;
+  const rid = providerRefundId ? String(providerRefundId) : null;
+  if (!p || !rid) return null;
+  return db
+    .prepare('SELECT * FROM order_item_refunds WHERE provider=? AND provider_refund_id=? ORDER BY id DESC LIMIT 1')
+    .get(p, rid) || null;
+}
+
 function listByOrder(orderId) {
   const db = getDb();
   return db
@@ -277,6 +297,8 @@ function summariesByOrder(orderId) {
 module.exports = {
   create,
   getById,
+  getByProviderRefId,
+  getByProviderRefundId,
   listByOrder,
   updateGatewayByProviderRefId,
   updateGatewayByProviderRefundId,
