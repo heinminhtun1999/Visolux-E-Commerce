@@ -59,10 +59,26 @@
 
         <div class="card" id="offlineBankDetails" style="padding:12px; margin-top:12px; display:none">
           <div class="muted small" style="font-weight:800; letter-spacing:.02em; text-transform:uppercase">Offline bank transfer details</div>
+
+          <% if (offlineTransferBanks && offlineTransferBanks.length) { %>
+            <label style="margin-top:10px">Select bank</label>
+            <select class="input" name="offline_transfer_bank_id" id="offlineTransferBankSelect">
+              <option value="">Select a bank</option>
+              <% offlineTransferBanks.forEach(b => { %>
+                <option
+                  value="<%= b.id %>"
+                  data-bank="<%= b.bank %>"
+                  data-account-no="<%= b.account_no %>"
+                  data-account-name="<%= b.account_name %>"
+                ><%= b.bank %> — <%= b.account_no %></option>
+              <% }) %>
+            </select>
+          <% } %>
+
           <div style="margin-top:8px" class="small">
-            <div><strong>Bank Acc.</strong>: Public Bank Berhad</div>
-            <div><strong>Acc. No.</strong>: 3140814122</div>
-            <div><strong>Acc. Name</strong>: Visolux (M) Sdn Bhd</div>
+            <div><strong>Bank Acc.</strong>: <span id="offlineBankName">-</span></div>
+            <div><strong>Acc. No.</strong>: <span id="offlineAccountNo">-</span></div>
+            <div><strong>Acc. Name</strong>: <span id="offlineAccountName">-</span></div>
           </div>
           <div class="muted small" style="margin-top:8px">After payment, upload your bank slip for verification.</div>
         </div>

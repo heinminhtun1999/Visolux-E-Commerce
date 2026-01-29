@@ -20,6 +20,9 @@ function mapOrder(row) {
     payment_method: row.payment_method,
     payment_channel: row.payment_channel || null,
     payment_status: row.payment_status,
+    offline_transfer_bank: row.offline_transfer_bank || null,
+    offline_transfer_account_no: row.offline_transfer_account_no || null,
+    offline_transfer_account_name: row.offline_transfer_account_name || null,
     refund_status: row.refund_status || 'NONE',
     fulfilment_status: row.fulfilment_status,
     items_subtotal: row.items_subtotal,
@@ -348,6 +351,9 @@ function createOrder({
   payment_method,
   payment_status,
   fulfilment_status,
+  offline_transfer_bank,
+  offline_transfer_account_no,
+  offline_transfer_account_name,
   items_subtotal,
   discount_amount,
   shipping_fee,
@@ -418,6 +424,7 @@ function createOrder({
               order_code, user_id, customer_name, phone, email, address,
               delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region,
               payment_method, payment_status, fulfilment_status,
+              offline_transfer_bank, offline_transfer_account_no, offline_transfer_account_name,
               items_subtotal, discount_amount, shipping_fee,
               total_amount
             )
@@ -425,6 +432,7 @@ function createOrder({
               @order_code, @user_id, @customer_name, @phone, @email, @address,
               @delivery_address_line1, @delivery_address_line2, @delivery_city, @delivery_state, @delivery_postcode, @delivery_region,
               @payment_method, @payment_status, @fulfilment_status,
+              @offline_transfer_bank, @offline_transfer_account_no, @offline_transfer_account_name,
               @items_subtotal, @discount_amount, @shipping_fee,
               @total_amount
             )`
@@ -445,6 +453,9 @@ function createOrder({
             payment_method,
             payment_status,
             fulfilment_status,
+            offline_transfer_bank: offline_transfer_bank || null,
+            offline_transfer_account_no: offline_transfer_account_no || null,
+            offline_transfer_account_name: offline_transfer_account_name || null,
             items_subtotal: Number(items_subtotal || 0),
             discount_amount: Number(discount_amount || 0),
             shipping_fee: Number(shipping_fee || 0),

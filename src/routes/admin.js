@@ -29,6 +29,7 @@ const promoRepo = require('../repositories/promoRepo');
 const categorySectionRepo = require('../repositories/categorySectionRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
 const shippingService = require('../services/shippingService');
+const offlineTransferService = require('../services/offlineTransferService');
 const { MALAYSIA_STATES } = require('../utils/malaysia');
 const { renderMarkdown, sanitizeHtmlFragment, sanitizeHtmlFragmentNoImages } = require('../utils/markdown');
 const crypto = require('crypto');
@@ -539,6 +540,8 @@ router.get('/settings', (req, res) => {
     return !p.archived;
   });
 
+  const offlineTransferBanks = offlineTransferService.getBanks();
+
   return res.render('admin/settings', {
     title: 'Admin – Settings',
     siteLogoUrl,
@@ -551,9 +554,86 @@ router.get('/settings', (req, res) => {
     contactFacebookUrl,
     lowStockThreshold,
     promos,
+    offlineTransferBanks,
     promosView: promosView === 'ALL' || promosView === 'ARCHIVED' || promosView === 'ACTIVE' ? promosView : 'ACTIVE',
   });
 });
+
+router.post(
+  '/site/offline-transfer-banks',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.any(),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const body = req.validated.body || {};
+
+      const toArray = (v) => {
+        if (Array.isArray(v)) return v;
+        if (v == null) return [];
+        return [v];
+      };
+
+      const ids = toArray(body.bank_id).map((x) => String(x || '').trim());
+      const banks = toArray(body.bank_name).map((x) => String(x || '').trim());
+      const accountNos = toArray(body.account_no).map((x) => String(x || '').trim());
+      const accountNames = toArray(body.account_name).map((x) => String(x || '').trim());
+      const displayIds = new Set(toArray(body.display_ids).map((x) => String(x || '').trim()).filter(Boolean));
+
+      const n = Math.min(ids.length, banks.length, accountNos.length, accountNames.length);
+      const out = [];
+
+      for (let i = 0; i < n; i += 1) {
+        const id = ids[i];
+        const bank = banks[i];
+        const account_no = accountNos[i];
+        const account_name = accountNames[i];
+
+        const allBlank = !id && !bank && !account_no && !account_name;
+        if (allBlank) continue;
+
+        if (!id) {
+          req.session.flash = { type: 'error', message: 'Each bank row must have an internal id. Please re-add the row.' };
+          return res.redirect('/admin/settings#offline-transfer');
+        }
+
+        if (!bank || !account_no || !account_name) {
+          req.session.flash = { type: 'error', message: 'Bank, Account No, and Account Name are required for each row.' };
+          return res.redirect('/admin/settings#offline-transfer');
+        }
+
+        out.push({
+          id,
+          bank: bank.slice(0, 128),
+          account_no: account_no.slice(0, 64),
+          account_name: account_name.slice(0, 128),
+          display_at_checkout: displayIds.has(id),
+        });
+      }
+
+      if (out.length > 50) {
+        req.session.flash = { type: 'error', message: 'Too many bank accounts (max 50).' };
+        return res.redirect('/admin/settings#offline-transfer');
+      }
+
+      if (out.length > 0 && out.every((b) => !b.display_at_checkout)) {
+        req.session.flash = { type: 'error', message: 'Please enable “Show at checkout” for at least one bank.' };
+        return res.redirect('/admin/settings#offline-transfer');
+      }
+
+      offlineTransferService.saveBanks(out);
+      req.session.flash = { type: 'success', message: 'Offline transfer bank accounts saved.' };
+      return res.redirect('/admin/settings#offline-transfer');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
 
 router.post(
   '/site/inventory',

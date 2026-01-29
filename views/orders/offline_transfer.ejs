@@ -17,9 +17,9 @@
   <div class="card" style="padding:12px; margin-top:12px">
     <div class="muted small" style="font-weight:800; letter-spacing:.02em; text-transform:uppercase">Bank details</div>
     <div style="margin-top:8px" class="small">
-      <div><strong>Bank Acc.</strong>: Public Bank Berhad</div>
-      <div><strong>Acc. No.</strong>: 3140814122</div>
-      <div><strong>Acc. Name</strong>: Visolux (M) Sdn Bhd</div>
+      <div><strong>Bank Acc.</strong>: <%= order.offline_transfer_bank || '-' %></div>
+      <div><strong>Acc. No.</strong>: <%= order.offline_transfer_account_no || '-' %></div>
+      <div><strong>Acc. Name</strong>: <%= order.offline_transfer_account_name || '-' %></div>
     </div>
   </div>
 

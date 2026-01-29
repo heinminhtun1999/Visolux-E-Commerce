@@ -20,6 +20,10 @@
 
   const paymentSelect = $('paymentMethodSelect');
   const bankDetails = $('offlineBankDetails');
+  const bankSelect = $('offlineTransferBankSelect');
+  const offlineBankName = $('offlineBankName');
+  const offlineAccountNo = $('offlineAccountNo');
+  const offlineAccountName = $('offlineAccountName');
 
   const form = document.getElementById('checkoutForm');
   const formMsg = $('checkoutFormMessage');
@@ -137,6 +141,33 @@
     if (!bankDetails) return;
     const method = paymentSelect ? paymentSelect.value : '';
     bankDetails.style.display = method === 'OFFLINE_TRANSFER' ? 'block' : 'none';
+
+    if (bankSelect) {
+      const enabled = method === 'OFFLINE_TRANSFER';
+      bankSelect.disabled = !enabled;
+      if (enabled) bankSelect.setAttribute('required', 'required');
+      else bankSelect.removeAttribute('required');
+
+      // Convenience: default to the first real option.
+      if (enabled && !String(bankSelect.value || '').trim() && bankSelect.options && bankSelect.options.length > 1) {
+        bankSelect.selectedIndex = 1;
+      }
+    }
+
+    // When we auto-select (or toggle visibility), ensure the snapshot UI updates.
+    updateOfflineBankSnapshot();
+  }
+
+  function updateOfflineBankSnapshot() {
+    if (!bankSelect) return;
+    const opt = bankSelect.options && bankSelect.selectedIndex >= 0 ? bankSelect.options[bankSelect.selectedIndex] : null;
+    const bank = opt && opt.dataset ? String(opt.dataset.bank || '') : '';
+    const accountNo = opt && opt.dataset ? String(opt.dataset.accountNo || opt.dataset['account-no'] || '') : '';
+    const accountName = opt && opt.dataset ? String(opt.dataset.accountName || opt.dataset['account-name'] || '') : '';
+
+    if (offlineBankName) offlineBankName.textContent = bank || '-';
+    if (offlineAccountNo) offlineAccountNo.textContent = accountNo || '-';
+    if (offlineAccountName) offlineAccountName.textContent = accountName || '-';
   }
 
   if (stateSelect) stateSelect.addEventListener('change', requestQuote);
@@ -144,6 +175,7 @@
     if (String(postcodeInput.value || '').trim().length >= 5) requestQuote();
   });
   if (paymentSelect) paymentSelect.addEventListener('change', updatePaymentDetails);
+  if (bankSelect) bankSelect.addEventListener('change', updateOfflineBankSnapshot);
 
   if (form) {
     form.addEventListener('input', updatePlaceOrderEnabled);
@@ -173,4 +205,5 @@
 
   requestQuote();
   updatePaymentDetails();
+  updateOfflineBankSnapshot();
 })();

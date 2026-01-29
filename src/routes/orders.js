@@ -24,6 +24,7 @@ const adminNotificationRepo = require('../repositories/adminNotificationRepo');
 const { MALAYSIA_STATES, buildMalaysiaFullAddress } = require('../utils/malaysia');
 const shippingService = require('../services/shippingService');
 const promoService = require('../services/promoService');
+const offlineTransferService = require('../services/offlineTransferService');
 const { logger } = require('../utils/logger');
 const { verifyOrderViewToken } = require('../utils/orderViewToken');
 
@@ -149,6 +150,8 @@ router.get('/checkout', async (req, res) => {
     ? String(prefillQuote.zone.name)
     : '-';
 
+  const offlineTransferBanks = offlineTransferService.getBanksForCheckout();
+
   return res.render('orders/checkout', {
     title: 'Checkout',
     cart: hydrated,
@@ -158,6 +161,7 @@ router.get('/checkout', async (req, res) => {
     prefillShippingFee,
     prefillShippingLabel,
     totalWeightKg,
+    offlineTransferBanks,
   });
 });
 
@@ -354,6 +358,7 @@ router.post(
         postcode: z.string().trim().regex(/^\d{5}$/),
         promo_code: z.string().trim().max(32).optional().or(z.literal('')),
         payment_method: z.enum(['ONLINE', 'OFFLINE_TRANSFER']),
+        offline_transfer_bank_id: z.string().trim().max(128).optional().or(z.literal('')),
       }),
       query: z.any().optional(),
       params: z.any().optional(),
@@ -380,6 +385,23 @@ router.post(
         postcode: req.validated.body.postcode,
       };
 
+      let offline_transfer_recipient = null;
+      if (req.validated.body.payment_method === 'OFFLINE_TRANSFER') {
+        const banks = offlineTransferService.getBanksForCheckout();
+        const selectedId = String(req.validated.body.offline_transfer_bank_id || '').trim();
+        if (banks.length > 0) {
+          if (!selectedId) {
+            req.session.flash = { type: 'error', message: 'Please select a bank account for offline transfer.' };
+            return res.redirect('/checkout');
+          }
+          offline_transfer_recipient = banks.find((b) => String(b.id) === selectedId) || null;
+          if (!offline_transfer_recipient) {
+            req.session.flash = { type: 'error', message: 'Selected bank is not available. Please select another option.' };
+            return res.redirect('/checkout');
+          }
+        }
+      }
+
       customer.address = buildMalaysiaFullAddress({
         line1: customer.address_line1,
         line2: customer.address_line2,
@@ -394,6 +416,7 @@ router.post(
         cartItems: hydrated.items,
         promoCode: req.validated.body.promo_code,
         payment_method: req.validated.body.payment_method,
+        offline_transfer_recipient,
       });
 
       // Notify staff about new orders (best-effort; do not block checkout).

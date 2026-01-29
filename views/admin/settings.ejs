@@ -12,6 +12,7 @@
     <a class="btn" href="/admin/categories">Categories</a>
     <a class="btn" href="#branding">Branding</a>
     <a class="btn" href="#shipping">Shipping</a>
+    <a class="btn" href="#offline-transfer">Offline transfer</a>
     <a class="btn" href="#inventory">Inventory</a>
     <a class="btn" href="#footer-pages">Footer & Pages</a>
     <a class="btn" href="#promos">Promos</a>
@@ -56,6 +57,114 @@
   </form>
 </section>
 
+<section id="offline-transfer" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Offline bank transfer</h2>
+  <div class="muted small">Configure the recipient bank accounts shown at checkout for offline transfer.</div>
+
+  <form method="post" action="/admin/site/offline-transfer-banks" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="card" style="padding:12px">
+      <div class="row" style="justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap">
+        <div>
+          <div style="font-weight:800">Bank accounts</div>
+          <div class="muted small" style="margin-top:4px">Tick “Show at checkout” for accounts customers can choose.</div>
+        </div>
+        <div class="actions" style="gap:8px">
+          <button class="btn" type="button" id="addOfflineBankBtn">Add bank</button>
+          <button class="btn btn-primary" type="submit">Save banks</button>
+        </div>
+      </div>
+
+      <div style="overflow:auto; margin-top:10px">
+        <table class="table" id="offlineBanksTable">
+          <thead>
+            <tr>
+              <th>Show at checkout</th>
+              <th>Bank</th>
+              <th>Account No</th>
+              <th>Account Name</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% (offlineTransferBanks || []).forEach(b => { %>
+              <tr data-row>
+                <td style="width:140px">
+                  <input type="hidden" name="bank_id" value="<%= b.id %>" />
+                  <label style="display:flex; gap:8px; align-items:center">
+                    <input type="checkbox" name="display_ids" value="<%= b.id %>" <%= b.display_at_checkout ? 'checked' : '' %> />
+                    <span class="muted small">Show</span>
+                  </label>
+                </td>
+                <td><input class="input" name="bank_name" value="<%= b.bank %>" maxlength="128" required /></td>
+                <td><input class="input" name="account_no" value="<%= b.account_no %>" maxlength="64" required /></td>
+                <td><input class="input" name="account_name" value="<%= b.account_name %>" maxlength="128" required /></td>
+                <td style="width:90px"><button class="btn btn-danger" type="button" data-remove>Remove</button></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="muted small" style="margin-top:10px">If no bank is marked “Show”, customers will still be able to place offline-transfer orders but won’t see a selectable bank list.</div>
+    </div>
+  </form>
+
+  <script>
+    (function () {
+      function randHex16() {
+        try {
+          var a = new Uint8Array(8);
+          crypto.getRandomValues(a);
+          return Array.from(a).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+        } catch (_) {
+          return String(Date.now()) + String(Math.random()).slice(2, 8);
+        }
+      }
+
+      var table = document.getElementById('offlineBanksTable');
+      var tbody = table ? table.querySelector('tbody') : null;
+      var addBtn = document.getElementById('addOfflineBankBtn');
+
+      function wireRow(tr) {
+        var removeBtn = tr.querySelector('[data-remove]');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function () {
+            tr.remove();
+          });
+        }
+      }
+
+      if (tbody) {
+        Array.from(tbody.querySelectorAll('tr[data-row]')).forEach(wireRow);
+      }
+
+      if (addBtn && tbody) {
+        addBtn.addEventListener('click', function () {
+          var id = 'bank_' + randHex16();
+          var tr = document.createElement('tr');
+          tr.setAttribute('data-row', '');
+          tr.innerHTML = '' +
+            '<td style="width:140px">' +
+              '<input type="hidden" name="bank_id" value="' + id + '" />' +
+              '<label style="display:flex; gap:8px; align-items:center">' +
+                '<input type="checkbox" name="display_ids" value="' + id + '" checked />' +
+                '<span class="muted small">Show</span>' +
+              '</label>' +
+            '</td>' +
+            '<td><input class="input" name="bank_name" value="" maxlength="128" required /></td>' +
+            '<td><input class="input" name="account_no" value="" maxlength="64" required /></td>' +
+            '<td><input class="input" name="account_name" value="" maxlength="128" required /></td>' +
+            '<td style="width:90px"><button class="btn btn-danger" type="button" data-remove>Remove</button></td>';
+          tbody.appendChild(tr);
+          wireRow(tr);
+        });
+      }
+    })();
+  </script>
+</section>
+
 <section id="shipping" class="card" style="padding:14px; margin-top:12px">
   <h2 class="h2" style="margin-top:0">Shipping</h2>
   <div class="muted small">Configure shipping rates by sub-regions (states) or zip code groups, based on total cart weight.</div>
@@ -63,7 +172,7 @@
   <div class="card" style="padding:12px; margin-top:12px">
     <div class="row" style="justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap">
       <div>
-        <div style="font-weight:800">Shipping zones (recommended)</div>
+        <div style="font-weight:800">Shipping zones</div>
         <div class="muted small">Each zone can match multiple states or multiple zip codes, with weight-based rates (first + additional + optional “kg and above” range).</div>
       </div>
       <div class="actions" style="gap:8px">

@@ -7,6 +7,20 @@
   <% const faviconHref = siteLogoUrl || '/public/placeholder.svg'; %>
   <link rel="icon" href="<%= faviconHref %>" />
   <link rel="apple-touch-icon" href="<%= faviconHref %>" />
+  <script>
+    // Apply theme before CSS loads to avoid flash.
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (t !== 'dark' && t !== 'light') {
+          t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (_) {
+        // ignore
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="/public/css/app.css" />
 </head>
 <% const isAdminArea = (currentPath || '').startsWith('/admin'); %>
@@ -55,6 +69,11 @@
       <% } %>
 
       <div class="site-header__actions actions icon-row">
+        <button class="btn btn-icon icon-only" type="button" id="themeToggle" title="Toggle Dark mode" aria-label="Toggle Dark mode" data-label="Theme">
+          <span class="theme-icon theme-icon--sun"><%- icon('sun') %></span>
+          <span class="theme-icon theme-icon--moon"><%- icon('moon') %></span>
+        </button>
+
         <% const showAdminBell = isAdmin; %>
         <% const showAdminLink = isAdmin && !isAdminArea; %>
 
@@ -206,6 +225,7 @@
     <% } %>
 
     <script src="/public/js/table-sort.js" defer></script>
+    <script src="/public/js/theme-toggle.js" defer></script>
     <script src="/public/js/flash-dismiss.js" defer></script>
     <% if (isAdmin && (currentPath || '').startsWith('/admin')) { %>
       <script src="/public/js/admin-notifications.js" defer></script>

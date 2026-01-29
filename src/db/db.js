@@ -39,6 +39,7 @@ function initializeSchema(database) {
   ensureOrdersPaymentChannel(database);
   ensureOrdersPaymentStatusEnum(database);
   ensureOrdersAdminNote(database);
+  ensureOrdersOfflineTransferRecipient(database);
   ensureOrderItemRefunds(database);
   ensureOrderItemRefundGatewayColumns(database);
   ensureOrderRefunds(database);
@@ -707,6 +708,21 @@ function ensureOrderRefundGatewayColumns(database) {
   if (!has('provider_reason')) database.exec('ALTER TABLE order_refunds ADD COLUMN provider_reason TEXT');
   if (!has('provider_signature_ok')) database.exec('ALTER TABLE order_refunds ADD COLUMN provider_signature_ok INTEGER');
   if (!has('provider_response_json')) database.exec('ALTER TABLE order_refunds ADD COLUMN provider_response_json TEXT');
+}
+
+function ensureOrdersOfflineTransferRecipient(database) {
+  const cols = database.prepare("PRAGMA table_info('orders')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+
+  if (!has('offline_transfer_bank')) {
+    database.exec("ALTER TABLE orders ADD COLUMN offline_transfer_bank TEXT");
+  }
+  if (!has('offline_transfer_account_no')) {
+    database.exec("ALTER TABLE orders ADD COLUMN offline_transfer_account_no TEXT");
+  }
+  if (!has('offline_transfer_account_name')) {
+    database.exec("ALTER TABLE orders ADD COLUMN offline_transfer_account_name TEXT");
+  }
 }
 
 function ensureAdminNotifications(database) {

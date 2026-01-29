@@ -75,6 +75,7 @@ function placeOrder({
   cartItems,
   promoCode,
   payment_method,
+  offline_transfer_recipient,
 }) {
   const built = buildOrderFromCart({ cartItems });
 
@@ -133,6 +134,9 @@ function placeOrder({
     payment_method,
     payment_status,
     fulfilment_status,
+    offline_transfer_bank: offline_transfer_recipient?.bank || null,
+    offline_transfer_account_no: offline_transfer_recipient?.account_no || null,
+    offline_transfer_account_name: offline_transfer_recipient?.account_name || null,
     items_subtotal: built.subtotal,
     discount_amount: discount,
     shipping_fee: shippingFeeCents,

@@ -342,6 +342,16 @@
     <div style="margin-top:14px" class="card">
       <div style="padding:12px">
         <h2 class="h2">Bank transfer slip</h2>
+
+        <div class="card" style="padding:12px; margin-top:10px">
+          <div class="muted small" style="font-weight:800; letter-spacing:.02em; text-transform:uppercase">Recipient bank (shown to customer)</div>
+          <div style="margin-top:8px" class="small">
+            <div><strong>Bank</strong>: <%= order.offline_transfer_bank || '-' %></div>
+            <div><strong>Account No</strong>: <%= order.offline_transfer_account_no || '-' %></div>
+            <div><strong>Account Name</strong>: <%= order.offline_transfer_account_name || '-' %></div>
+          </div>
+        </div>
+
         <% if (offline) { %>
           <div class="muted small">Bank: <%= offline.bank_name %> • Ref: <%= offline.reference_number %></div>
           <div style="margin-top:10px" class="row">

@@ -13,6 +13,28 @@ function icon(name, opts = {}) {
     // Lucide icons (preferred)
     case 'chevron-down':
       return svg(baseAttrs, `${titleTag}<path d="m6 9 6 6 6-6"/>`);
+    case 'sun':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2"/>
+        <path d="M12 20v2"/>
+        <path d="M4.93 4.93l1.41 1.41"/>
+        <path d="M17.66 17.66l1.41 1.41"/>
+        <path d="M2 12h2"/>
+        <path d="M20 12h2"/>
+        <path d="M4.93 19.07l1.41-1.41"/>
+        <path d="M17.66 6.34l1.41-1.41"/>
+        `
+      );
+    case 'moon':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/>
+        `
+      );
     case 'panel-left':
       return svg(
         baseAttrs,
