@@ -9,6 +9,7 @@
     "postinstall": "node scripts/ensure-storage.js",
     "seed": "node scripts/seed.js",
     "create-admin": "node scripts/create-admin.js",
+    "factory-reset": "node scripts/factory-reset.js",
     "extract-fiuu": "node scripts/extract-fiuu-spec.js \".\\[official API] Fiuu API Spec for Merchant (v13.90)_2.pdf\"",
     "docs:pdf": "node scripts/build-docs-pdf.js",
     "docs:docx": "node scripts/generate-docx-manuals.js"
