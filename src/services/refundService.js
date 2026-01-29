@@ -1,20 +1,20 @@
 const { getDb } = require('../db/db');
-const { env } = require('../config/env');
 const orderRepo = require('../repositories/orderRepo');
 const orderRefundRepo = require('../repositories/orderRefundRepo');
 const orderRefundExtraRepo = require('../repositories/orderRefundExtraRepo');
 const paymentEventRepo = require('../repositories/paymentEventRepo');
 const fiuu = require('./payments/fiuu');
 const { logger } = require('../utils/logger');
+const { env } = require('../config/env');
 
 function buildFiuuConfigForOrder(order) {
   if (!order) return null;
   const snap = orderRepo.getOnlinePaymentSnapshot(order.order_id);
-  const merchantId = String(snap?.online_payment_merchant_id || env.fiuu.merchantId || '').trim();
-  const verifyKey = String(snap?.online_payment_verify_key || env.fiuu.verifyKey || '').trim();
-  const secretKey = String(snap?.online_payment_secret_key || env.fiuu.secretKey || '').trim();
-  const gatewayUrl = String(snap?.online_payment_gateway_url || env.fiuu.gatewayUrl || '').trim();
-  const currency = String(snap?.online_payment_currency || env.fiuu.currency || 'MYR').trim();
+  const merchantId = String(snap?.online_payment_merchant_id || '').trim();
+  const verifyKey = String(snap?.online_payment_verify_key || '').trim();
+  const secretKey = String(snap?.online_payment_secret_key || '').trim();
+  const gatewayUrl = String(snap?.online_payment_gateway_url || '').trim();
+  const currency = String(snap?.online_payment_currency || 'MYR').trim();
   return { merchantId, verifyKey, secretKey, gatewayUrl, currency };
 }
 
@@ -185,7 +185,13 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
     }
 
     const refId = `refund-${order.order_code || order.order_id}-${item.id}-${Date.now()}`.slice(0, 100);
-    const notifyUrl = `${String(env.appBaseUrl || '').replace(/\/$/, '')}/payment/refund/notify`;
+    const baseUrl = String(env.appBaseUrl || '').replace(/\/$/, '');
+    if (!baseUrl) {
+      const err = new Error('Missing appBaseUrl; cannot build FIUU refund notify URL.');
+      err.status = 500;
+      throw err;
+    }
+    const notifyUrl = `${baseUrl}/payment/refund/notify`;
 
     return {
       order,
@@ -343,7 +349,13 @@ async function refundOrderExtraAmount({ orderId, amountRefunded, reason }) {
     }
 
     const refId = `refund-extra-${order.order_code || order.order_id}-${Date.now()}`.slice(0, 100);
-    const notifyUrl = `${String(env.appBaseUrl || '').replace(/\/$/, '')}/payment/refund/notify`;
+    const baseUrl = String(env.appBaseUrl || '').replace(/\/$/, '');
+    if (!baseUrl) {
+      const err = new Error('Missing appBaseUrl; cannot build FIUU refund notify URL.');
+      err.status = 500;
+      throw err;
+    }
+    const notifyUrl = `${baseUrl}/payment/refund/notify`;
 
     return {
       order,

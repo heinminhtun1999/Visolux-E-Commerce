@@ -9,16 +9,16 @@ function md5Hex(input) {
 function buildConfig(override) {
   const o = override && typeof override === 'object' ? override : {};
   return {
-    merchantId: String(o.merchantId || env.fiuu.merchantId || '').trim(),
-    verifyKey: String(o.verifyKey || env.fiuu.verifyKey || '').trim(),
-    secretKey: String(o.secretKey || env.fiuu.secretKey || '').trim(),
+    merchantId: String(o.merchantId || '').trim(),
+    verifyKey: String(o.verifyKey || '').trim(),
+    secretKey: String(o.secretKey || '').trim(),
     // Default to production gateway base if not provided.
-    gatewayUrl: String(o.gatewayUrl || env.fiuu.gatewayUrl || 'https://pay.fiuu.com/RMS/pay').trim(),
-    apiBase: String(o.apiBase || env.fiuu.apiBase || '').trim(),
-    paymentMethod: String(o.paymentMethod || env.fiuu.paymentMethod || '').trim(),
-    currency: String(o.currency || env.fiuu.currency || 'MYR').trim(),
-    requestMethod: String(o.requestMethod || env.fiuu.requestMethod || 'GET').toUpperCase(),
-    vcodeMode: String(o.vcodeMode || env.fiuu.vcodeMode || 'legacy').toLowerCase(),
+    gatewayUrl: String(o.gatewayUrl || 'https://pay.fiuu.com/RMS/pay').trim(),
+    apiBase: String(o.apiBase || '').trim(),
+    paymentMethod: String(o.paymentMethod || '').trim(),
+    currency: String(o.currency || 'MYR').trim(),
+    requestMethod: String(o.requestMethod || 'GET').toUpperCase(),
+    vcodeMode: String(o.vcodeMode || 'legacy').toLowerCase(),
   };
 }
 
@@ -65,7 +65,7 @@ function buildRefundResponseSignature({ refundType, merchantId, refId, refundId,
 async function refundPartial({ txnId, refId, amountCents, notifyUrl, mdrFlag, fiuuConfig }) {
   const c = buildConfig(fiuuConfig);
   if (!isRefundConfigured(c)) {
-    const err = new Error('Fiuu refund is not configured. Set FIUU_MERCHANT_ID and FIUU_SECRET_KEY.');
+    const err = new Error('Fiuu refund is not configured for this order.');
     err.status = 500;
     throw err;
   }
@@ -285,7 +285,7 @@ function verifySkey(payload, secretKey) {
   // Some integrations also send `merchant_id`; accept both as candidates.
   const domainRaw = getField(payload, ['domain']);
   const merchantIdFieldRaw = getField(payload, ['merchant_id', 'merchantId', 'merchantID', 'MerchantID']);
-  const merchantCandidates = [domainRaw, merchantIdFieldRaw, env.fiuu.merchantId].filter((v) => normTrim(v));
+  const merchantCandidates = [domainRaw, merchantIdFieldRaw].filter((v) => normTrim(v));
 
   const amountRaw = getField(payload, ['amount', 'amt']);
   const currencyRaw = getField(payload, ['currency', 'cur']);
@@ -295,7 +295,7 @@ function verifySkey(payload, secretKey) {
 
   const merchantVariants = Array.from(new Set(merchantCandidates));
   const amountVariants = normalizeAmountVariants(amountRaw);
-  const currencyVariants = normalizeCurrencyVariants(currencyRaw, env.fiuu.currency);
+  const currencyVariants = normalizeCurrencyVariants(currencyRaw, 'MYR');
 
   const missing = [];
   if (!tranID) missing.push('tranID');

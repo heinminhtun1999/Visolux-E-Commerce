@@ -23,7 +23,7 @@
 
 <section id="payment-gateway" class="card" style="padding:14px; margin-top:12px">
   <h2 class="h2" style="margin-top:0">Payment gateway (FIUU)</h2>
-  <div class="muted small">Configure multiple FIUU merchant accounts and optionally assign one account per category. Online payment requires that all items in a cart resolve to the same account.</div>
+  <div class="muted small">Configure your FIUU merchant accounts. Set one default account. To map a category to a specific account, use <a href="/admin/categories">Admin → Categories</a>.</div>
 
   <form method="post" action="/admin/site/fiuu-accounts" style="margin-top:12px">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
@@ -32,10 +32,7 @@
       <div class="row" style="justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap">
         <div>
           <div style="font-weight:800">FIUU merchant accounts</div>
-          <div class="muted small" style="margin-top:4px">Add one or more accounts. Set one default account (used when a category has no mapping).</div>
-          <% if (fiuuEnvFallbackEnabled) { %>
-            <div class="muted small" style="margin-top:4px">Env fallback is available (legacy FIUU_* vars), but accounts saved here will take priority.</div>
-          <% } %>
+          <div class="muted small" style="margin-top:4px">Add one or more accounts. Set one default account.</div>
         </div>
         <div class="actions" style="gap:8px">
           <button class="btn" type="button" id="addFiuuAccountBtn">Add account</button>
@@ -44,25 +41,6 @@
       </div>
 
       <div style="overflow:auto; margin-top:10px">
-        <% function maskSecret(s) {
-          var v = String(s || '');
-          if (!v) return '';
-          if (v.length <= 6) return '••••••';
-          return v.slice(0, 2) + '••••••' + v.slice(-2);
-        } %>
-
-        <% if (fiuuEnvFallbackEnabled && fiuuEnvAccount && !(fiuuAccounts || []).length) { %>
-          <div class="card" style="padding:12px; margin-bottom:10px">
-            <div style="font-weight:800">Detected current FIUU config (env)</div>
-            <div class="muted small" style="margin-top:6px">Your app has FIUU env variables configured. To manage multiple accounts, add rows below and save.</div>
-            <div class="row" style="gap:14px; margin-top:10px; flex-wrap:wrap">
-              <div class="col" style="min-width:220px"><div class="muted small">Merchant ID</div><div style="font-weight:700"><%= fiuuEnvAccount.merchantId || '-' %></div></div>
-              <div class="col" style="min-width:220px"><div class="muted small">Verify Key</div><div style="font-weight:700"><%= maskSecret(fiuuEnvAccount.verifyKey) || '-' %></div></div>
-              <div class="col" style="min-width:220px"><div class="muted small">Secret Key</div><div style="font-weight:700"><%= maskSecret(fiuuEnvAccount.secretKey) || '-' %></div></div>
-            </div>
-          </div>
-        <% } %>
-
         <table class="table" id="fiuuAccountsTable">
           <thead>
             <tr>
@@ -95,51 +73,7 @@
         </table>
       </div>
 
-      <div class="muted small" style="margin-top:10px">If your cart includes categories mapped to different accounts, online payment will be blocked and customers must checkout separately or use offline transfer.</div>
-    </div>
-
-    <div class="card" style="padding:12px; margin-top:12px">
-      <div style="font-weight:800">Category → FIUU account mapping</div>
-      <div class="muted small" style="margin-top:4px">Leave blank to use the default account.</div>
-
-      <div style="overflow:auto; margin-top:10px">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Category</th>
-              <th>Slug</th>
-              <th>Assigned account</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% (fiuuCategories || []).forEach(c => { %>
-              <tr>
-                <td>
-                  <div style="font-weight:700"><%= c.name %></div>
-                  <div class="muted small"><%= c.archived ? 'Archived' : (c.visible ? 'Visible' : 'Hidden') %></div>
-                </td>
-                <td style="width:220px">
-                  <input type="hidden" name="category_slug" value="<%= c.slug %>" />
-                  <span class="muted small"><%= c.slug %></span>
-                </td>
-                <td style="min-width:320px">
-                  <% const current = (fiuuCategoryMap && fiuuCategoryMap[c.slug]) ? String(fiuuCategoryMap[c.slug]) : ''; %>
-                  <select class="input" name="category_account_id">
-                    <option value="" <%= current ? '' : 'selected' %>>Default</option>
-                    <% (fiuuAccounts || []).forEach(a => { %>
-                      <option value="<%= a.id %>" <%= (current === String(a.id)) ? 'selected' : '' %>><%= a.label %> (<%= a.id %>)</option>
-                    <% }) %>
-                  </select>
-                </td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="row" style="justify-content:flex-end; margin-top:14px">
-      <button class="btn btn-primary" type="submit">Save FIUU settings</button>
+      <div class="muted small" style="margin-top:10px">Reminder: if a cart includes categories mapped to different accounts, online payment will be blocked and customers must checkout separately or use offline transfer.</div>
     </div>
   </form>
 

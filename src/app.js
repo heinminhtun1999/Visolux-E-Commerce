@@ -183,7 +183,7 @@ function createApp() {
 
   // Iframe embedding: use CSP frame-ancestors; don't use X-Frame-Options deny.
   const fiuuOrigin = getFiuuGatewayOrigin();
-  const formAction = ["'self'"];
+  const formAction = ["'self'", 'https://pay.fiuu.com', 'https://sandbox-payment.fiuu.com'];
   if (fiuuOrigin) formAction.push(fiuuOrigin);
 
   app.use(

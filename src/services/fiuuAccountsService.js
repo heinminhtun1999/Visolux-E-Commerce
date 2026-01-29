@@ -1,6 +1,4 @@
 const settingsRepo = require('../repositories/settingsRepo');
-const categoryRepo = require('../repositories/categoryRepo');
-const { env } = require('../config/env');
 
 const ACCOUNTS_KEY = 'payments.fiuu.accounts.v1';
 const DEFAULT_ID_KEY = 'payments.fiuu.default_account_id.v1';
@@ -57,7 +55,13 @@ function getCategoryAccountMap() {
   for (const [k, v] of Object.entries(parsed)) {
     const slug = normTrim(k);
     const id = normTrim(v);
-    if (slug) out[slug] = id || '';
+    if (!slug) continue;
+    // Drop legacy env-based mappings.
+    if (id === 'env') {
+      out[slug] = '';
+      continue;
+    }
+    out[slug] = id || '';
   }
   return out;
 }
@@ -68,36 +72,13 @@ function findAccountById(id) {
   return getAccounts().find((a) => a.id === target) || null;
 }
 
-function getEnvAccount() {
-  // Backward compatibility: allow env-based single-account configuration.
-  const merchantId = normTrim(env.fiuu.merchantId);
-  const verifyKey = normTrim(env.fiuu.verifyKey);
-  const secretKey = normTrim(env.fiuu.secretKey);
-  const gatewayUrl = normTrim(env.fiuu.gatewayUrl);
-  const currency = normTrim(env.fiuu.currency) || 'MYR';
-  if (!merchantId || !secretKey) return null;
-
-  return {
-    id: 'env',
-    label: 'Env (legacy)',
-    merchantId,
-    verifyKey,
-    secretKey,
-    gatewayUrl,
-    currency,
-    paymentMethod: normTrim(env.fiuu.paymentMethod),
-    requestMethod: (normTrim(env.fiuu.requestMethod) || '').toUpperCase() || 'GET',
-    vcodeMode: normTrim(env.fiuu.vcodeMode) || 'legacy',
-  };
-}
-
 function getDefaultAccount() {
   const accounts = getAccounts();
   const defaultId = getDefaultAccountId();
   const selected = defaultId ? accounts.find((a) => a.id === defaultId) : null;
   if (selected) return selected;
   if (accounts.length > 0) return accounts[0];
-  return getEnvAccount();
+  return null;
 }
 
 function isOnlinePaymentConfigured() {
@@ -143,7 +124,7 @@ function resolveAccountForCartItems(cartItems) {
   }
 
   const onlyId = accountIdsUsed[0] || defaultAccount.id;
-  const account = onlyId === 'env' ? getEnvAccount() : findAccountById(onlyId);
+  const account = findAccountById(onlyId);
 
   if (!account || !account.merchantId || !account.secretKey) {
     return {
@@ -177,21 +158,13 @@ function buildOrderPaymentSnapshot(account) {
 function getAdminSettingsViewModel() {
   const accounts = getAccounts();
   const defaultId = getDefaultAccountId();
-  const categoryMap = getCategoryAccountMap();
-  const categories = categoryRepo.listAdmin({ includeArchived: true });
-  const envAccount = getEnvAccount();
-
   return {
     accounts,
     defaultId: defaultId || (accounts[0]?.id || ''),
-    categoryMap,
-    categories,
-    envFallbackEnabled: Boolean(envAccount),
-    envAccount,
   };
 }
 
-function saveAccountsAndMappings({ accounts, defaultId, categoryMap }) {
+function saveAccounts({ accounts, defaultId }) {
   const normalized = (accounts || [])
     .map((a) => ({
       id: normTrim(a.id),
@@ -236,25 +209,8 @@ function saveAccountsAndMappings({ accounts, defaultId, categoryMap }) {
     throw err;
   }
 
-  const catMapOut = {};
-  const rawMap = categoryMap && typeof categoryMap === 'object' ? categoryMap : {};
-  const allowEnv = Boolean(getEnvAccount());
-  for (const [k, v] of Object.entries(rawMap)) {
-    const slug = normTrim(k);
-    const id = normTrim(v);
-    if (!slug) continue;
-    // allow blank (= use default)
-    if (id && normalized.length > 0 && !normalized.some((a) => a.id === id) && !(allowEnv && id === 'env')) {
-      const err = new Error(`Category mapping references unknown FIUU account id: ${id}`);
-      err.status = 400;
-      throw err;
-    }
-    catMapOut[slug] = id;
-  }
-
   settingsRepo.set(ACCOUNTS_KEY, JSON.stringify(normalized));
   settingsRepo.set(DEFAULT_ID_KEY, chosenDefault || '');
-  settingsRepo.set(CATEGORY_MAP_KEY, JSON.stringify(catMapOut));
 
   return { ok: true };
 }
@@ -268,12 +224,10 @@ function setCategoryAccountForSlug({ slug, accountId }) {
     throw err;
   }
 
-  const allowEnv = Boolean(getEnvAccount());
   const isValidSaved = Boolean(id && getAccounts().some((a) => a.id === id));
-  const isValidEnv = allowEnv && id === 'env';
   const isBlank = !id;
 
-  if (!isBlank && !isValidSaved && !isValidEnv) {
+  if (!isBlank && !isValidSaved) {
     const err = new Error(`Unknown FIUU account id: ${id}`);
     err.status = 400;
     throw err;
@@ -301,7 +255,6 @@ function clearCategoryMappingForSlug(slug) {
 
 module.exports = {
   getAccounts,
-  getEnvAccount,
   getDefaultAccount,
   getDefaultAccountId,
   getCategoryAccountMap,
@@ -309,7 +262,7 @@ module.exports = {
   resolveAccountForCartItems,
   buildOrderPaymentSnapshot,
   getAdminSettingsViewModel,
-  saveAccountsAndMappings,
+  saveAccounts,
   setCategoryAccountForSlug,
   clearCategoryMappingForSlug,
 };

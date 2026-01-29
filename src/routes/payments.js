@@ -64,7 +64,7 @@ function processPaymentPayload(payload, source) {
   const orderId = Number(order.order_id);
   const snap = orderRepo.getOnlinePaymentSnapshot(orderId);
 
-  const secretKey = String(snap?.online_payment_secret_key || env.fiuu.secretKey || '').trim();
+  const secretKey = String(snap?.online_payment_secret_key || '').trim();
   if (!secretKey) {
     const err = new Error('Missing FIUU secret key for order');
     err.status = 500;
@@ -118,11 +118,12 @@ function processPaymentPayload(payload, source) {
   }
 
   const payloadCurrency = String(payload.currency || '');
-  const expectedCurrency = String(order.online_payment_currency || env.fiuu.currency || 'MYR');
+  const expectedCurrency = String(snap?.online_payment_currency || order.online_payment_currency || 'MYR');
   if (payloadCurrency && payloadCurrency !== expectedCurrency) {
     const err = new Error('Currency mismatch');
     err.status = 400;
-    const expectedCurrency = String(snap?.online_payment_currency || order.online_payment_currency || env.fiuu.currency || 'MYR');
+    err.details = { expectedCurrency, payloadCurrency };
+    throw err;
   }
 
   const payloadAmountCents = Math.round(Number(payload.amount || '0') * 100);
@@ -269,7 +270,7 @@ router.all('/payment/refund/notify', (req, res) => {
 
     const orderIdForSig = matchedRefund && matchedRefund.order_id ? Number(matchedRefund.order_id) : null;
     const snapForSig = orderIdForSig ? orderRepo.getOnlinePaymentSnapshot(orderIdForSig) : null;
-    const secretKey = String(snapForSig?.online_payment_secret_key || env.fiuu.secretKey || '').trim();
+    const secretKey = String(snapForSig?.online_payment_secret_key || '').trim();
 
     let signatureOk = null;
     try {

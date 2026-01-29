@@ -560,10 +560,6 @@ router.get('/settings', (req, res) => {
     offlineTransferBanks,
     fiuuAccounts: fiuuSettings.accounts,
     fiuuDefaultAccountId: fiuuSettings.defaultId,
-    fiuuCategoryMap: fiuuSettings.categoryMap,
-    fiuuCategories: fiuuSettings.categories,
-    fiuuEnvFallbackEnabled: fiuuSettings.envFallbackEnabled,
-    fiuuEnvAccount: fiuuSettings.envAccount,
     promosView: promosView === 'ALL' || promosView === 'ARCHIVED' || promosView === 'ACTIVE' ? promosView : 'ACTIVE',
   });
 });
@@ -634,17 +630,9 @@ router.post(
 
       const defaultAccountId = String(body.default_account_id || '').trim();
 
-      const catSlugs = toArray(body.category_slug).map((x) => String(x || '').trim()).filter(Boolean);
-      const catAccountIds = toArray(body.category_account_id).map((x) => String(x || '').trim());
-      const categoryMap = {};
-      for (let i = 0; i < Math.min(catSlugs.length, catAccountIds.length); i += 1) {
-        categoryMap[catSlugs[i]] = catAccountIds[i] || '';
-      }
-
-      fiuuAccountsService.saveAccountsAndMappings({
+      fiuuAccountsService.saveAccounts({
         accounts,
         defaultId: defaultAccountId,
-        categoryMap,
       });
 
       req.session.flash = { type: 'success', message: 'FIUU payment accounts saved.' };
@@ -1600,10 +1588,8 @@ router.get('/categories', (req, res) => {
   });
 
   const fiuuAccounts = fiuuAccountsService.getAccounts();
-  const fiuuEnvAccount = fiuuAccountsService.getEnvAccount();
   const fiuuCategoryMap = fiuuAccountsService.getCategoryAccountMap();
   const fiuuSelectableAccounts = [
-    ...(fiuuEnvAccount ? [{ id: 'env', label: 'Env (legacy)' }] : []),
     ...fiuuAccounts.map((a) => ({ id: a.id, label: a.label })),
   ];
 
