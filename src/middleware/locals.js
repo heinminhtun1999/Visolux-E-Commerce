@@ -6,6 +6,7 @@ const settingsRepo = require('../repositories/settingsRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
 const categoryRepo = require('../repositories/categoryRepo');
 const cartService = require('../services/cartService');
+const { env } = require('../config/env');
 
 function titleCase(s) {
   return String(s || '')
@@ -62,6 +63,42 @@ function buildBreadcrumbs(pathname) {
   // Don't show duplicates like Home -> Products when already on /products.
   if (crumbs.length === 2 && crumbs[1].href === '/products') return crumbs;
   return crumbs;
+}
+
+function normalizeBaseUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  return raw.replace(/\/+$/, '');
+}
+
+function escapeJsonLdUrl(u) {
+  const raw = String(u || '').trim();
+  if (!raw) return '';
+  // JSON.stringify will escape as needed; this just keeps things clean.
+  return raw;
+}
+
+function buildBreadcrumbListJsonLd({ siteUrl, breadcrumbs }) {
+  const base = normalizeBaseUrl(siteUrl);
+  const crumbs = Array.isArray(breadcrumbs) ? breadcrumbs : [];
+  if (!base || !crumbs.length) return null;
+
+  const itemListElement = crumbs
+    .filter((c) => c && c.label && c.href)
+    .map((c, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      name: String(c.label),
+      item: escapeJsonLdUrl(base + String(c.href)),
+    }));
+
+  if (!itemListElement.length) return null;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement,
+  };
 }
 
 function attachLocals(req, res, next) {
@@ -126,7 +163,72 @@ function attachLocals(req, res, next) {
   } catch (_) {
     res.locals.siteLogoUrl = '';
   }
-  res.locals.siteName = 'Visolux';
+
+  // Prefer admin-configurable site name, but keep a strong default.
+  try {
+    res.locals.siteName = String(settingsRepo.get('site.name', 'Visolux Store') || '').trim() || 'Visolux Store';
+  } catch (_) {
+    res.locals.siteName = 'Visolux Store';
+  }
+
+  try {
+    res.locals.siteDescription = String(settingsRepo.get('site.meta.description', '') || '').trim();
+  } catch (_) {
+    res.locals.siteDescription = '';
+  }
+
+  res.locals.siteUrl = normalizeBaseUrl(env.appBaseUrl);
+  res.locals.canonicalUrl = res.locals.siteUrl ? (res.locals.siteUrl + (req.path || '/')) : (req.path || '/');
+
+  // Robots / indexing defaults
+  const p = String(req.path || '');
+  const noindex = (
+    p.startsWith('/admin') ||
+    p === '/login' ||
+    p === '/register' ||
+    p === '/forgot-password' ||
+    p === '/reset-password' ||
+    p.startsWith('/cart') ||
+    p.startsWith('/orders') ||
+    p === '/checkout' ||
+    p.startsWith('/payment')
+  );
+  res.locals.robotsMeta = noindex
+    ? 'noindex,nofollow'
+    : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';
+  res.setHeader('X-Robots-Tag', res.locals.robotsMeta);
+
+  // Baseline structured data (public pages only)
+  res.locals.structuredData = [];
+  if (!p.startsWith('/admin') && res.locals.siteUrl) {
+    const orgId = `${res.locals.siteUrl}/#organization`;
+    const websiteId = `${res.locals.siteUrl}/#website`;
+    res.locals.structuredData.push({
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      '@id': orgId,
+      name: res.locals.siteName,
+      url: res.locals.siteUrl,
+      ...(res.locals.siteLogoUrl ? { logo: escapeJsonLdUrl(res.locals.siteLogoUrl) } : {}),
+    });
+
+    res.locals.structuredData.push({
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      '@id': websiteId,
+      url: res.locals.siteUrl,
+      name: res.locals.siteName,
+      publisher: { '@id': orgId },
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: `${res.locals.siteUrl}/products?q={search_term_string}`,
+        'query-input': 'required name=search_term_string',
+      },
+    });
+
+    const breadcrumbLd = buildBreadcrumbListJsonLd({ siteUrl: res.locals.siteUrl, breadcrumbs: res.locals.breadcrumbs });
+    if (breadcrumbLd) res.locals.structuredData.push(breadcrumbLd);
+  }
 
   // Footer links/content
   try {

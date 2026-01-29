@@ -13,7 +13,7 @@
       <div data-image-carousel data-items="<%= encodedGallery %>">
         <div class="zoom-pane" data-zoom-pane>
           <div class="product-carousel">
-            <img data-zoom-img data-carousel-img src="<%= mainImg %>" alt="" />
+            <img data-zoom-img data-carousel-img src="<%= mainImg %>" alt="<%= product.name %>" />
             <% if (uniqGallery.length > 1) { %>
               <button class="product-carousel__btn product-carousel__btn--prev" type="button" data-carousel-prev aria-label="Previous image">‹</button>
               <button class="product-carousel__btn product-carousel__btn--next" type="button" data-carousel-next aria-label="Next image">›</button>
@@ -29,7 +29,7 @@
           <div class="product-gallery">
             <% uniqGallery.forEach((url, idx) => { %>
               <button class="product-gallery__thumb <%= idx === 0 ? 'is-active' : '' %>" type="button" data-carousel-thumb data-idx="<%= idx %>" aria-label="View image <%= idx + 1 %>">
-                <img src="<%= url %>" alt="" loading="lazy" decoding="async" />
+                <img src="<%= url %>" alt="<%= product.name %> thumbnail <%= idx + 1 %>" loading="lazy" decoding="async" />
               </button>
             <% }) %>
           </div>

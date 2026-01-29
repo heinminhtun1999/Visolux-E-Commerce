@@ -3,10 +3,39 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title><%= title || 'Visolux' %></title>
+  <% const baseTitle = (siteName || 'Visolux Store'); %>
+  <% const rawTitle = (title || '').trim(); %>
+  <% const pageTitle = rawTitle ? ((rawTitle === baseTitle) ? baseTitle : `${rawTitle} | ${baseTitle}`) : baseTitle; %>
+  <% const metaDescription = (description || seoDescription || siteDescription || 'Visolux Store — shop parts and components online.'); %>
+  <% const canonical = canonicalUrl || (siteUrl ? (siteUrl.replace(/\/+$/,'') + (currentPath || '/')) : (currentPath || '/')); %>
+  <% const robots = robotsMeta || ((currentPath || '').startsWith('/admin') ? 'noindex,nofollow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'); %>
+  <% const ogTitle = ogTitleOverride || pageTitle; %>
+  <% const ogDesc = ogDescriptionOverride || metaDescription; %>
+  <% const ogUrl = ogUrlOverride || canonical; %>
+  <% const ogImage = ogImageUrl || siteOgImageUrl || siteLogoUrl || '/public/placeholder.svg'; %>
+  <% const ogType = ogTypeOverride || 'website'; %>
+
+  <title><%= pageTitle %></title>
+  <meta name="description" content="<%= metaDescription %>" />
+  <link rel="canonical" href="<%= canonical %>" />
+  <meta name="robots" content="<%= robots %>" />
+
+  <meta property="og:site_name" content="<%= siteName || 'Visolux Store' %>" />
+  <meta property="og:title" content="<%= ogTitle %>" />
+  <meta property="og:description" content="<%= ogDesc %>" />
+  <meta property="og:type" content="<%= ogType %>" />
+  <meta property="og:url" content="<%= ogUrl %>" />
+  <meta property="og:image" content="<%= ogImage %>" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="<%= ogTitle %>" />
+  <meta name="twitter:description" content="<%= ogDesc %>" />
+  <meta name="twitter:image" content="<%= ogImage %>" />
+
   <% const faviconHref = siteLogoUrl || '/public/placeholder.svg'; %>
   <link rel="icon" href="<%= faviconHref %>" />
   <link rel="apple-touch-icon" href="<%= faviconHref %>" />
+  <link rel="manifest" href="/public/site.webmanifest" />
   <script>
     // Apply theme before CSS loads to avoid flash.
     (function () {
@@ -22,6 +51,12 @@
     })();
   </script>
   <link rel="stylesheet" href="/public/css/app.css" />
+
+  <% if (structuredData && Array.isArray(structuredData) && structuredData.length) { %>
+    <% structuredData.forEach(function(obj){ %>
+      <script type="application/ld+json"><%- JSON.stringify(obj) %></script>
+    <% }) %>
+  <% } %>
 </head>
 <% const isAdminArea = (currentPath || '').startsWith('/admin'); %>
 <body class="<%= isAdminArea ? 'is-admin' : 'is-store' %>">
@@ -58,7 +93,7 @@
               <% if (cats.length) { %>
                 <div class="store-nav__menuDivider"></div>
                 <% cats.forEach(function(c){ %>
-                  <a class="store-nav__menuItem" href="/products?category=<%= encodeURIComponent(c.slug) %>"><%= c.name %></a>
+                  <a class="store-nav__menuItem" href="/categories/<%= encodeURIComponent(c.slug) %>"><%= c.name %></a>
                 <% }) %>
               <% } %>
             </div>

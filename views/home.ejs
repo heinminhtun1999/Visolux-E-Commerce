@@ -3,17 +3,17 @@
 <div class="card" style="padding:16px">
   <div class="home-hero">
     <div>
-      <h1 class="h1" style="margin:0">Welcome</h1>
-      <div class="muted" style="margin-top:6px">Select a category to start shopping.</div>
+      <h1 class="h1" style="margin:0">Visolux Store</h1>
+      <div class="muted" style="margin-top:6px">Shop parts and components online. Select a category to start shopping.</div>
     </div>
   </div>
 
   <div class="home-categories" style="margin-top:14px">
     <% categories.forEach(c => { %>
-      <a href="/products?category=<%= encodeURIComponent(c.slug) %>" class="category-tile" style="text-decoration:none" aria-label="Browse <%= c.name %>">
+      <a href="/categories/<%= encodeURIComponent(c.slug) %>" class="category-tile" style="text-decoration:none" aria-label="Browse <%= c.name %>">
         <div class="category-tile__media">
           <% if (c.image_url) { %>
-            <img src="<%= c.image_url %>" alt="" loading="lazy" decoding="async" />
+            <img src="<%= c.image_url %>" alt="<%= c.name %>" loading="lazy" decoding="async" />
           <% } else { %>
             <div class="category-tile__placeholder">
               <span class="muted small">No image</span>

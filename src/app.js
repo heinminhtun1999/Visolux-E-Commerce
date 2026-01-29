@@ -14,6 +14,7 @@ const { ensureCsrfToken, csrfProtection } = require('./middleware/csrf');
 const { notFoundHandler, errorHandler } = require('./middleware/errors');
 const settingsRepo = require('./repositories/settingsRepo');
 const { logger } = require('./utils/logger');
+const categoryRepo = require('./repositories/categoryRepo');
 
 const shopRoutes = require('./routes/shop');
 const authRoutes = require('./routes/auth');
@@ -75,6 +76,104 @@ function createApp() {
       // ignore
     }
     return res.status(204).end();
+  });
+
+  // robots.txt: keep before session/CSRF so crawlers don't get cookies.
+  app.get('/robots.txt', (req, res) => {
+    const base = String(env.appBaseUrl || '').replace(/\/+$/, '');
+    const sitemapUrl = base ? `${base}/sitemap.xml` : '/sitemap.xml';
+    res.type('text/plain');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(
+      [
+        'User-agent: *',
+        'Disallow: /admin',
+        'Disallow: /login',
+        'Disallow: /register',
+        'Disallow: /forgot-password',
+        'Disallow: /reset-password',
+        'Disallow: /cart',
+        'Disallow: /orders',
+        'Disallow: /checkout',
+        'Disallow: /payment',
+        'Allow: /uploads/',
+        `Sitemap: ${sitemapUrl}`,
+        '',
+      ].join('\n')
+    );
+  });
+
+  // sitemap.xml: include core pages + category pages + product pages.
+  // Keep before session/CSRF so crawlers don't get cookies.
+  app.get('/sitemap.xml', (req, res) => {
+    const base = String(env.appBaseUrl || '').replace(/\/+$/, '');
+    const abs = (p) => (base ? `${base}${p}` : p);
+    const escapeXml = (s) => String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+
+    const toLastMod = (v) => {
+      const d = v ? new Date(v) : null;
+      if (!d || Number.isNaN(d.getTime())) return '';
+      return d.toISOString().slice(0, 10);
+    };
+
+    const urls = [];
+    const pushUrl = (loc, lastmod) => {
+      const lm = toLastMod(lastmod);
+      urls.push({ loc, lastmod: lm });
+    };
+
+    // Static/public pages
+    pushUrl(abs('/'), null);
+    pushUrl(abs('/products'), null);
+    pushUrl(abs('/how-to-order'), null);
+    pushUrl(abs('/privacy'), null);
+    pushUrl(abs('/terms'), null);
+
+    // Categories
+    try {
+      const cats = categoryRepo.listPublic();
+      (cats || []).forEach((c) => {
+        if (!c || !c.slug) return;
+        pushUrl(abs(`/categories/${encodeURIComponent(c.slug)}`), c.updated_at || c.created_at || null);
+      });
+    } catch (_) {
+      // ignore
+    }
+
+    // Products
+    try {
+      const db = getDb();
+      const rows = db.prepare(
+        `SELECT i.product_id, i.updated_at, i.created_at
+         FROM inventory i
+         JOIN categories c ON c.slug = i.category
+         WHERE i.archived=0 AND i.visibility=1 AND c.archived=0 AND c.visible=1`
+      ).all();
+      (rows || []).forEach((r) => {
+        if (!r || !r.product_id) return;
+        pushUrl(abs(`/products/${r.product_id}`), r.updated_at || r.created_at || null);
+      });
+    } catch (_) {
+      // ignore
+    }
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      urls.map((u) => {
+        const loc = escapeXml(u.loc);
+        const lm = u.lastmod ? `<lastmod>${escapeXml(u.lastmod)}</lastmod>` : '';
+        return `  <url><loc>${loc}</loc>${lm}</url>`;
+      }).join('\n') +
+      `\n</urlset>\n`;
+
+    res.type('application/xml');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.send(xml);
   });
 
   app.set('trust proxy', env.trustProxy);
