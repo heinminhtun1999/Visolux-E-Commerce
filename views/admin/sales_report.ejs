@@ -17,7 +17,7 @@
       <label>To</label>
       <input class="input" type="date" name="date_to" value="<%= date_to || '' %>" />
     </div>
-    <div class="actions">
+    <div class="actions end">
       <button class="btn btn-primary" type="submit">Run report</button>
       <% const qs = new URLSearchParams(); %>
       <% if (date_from) qs.set('date_from', date_from); %>

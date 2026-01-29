@@ -355,7 +355,8 @@ html.admin-sidebar-collapsed .admin-nav__item{justify-content:center}
 .admin-form .field.is-md{flex:1 1 220px; min-width:200px; max-width:420px}
 .admin-form .field.is-lg{flex:1 1 320px; min-width:260px; max-width:720px}
 .admin-form .field.is-full{flex:1 1 100%; min-width:0; max-width:none}
-.admin-form .actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center; height: max-content; align-self: end;}
+.admin-form .actions{display:flex; gap:8px; flex-wrap:wrap; align-content:center}
+.admin-form .actions.end {align-content: end;}
 .admin-form .actions .btn{white-space:nowrap; align-self: end;}
 .admin-form .muted.small{line-height:1.25}
 @media (max-width: 640px){
@@ -429,7 +430,7 @@ html.admin-sidebar-collapsed .admin-nav__item{justify-content:center}
   background:var(--card); color:var(--text);
   border-radius:12px; padding:10px 12px;
   text-decoration:none; cursor:pointer; font-weight:600;
-  height:100%;
+  /* height:100%; */
   transition:
     transform var(--dur-2) var(--ease-out),
     background-color var(--dur-2) var(--ease-in-out),

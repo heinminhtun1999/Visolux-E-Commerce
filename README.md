@@ -47,6 +47,14 @@ Create an initial user:
 
 - `npm run create-admin -- --username admin --email admin@example.com --password "StrongPass123!"`
 
+Resetting Data and Storage:
+
+- `npm run factory-reset -- --yes`
+
+Starting PM2 Server
+
+- `pm2 startOrReload "ecosystem.config.cjs" --env "production"`
+
 Then set one of these in `.env`:
 
 - `ADMIN_USERNAMES=admin`
