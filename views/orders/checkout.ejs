@@ -83,7 +83,7 @@
           <div class="muted small" style="margin-top:8px">After payment, upload your bank slip for verification.</div>
         </div>
 
-        <div class="actions" style="margin-top:12px">
+        <div class="actions actions_primary" style="margin-top:12px">
           <button class="btn btn-primary" id="placeOrderBtn" type="submit">Place order</button>
           <a class="btn" href="/">Cancel</a>
         </div>
@@ -92,7 +92,7 @@
 
         <div class="muted small" style="margin-top:10px">
           <% if (!canOnlinePay) { %>
-            Online payment is currently disabled until Fiuu credentials are configured.
+            Online payment is currently disabled.
           <% } %>
         </div>
       </form>

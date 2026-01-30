@@ -154,12 +154,7 @@
       </select>
     </div>
 
-    <div style="min-width:200px">
-      <label class="muted small">(Legacy: includeArchived still supported)</label>
-      <input type="hidden" name="includeArchived" value="<%= includeArchived ? '1' : '0' %>" />
-    </div>
-
-    <div class="actions" style="margin-left:auto; align-items:flex-end">
+    <div class="actions actions_primary" style="margin-left:auto; align-items:flex-end">
       <button class="btn btn-primary" type="submit">Apply</button>
       <a class="btn" href="/admin/products?view=<%= view || 'list' %>">Clear</a>
     </div>
