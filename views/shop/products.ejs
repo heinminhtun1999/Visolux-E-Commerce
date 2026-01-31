@@ -69,7 +69,7 @@
 <div style="margin-top:12px" class="grid">
   <% products.forEach(p => { %>
     <div class="card product-card">
-      <a href="/products/<%= p.product_id %>" style="text-decoration:none; color:inherit">
+      <a href="/products/<%= p.product_id %>" style="text-decoration:none; color:inherit; width: 100%;">
         <div class="product-img-wrap">
           <img class="product-img" src="<%= p.product_image || '/public/placeholder.svg' %>" alt="<%= p.name %>" />
           <% const effStock = (p.available_stock == null ? p.stock : p.available_stock); %>
