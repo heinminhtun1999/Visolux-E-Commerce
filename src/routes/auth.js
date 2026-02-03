@@ -5,7 +5,7 @@ const { z } = require('zod');
 const rateLimit = require('express-rate-limit');
 
 const userRepo = require('../repositories/userRepo');
-const { computeIsAdmin } = require('../middleware/auth');
+const { computeIsAdmin, computeIsSuperAdmin } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { env } = require('../config/env');
 const emailService = require('../services/emailService');
@@ -276,6 +276,7 @@ router.post(
         username: user.username,
         email: user.email,
         isAdmin: computeIsAdmin(user),
+        isSuperAdmin: computeIsSuperAdmin(user),
       };
 
       req.session.flash = { type: 'success', message: 'Account created.' };
@@ -334,6 +335,7 @@ router.post(
         username: user.username,
         email: user.email,
         isAdmin: computeIsAdmin(user),
+        isSuperAdmin: computeIsSuperAdmin(user),
       };
 
       logger.info(
@@ -415,6 +417,7 @@ router.post(
       req.session.user.email = updated.email;
       // Do not allow privilege escalation via mutable fields.
       req.session.user.isAdmin = Boolean(req.session.user.isAdmin);
+      req.session.user.isSuperAdmin = Boolean(req.session.user.isSuperAdmin);
       req.session.flash = { type: 'success', message: 'Profile updated.' };
       return res.redirect('/account');
     } catch (e) {

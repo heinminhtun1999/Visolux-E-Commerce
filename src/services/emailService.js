@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 
 const { env } = require('../config/env');
+const settingsRepo = require('../repositories/settingsRepo');
 const { createOrderViewToken } = require('../utils/orderViewToken');
 const { formatDateTime } = require('../utils/datetime');
 
@@ -10,7 +11,20 @@ function isSmtpConfigured() {
 }
 
 function isStaffNotifyConfigured() {
-  return Boolean(isSmtpConfigured() && env.email.orderNotifyTo);
+  return Boolean(isSmtpConfigured() && getAdminNotifyConfig().to);
+}
+
+function getAdminNotifyConfig() {
+  const toSetting = String(settingsRepo.get('email.admin_notify.to', '') || '').trim();
+  const ccSetting = String(settingsRepo.get('email.admin_notify.cc', '') || '').trim();
+
+  // Backward-compatible default: environment variable.
+  const fallbackTo = String(env.email.orderNotifyTo || '').trim();
+
+  return {
+    to: toSetting || fallbackTo,
+    cc: ccSetting,
+  };
 }
 
 function createTransport() {
@@ -308,6 +322,8 @@ async function sendOrderReceivedEmail({ order, promo }) {
     return { sent: false, reason: 'not_configured' };
   }
 
+  const notify = getAdminNotifyConfig();
+
   const orderLink = `${getPublicBaseUrl()}/admin/orders/${order.order_id}`;
   const msg = buildOrderEmail({ order, promo, orderLink });
 
@@ -315,7 +331,8 @@ async function sendOrderReceivedEmail({ order, promo }) {
   try {
     await transport.sendMail({
       from: env.email.from,
-      to: env.email.orderNotifyTo,
+      to: notify.to,
+      cc: notify.cc || undefined,
       subject: msg.subject,
       text: msg.text,
       html: msg.html,
@@ -477,8 +494,9 @@ async function sendRefundRequestFailedEmail({ order, toCustomerEmail, itemLabel,
     return { sent: false, reason: 'not_configured' };
   }
 
+  const notify = getAdminNotifyConfig();
   const recipients = [];
-  if (env.email.orderNotifyTo) recipients.push(String(env.email.orderNotifyTo).trim());
+  if (notify.to) recipients.push(String(notify.to).trim());
   if (toCustomerEmail) recipients.push(String(toCustomerEmail).trim());
 
   const to = recipients.filter(Boolean).join(',');
@@ -494,6 +512,7 @@ async function sendRefundRequestFailedEmail({ order, toCustomerEmail, itemLabel,
     await transport.sendMail({
       from: env.email.from,
       to,
+      cc: notify.cc || undefined,
       subject: msg.subject,
       text: msg.text,
       html: msg.html,

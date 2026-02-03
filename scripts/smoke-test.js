@@ -27,6 +27,7 @@ function getBaseLocals(overrides = {}) {
     // Auth/admin
     currentUser: null,
     isAdmin: false,
+    isSuperAdmin: false,
     adminUnreadNotificationCount: 0,
     adminUnreadContactMessageCount: 0,
 
@@ -101,6 +102,10 @@ async function main() {
       isAdmin: true,
       currentUser: { id: 1, email: 'admin@example.com', is_admin: 1 },
 
+      // Admin email notifications
+      adminNotifyTo: 'customerservice@arvending.com.my',
+      adminNotifyCc: '',
+
       // Payment gateway (FIUU)
       fiuuAccounts: [],
       fiuuDefaultAccountId: '',
@@ -127,6 +132,62 @@ async function main() {
       contactFacebookUrl: '',
 
       promosView: 'ACTIVE',
+    })
+  )) && ok;
+
+  ok = (await renderTemplate(
+    'views/admin/payment_settings.ejs',
+    getBaseLocals({
+      title: 'Admin – Payment',
+      currentPath: '/admin/settings/payment',
+      currentUrl: '/admin/settings/payment',
+      isAdmin: true,
+      isSuperAdmin: true,
+      currentUser: { id: 1, email: 'admin@example.com', is_admin: 1 },
+
+      offlineTransferBanks: [],
+      fiuuAccounts: [],
+      fiuuDefaultAccountId: '',
+    })
+  )) && ok;
+
+  ok = (await renderTemplate(
+    'views/admin/admin_accounts.ejs',
+    getBaseLocals({
+      title: 'Admin – Admin accounts',
+      currentPath: '/admin/admin-accounts',
+      currentUrl: '/admin/admin-accounts',
+      isAdmin: true,
+      isSuperAdmin: true,
+      currentUser: { id: 1, email: 'admin@example.com', is_admin: 1 },
+
+      q: '',
+      page: 1,
+      pageSize: 25,
+      pageCount: 1,
+      total: 0,
+      admins: [],
+    })
+  )) && ok;
+
+  ok = (await renderTemplate(
+    'views/admin/activity.ejs',
+    getBaseLocals({
+      title: 'Admin – Activity',
+      currentPath: '/admin/activity',
+      currentUrl: '/admin/activity',
+      isAdmin: true,
+      isSuperAdmin: false,
+      currentUser: { id: 2, email: 'subadmin@example.com', is_admin: 1 },
+
+      q: '',
+      method: '',
+      actorUserId: '',
+      page: 1,
+      pageSize: 50,
+      pageCount: 1,
+      total: 0,
+      events: [],
     })
   )) && ok;
 

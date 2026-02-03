@@ -1,0 +1,129 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end; gap:12px">
+  <div>
+    <h1 class="h1">Admin accounts</h1>
+    <div class="muted small">Main admin can create sub-admin accounts.</div>
+  </div>
+</div>
+
+<div class="card card--pad card--mt">
+  <div class="row" style="justify-content:space-between; align-items:flex-end; gap:12px">
+    <form method="get" action="/admin/admin-accounts" class="row" style="align-items:flex-end; gap:10px">
+      <div style="min-width:260px">
+        <label>Search</label>
+        <input class="input" name="q" value="<%= q %>" placeholder="username or email" />
+      </div>
+      <div style="width:160px">
+        <label>Per page</label>
+        <select name="pageSize">
+          <% [10,25,50,100].forEach(n => { %>
+            <option value="<%= n %>" <%= String(pageSize) === String(n) ? 'selected' : '' %>><%= n %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="actions" style="margin-left:auto">
+        <button class="btn btn-primary" type="submit">Apply</button>
+        <a class="btn" href="/admin/admin-accounts">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  <div style="margin-top:12px" class="muted small"><%= total %> total</div>
+
+  <div style="overflow:auto; margin-top:12px">
+    <table class="table" data-table-sort>
+      <thead>
+        <tr>
+          <th data-sort="string">Username</th>
+          <th data-sort="string">Email</th>
+          <th data-sort="string">Role</th>
+          <th data-sort="string">Status</th>
+          <th data-sort="string">Actions</th>
+          <th data-sort="string">Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!admins || !admins.length) { %>
+          <tr><td colspan="6" class="muted">No admin accounts found.</td></tr>
+        <% } else { %>
+          <% admins.forEach(a => { %>
+            <tr>
+              <td><strong><%= a.username %></strong></td>
+              <td><%= a.email %></td>
+              <td>
+                <% if (a.is_super_admin) { %>
+                  <span class="badge ok">Main admin</span>
+                <% } else { %>
+                  <span class="badge">Sub admin</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (a.is_closed) { %>
+                  <span class="badge no">Closed</span>
+                <% } else { %>
+                  <span class="badge ok">Active</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (!a.is_super_admin) { %>
+                  <% if (a.is_closed) { %>
+                    <form method="post" action="/admin/admin-accounts/<%= a.user_id %>/enable" style="display:inline">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                      <button class="btn btn-secondary" type="submit">Enable</button>
+                    </form>
+                  <% } else { %>
+                    <form method="post" action="/admin/admin-accounts/<%= a.user_id %>/disable" style="display:inline" onsubmit="return confirm('Disable this sub-admin account?');">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                      <button class="btn btn-danger" type="submit">Disable</button>
+                    </form>
+                  <% } %>
+                <% } else { %>
+                  <span class="muted">—</span>
+                <% } %>
+              </td>
+              <td class="muted"><%= a.created_at || '' %></td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager">
+    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
+    <% const _qs = (extra) => new URLSearchParams({ q, pageSize: String(pageSize), ...extra }).toString(); %>
+    <% if (page > 1) { %>
+      <a href="/admin/admin-accounts?<%= _qs({ page: String(page - 1) }) %>">Prev</a>
+    <% } %>
+    <% if (page < pageCount) { %>
+      <a href="/admin/admin-accounts?<%= _qs({ page: String(page + 1) }) %>">Next</a>
+    <% } %>
+  </div>
+</div>
+
+<div class="card card--pad card--mt">
+  <h2 class="h2" style="margin-top:0">Create sub-admin</h2>
+  <div class="muted small">Sub-admins have full admin access, except creating admin accounts.</div>
+
+  <form method="post" action="/admin/admin-accounts/create" class="row" style="align-items:flex-end; gap:12px; margin-top:10px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div class="col" style="min-width:220px">
+      <label>Username</label>
+      <input class="input" name="username" required minlength="3" maxlength="32" />
+    </div>
+    <div class="col" style="min-width:260px">
+      <label>Email</label>
+      <input class="input" name="email" type="email" required maxlength="128" />
+    </div>
+    <div class="col" style="min-width:220px">
+      <label>Password</label>
+      <input class="input" name="password" type="password" required minlength="8" maxlength="200" />
+    </div>
+    <div class="actions" style="margin-left:auto">
+      <button class="btn btn-primary" type="submit">Create</button>
+    </div>
+  </form>
+</div>
+
+<%- include('../shared/bottom') %>

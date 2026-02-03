@@ -14,7 +14,17 @@
 
   function getCollapsed() {
     try {
-      return window.localStorage.getItem(key) === '1';
+      const v = window.localStorage.getItem(key);
+      if (v === '1') return true;
+      if (v === '0') return false;
+    } catch (_) {
+      // ignore
+    }
+
+    // Default behavior when there's no saved preference:
+    // collapse the sidebar on small screens for a clean mobile layout.
+    try {
+      return Boolean(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
     } catch (_) {
       return false;
     }

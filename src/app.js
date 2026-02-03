@@ -10,6 +10,7 @@ const { env } = require('./config/env');
 const { getDb } = require('./db/db');
 const { attachLocals } = require('./middleware/locals');
 const { logoutClosedAccountSessions } = require('./middleware/auth');
+const { adminActivityLogger } = require('./middleware/adminActivity');
 const { ensureCsrfToken, csrfProtection } = require('./middleware/csrf');
 const { notFoundHandler, errorHandler } = require('./middleware/errors');
 const settingsRepo = require('./repositories/settingsRepo');
@@ -306,6 +307,9 @@ function createApp() {
   app.use('/', orderRoutes);
   app.use('/', uploadRoutes);
   app.use('/', paymentRoutes);
+
+  // Audit log for admin actions.
+  app.use('/admin', adminActivityLogger);
   app.use('/admin', adminRoutes);
 
   app.use(notFoundHandler);

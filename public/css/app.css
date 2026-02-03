@@ -95,6 +95,30 @@ body{
   justify-content:space-between;
   gap:12px;
 }
+.site-header__actions{align-items:center; justify-content:flex-end}
+.site-header__actions.actions.icon-row{padding-top:0; padding-right:0; align-items:center}
+
+.admin-whoami{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-right:10px;
+  min-width:0;
+  max-width:42vw;
+}
+.admin-whoami__user{color:inherit; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+@media (max-width: 720px){
+  .site-header{flex-wrap:wrap}
+  .site-header__brand{flex:1 1 auto}
+  .store-nav{flex:1 1 100%; order:3; justify-content:flex-start}
+  .site-header__actions{flex:1 1 100%; justify-content:flex-end}
+}
+
+@media (max-width: 520px){
+  .admin-whoami__prefix{display:none}
+  .admin-whoami{margin-right:6px; max-width:58vw}
+}
 .site-header--sticky{
   position:sticky;
   top:0;
@@ -221,6 +245,13 @@ html.admin-sidebar-collapsed .admin-shell{grid-template-columns:76px 1fr}
 html.admin-sidebar-collapsed .admin-nav__label{display:none}
 html.admin-sidebar-collapsed .admin-nav__section{display:none}
 html.admin-sidebar-collapsed .admin-nav__item{justify-content:center}
+
+@media (max-width: 900px){
+  .admin-shell{grid-template-columns:1fr}
+  .admin-sidebar{position:relative; top:auto; max-height:none}
+  html.admin-sidebar-collapsed .admin-sidebar{display:none}
+  html.admin-sidebar-collapsed .admin-shell{grid-template-columns:1fr}
+}
 
 /* Footer */
 .site-footer{

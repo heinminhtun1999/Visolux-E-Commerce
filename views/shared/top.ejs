@@ -108,12 +108,26 @@
       <% } %>
 
       <div class="site-header__actions actions icon-row">
+        <% const _currentUser = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : null; %>
+        <% const _isAdmin = (typeof isAdmin !== 'undefined' && isAdmin) ? Boolean(isAdmin) : false; %>
+
+        <% if (_isAdmin && _currentUser) { %>
+          <span class="admin-whoami muted small">
+            <span class="admin-whoami__prefix">Logged in as</span>
+            <strong class="admin-whoami__user"><%= _currentUser.username %></strong>
+            <% if (typeof isSuperAdmin !== 'undefined' && isSuperAdmin) { %>
+              <span class="badge ok">Main</span>
+            <% } else { %>
+              <span class="badge">Sub</span>
+            <% } %>
+          </span>
+        <% } %>
+
         <button class="btn btn-icon icon-only" type="button" id="themeToggle" title="Toggle Dark mode" aria-label="Toggle Dark mode" data-label="Theme">
           <span class="theme-icon theme-icon--sun"><%- iconFn('sun') %></span>
           <span class="theme-icon theme-icon--moon"><%- iconFn('moon') %></span>
         </button>
 
-        <% const _isAdmin = (typeof isAdmin !== 'undefined' && isAdmin) ? Boolean(isAdmin) : false; %>
         <% const showAdminBell = _isAdmin; %>
         <% const showAdminLink = _isAdmin && !isAdminArea; %>
 
@@ -126,7 +140,6 @@
           </a>
         <% } %>
 
-        <% const _currentUser = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : null; %>
         <% if (_currentUser && !_isAdmin) { %>
           <a class="btn btn-icon <%= (_currentPath || '').startsWith('/orders') ? 'is-active' : '' %>" href="/orders/history" title="Orders" aria-label="Orders" data-label="Orders">
             <%- iconFn('orders') %>
@@ -162,7 +175,7 @@
         <% } %>
 
         <% if (showAdminLink) { %>
-          <a class="btn btn-icon icon-only" href="/admin" title="Admin" aria-label="Admin" data-label="Admin"><%- iconFn('admin') %></a>
+          <a class="btn btn-icon icon-only" href="/admin" title="Admin" aria-label="Admin" data-label="Admin"><%- iconFn('user') %></a>
         <% } %>
 
         <% if (_currentUser) { %>
@@ -231,6 +244,14 @@
               <span class="admin-nav__label">Users</span>
             </a>
 
+            <% const _isSuperAdmin = (typeof isSuperAdmin !== 'undefined' && isSuperAdmin) ? Boolean(isSuperAdmin) : false; %>
+            <% if (_isSuperAdmin) { %>
+              <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/admin-accounts') ? 'is-active' : '' %>" href="/admin/admin-accounts">
+                <span class="admin-nav__icon"><%- iconFn('user-plus') %></span>
+                <span class="admin-nav__label">Admin accounts</span>
+              </a>
+            <% } %>
+
             <div class="admin-nav__section">Comms</div>
             <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/notifications') ? 'is-active' : '' %>" href="/admin/notifications">
               <span class="admin-nav__icon"><%- iconFn('bell') %></span>
@@ -256,11 +277,19 @@
             </a>
 
             <div class="admin-nav__section">System</div>
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/activity') ? 'is-active' : '' %>" href="/admin/activity">
+              <span class="admin-nav__icon"><%- iconFn('activity') %></span>
+              <span class="admin-nav__label">Activity</span>
+            </a>
             <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/site/shipping-zones') ? 'is-active' : '' %>" href="/admin/site/shipping-zones">
-              <span class="admin-nav__icon"><%- iconFn('sliders-horizontal') %></span>
+              <span class="admin-nav__icon"><%- iconFn('truck') %></span>
               <span class="admin-nav__label">Shipping</span>
             </a>
-            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/settings') ? 'is-active' : '' %>" href="/admin/settings">
+            <a class="admin-nav__item <%= (_currentPath || '').startsWith('/admin/settings/payment') ? 'is-active' : '' %>" href="/admin/settings/payment">
+              <span class="admin-nav__icon"><%- iconFn('credit-card') %></span>
+              <span class="admin-nav__label">Payment</span>
+            </a>
+            <a class="admin-nav__item <%= (_currentPath || '') === '/admin/settings' ? 'is-active' : '' %>" href="/admin/settings">
               <span class="admin-nav__icon"><%- iconFn('settings') %></span>
               <span class="admin-nav__label">Settings</span>
             </a>

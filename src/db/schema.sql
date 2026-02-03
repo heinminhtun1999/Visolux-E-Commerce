@@ -118,6 +118,8 @@ CREATE TABLE IF NOT EXISTS users (
   city TEXT,
   state TEXT,
   postcode TEXT,
+  is_admin INTEGER NOT NULL DEFAULT 0 CHECK (is_admin IN (0,1)),
+  is_super_admin INTEGER NOT NULL DEFAULT 0 CHECK (is_super_admin IN (0,1)),
   is_closed INTEGER NOT NULL DEFAULT 0 CHECK (is_closed IN (0,1)),
   closed_at TEXT,
   password_reset_token_hash TEXT,
@@ -331,3 +333,26 @@ CREATE TABLE IF NOT EXISTS admin_notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_admin_notifications_read_created ON admin_notifications(read_at, created_at);
+
+-- Admin audit trail (request-level admin activity)
+CREATE TABLE IF NOT EXISTS admin_activity_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_user_id INTEGER NOT NULL,
+  actor_username TEXT NOT NULL,
+  actor_is_super_admin INTEGER NOT NULL DEFAULT 0 CHECK (actor_is_super_admin IN (0,1)),
+  action TEXT NOT NULL DEFAULT '',
+  method TEXT NOT NULL,
+  path TEXT NOT NULL,
+  status_code INTEGER,
+  duration_ms INTEGER,
+  ip TEXT,
+  user_agent TEXT,
+  meta_json TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (actor_user_id) REFERENCES users(user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_created ON admin_activity_logs(created_at, id);
+CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_actor ON admin_activity_logs(actor_user_id, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_path ON admin_activity_logs(path, created_at, id);
+CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_action ON admin_activity_logs(action, created_at, id);

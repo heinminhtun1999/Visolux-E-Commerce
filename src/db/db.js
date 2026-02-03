@@ -25,12 +25,20 @@ function getDb() {
 function initializeSchema(database) {
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
+
+  // Preflight migrations needed for schema.sql to be safely re-applied on existing DBs.
+  // schema.sql includes CREATE INDEX statements that reference newer columns; if the table
+  // already exists without those columns, SQLite will throw during CREATE INDEX.
+  preflightAdminActivityLogsActionColumn(database);
+
   database.exec(schema);
 
   // Lightweight migrations for existing DB files.
   ensureUsersPasswordReset(database);
   ensureUsersAddressColumns(database);
   ensureUsersAccountClosure(database);
+  ensureUsersAdminRoles(database);
+  bootstrapSuperAdminsFromEnv(database);
   ensureSiteSettings(database);
   ensureOrdersOrderCode(database);
   ensureOrdersRefundStatus(database);
@@ -46,6 +54,7 @@ function initializeSchema(database) {
   ensureOrderRefunds(database);
   ensureOrderRefundGatewayColumns(database);
   ensureAdminNotifications(database);
+  ensureAdminActivityLogs(database);
   ensureOfflineTransferPurge(database);
   ensureOfflineTransferRejection(database);
   ensurePromoCodesV2(database);
@@ -60,6 +69,23 @@ function initializeSchema(database) {
   seedCategoriesFromInventory(database);
   // Backfill is best-effort; existing orders fall back to order_id in UI if needed.
   backfillOrderCodes(database);
+}
+
+function preflightAdminActivityLogsActionColumn(database) {
+  try {
+    const row = database
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='admin_activity_logs'")
+      .get();
+    if (!row) return;
+
+    const cols = database.prepare("PRAGMA table_info('admin_activity_logs')").all();
+    const has = (name) => cols.some((c) => c.name === name);
+    if (!has('action')) {
+      database.exec("ALTER TABLE admin_activity_logs ADD COLUMN action TEXT NOT NULL DEFAULT ''");
+    }
+  } catch (_) {
+    // ignore
+  }
 }
 
 function ensureInventoryDescriptionHtml(database) {
@@ -115,6 +141,92 @@ function ensureUsersAccountClosure(database) {
   if (!has('closed_at')) {
     database.exec('ALTER TABLE users ADD COLUMN closed_at TEXT');
   }
+}
+
+function ensureUsersAdminRoles(database) {
+  const cols = database.prepare("PRAGMA table_info('users')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+
+  if (!has('is_admin')) {
+    database.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!has('is_super_admin')) {
+    database.exec('ALTER TABLE users ADD COLUMN is_super_admin INTEGER NOT NULL DEFAULT 0');
+  }
+}
+
+function bootstrapSuperAdminsFromEnv(database) {
+  // Best-effort: ensure current env allowlist users are marked as admin/super_admin in DB.
+  // This keeps deployments compatible while moving to DB-backed roles.
+  try {
+    const usernames = Array.isArray(env.adminUsernames) ? env.adminUsernames : [];
+    const emails = Array.isArray(env.adminEmails) ? env.adminEmails : [];
+    const u = usernames.map((v) => String(v || '').trim()).filter(Boolean);
+    const e = emails.map((v) => String(v || '').trim()).filter(Boolean);
+    if (!u.length && !e.length) return;
+
+    const where = [];
+    const params = {};
+    if (u.length) {
+      where.push(`lower(username) IN (${u.map((_, idx) => `@u${idx}`).join(',')})`);
+      u.forEach((val, idx) => {
+        params[`u${idx}`] = val.toLowerCase();
+      });
+    }
+    if (e.length) {
+      where.push(`lower(email) IN (${e.map((_, idx) => `@e${idx}`).join(',')})`);
+      e.forEach((val, idx) => {
+        params[`e${idx}`] = val.toLowerCase();
+      });
+    }
+
+    const sql = `UPDATE users
+      SET is_admin=1,
+          is_super_admin=1
+      WHERE ${where.join(' OR ')}`;
+    database.prepare(sql).run(params);
+  } catch (_) {
+    // ignore bootstrap failures
+  }
+}
+
+function ensureAdminActivityLogs(database) {
+  database.exec(
+    `CREATE TABLE IF NOT EXISTS admin_activity_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      actor_user_id INTEGER NOT NULL,
+      actor_username TEXT NOT NULL,
+      actor_is_super_admin INTEGER NOT NULL DEFAULT 0 CHECK (actor_is_super_admin IN (0,1)),
+      action TEXT NOT NULL DEFAULT '',
+      method TEXT NOT NULL,
+      path TEXT NOT NULL,
+      status_code INTEGER,
+      duration_ms INTEGER,
+      ip TEXT,
+      user_agent TEXT,
+      meta_json TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (actor_user_id) REFERENCES users(user_id)
+    )`
+  );
+
+  // Lightweight migration for existing DB files.
+  try {
+    const cols = database.prepare("PRAGMA table_info('admin_activity_logs')").all();
+    const has = (name) => cols.some((c) => c.name === name);
+    if (!has('action')) {
+      database.exec("ALTER TABLE admin_activity_logs ADD COLUMN action TEXT NOT NULL DEFAULT ''");
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  database.exec('CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_created ON admin_activity_logs(created_at, id)');
+  database.exec(
+    'CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_actor ON admin_activity_logs(actor_user_id, created_at, id)'
+  );
+  database.exec('CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_path ON admin_activity_logs(path, created_at, id)');
+  database.exec('CREATE INDEX IF NOT EXISTS idx_admin_activity_logs_action ON admin_activity_logs(action, created_at, id)');
 }
 
 function ensureContactMessages(database) {

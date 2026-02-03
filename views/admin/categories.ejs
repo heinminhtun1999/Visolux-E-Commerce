@@ -54,7 +54,7 @@
       <select name="fiuu_account_id">
         <option value="">Default</option>
         <% (fiuuSelectableAccounts || []).forEach(function(a){ %>
-          <option value="<%= a.id %>"><%= a.label %> (<%= a.id %>)</option>
+          <option value="<%= a.id %>"><%= a.label %></option>
         <% }) %>
       </select>
       <div class="muted small" style="margin-top:6px">Optional. Leave as Default to use the global FIUU default account.</div>
@@ -97,7 +97,7 @@
             <select class="input" name="fiuu_account_id" form="catForm-<%= c.id %>">
               <option value="" <%= currentPg ? '' : 'selected' %>>Default</option>
               <% (fiuuSelectableAccounts || []).forEach(function(a){ %>
-                <option value="<%= a.id %>" <%= (currentPg === String(a.id)) ? 'selected' : '' %>><%= a.label %> (<%= a.id %>)</option>
+                <option value="<%= a.id %>" <%= (currentPg === String(a.id)) ? 'selected' : '' %>><%= a.label %></option>
               <% }) %>
             </select>
           </td>

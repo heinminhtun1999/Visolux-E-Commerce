@@ -136,6 +136,7 @@ function attachLocals(req, res, next) {
   res.locals.icon = icon;
   res.locals.currentUser = req.session.user || null;
   res.locals.isAdmin = Boolean(req.session.user?.isAdmin);
+  res.locals.isSuperAdmin = Boolean(req.session.user?.isSuperAdmin);
   res.locals.cart = req.session.cart || { items: {} };
   const items = (res.locals.cart && res.locals.cart.items) ? res.locals.cart.items : {};
   res.locals.cartItemCount = Object.values(items).reduce((sum, v) => {

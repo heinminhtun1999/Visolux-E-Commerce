@@ -16,9 +16,10 @@ function usage() {
   console.log('Usage:');
   console.log('  node scripts/create-admin.js --username <u> --email <e> --password <p>');
   console.log('Optional:');
-  console.log('  --phone <p> --address <a>');
+  console.log('  --phone <p> --address <a> --super');
   console.log('Notes:');
-  console.log('  Admin rights are controlled by ADMIN_USERNAMES/ADMIN_EMAILS in .env');
+  console.log('  Admin rights are stored in the DB (users.is_admin / users.is_super_admin).');
+  console.log('  ADMIN_USERNAMES/ADMIN_EMAILS are still supported as a bootstrap/recovery allowlist.');
 }
 
 async function main() {
@@ -27,6 +28,7 @@ async function main() {
   const password = getArg('--password');
   const phone = getArg('--phone') || '';
   const address = getArg('--address') || '';
+  const isSuper = process.argv.includes('--super');
 
   if (!username || !email || !password) {
     usage();
@@ -41,14 +43,24 @@ async function main() {
   }
 
   const password_hash = await bcrypt.hash(password, 12);
-  const user = userRepo.create({ username, email, password_hash, phone, address });
+  const user = userRepo.create({
+    username,
+    email,
+    password_hash,
+    phone,
+    address,
+    is_admin: 1,
+    is_super_admin: isSuper ? 1 : 0,
+  });
 
   console.log('Created user:');
   console.log(`  id: ${user.user_id}`);
   console.log(`  username: ${user.username}`);
   console.log(`  email: ${user.email}`);
+  console.log(`  is_admin: ${user.is_admin}`);
+  console.log(`  is_super_admin: ${user.is_super_admin}`);
   console.log('');
-  console.log('To grant admin access, add one of these to your .env:');
+  console.log('Optional bootstrap/recovery: you can also allowlist in .env:');
   console.log(`  ADMIN_USERNAMES=${user.username}`);
   console.log('or');
   console.log(`  ADMIN_EMAILS=${user.email}`);

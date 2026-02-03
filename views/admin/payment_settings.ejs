@@ -1,0 +1,237 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Payment</h1>
+    <div class="muted small">Configure payment gateway and offline transfer.</div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="/admin/settings">Back to Settings</a>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <div class="row" style="gap:10px; flex-wrap:wrap">
+    <a class="btn" href="#payment-gateway">Payment gateway</a>
+    <a class="btn" href="#offline-transfer">Offline transfer</a>
+  </div>
+</div>
+
+<section id="payment-gateway" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Payment gateway (FIUU)</h2>
+  <div class="muted small">Configure your FIUU merchant accounts. Set one default account. To map a category to a specific account, use <a href="/admin/categories">Admin → Categories</a>.</div>
+
+  <form method="post" action="/admin/site/fiuu-accounts" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="card" style="padding:12px">
+      <div class="row" style="justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap">
+        <div>
+          <div style="font-weight:800">FIUU merchant accounts</div>
+          <div class="muted small" style="margin-top:4px">Add one or more accounts. Set one default account.</div>
+        </div>
+        <div class="actions" style="gap:8px">
+          <button class="btn" type="button" id="addFiuuAccountBtn">Add account</button>
+          <button class="btn btn-primary" type="submit">Save FIUU settings</button>
+        </div>
+      </div>
+
+      <div style="overflow:auto; margin-top:10px">
+        <table class="table" id="fiuuAccountsTable">
+          <thead>
+            <tr>
+              <th>Default</th>
+              <th>Label</th>
+              <th>Merchant ID</th>
+              <th>Verify Key</th>
+              <th>Secret Key</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% (fiuuAccounts || []).forEach(a => { %>
+              <tr data-row>
+                <td style="width:92px">
+                  <input type="hidden" name="account_id" value="<%= a.id %>" />
+                  <label style="display:flex; gap:8px; align-items:center">
+                    <input type="radio" name="default_account_id" value="<%= a.id %>" <%= (String(fiuuDefaultAccountId || '') === String(a.id || '')) ? 'checked' : '' %> />
+                    <span class="muted small">Default</span>
+                  </label>
+                </td>
+                <td><input class="input" name="account_label" value="<%= a.label || '' %>" maxlength="128" required /></td>
+                <td><input class="input" name="merchant_id" value="<%= a.merchantId || '' %>" maxlength="128" required /></td>
+                <td><input class="input" type="password" name="verify_key" value="<%= a.verifyKey || '' %>" maxlength="256" required /></td>
+                <td><input class="input" type="password" name="secret_key" value="<%= a.secretKey || '' %>" maxlength="256" required /></td>
+                <td style="width:90px"><button class="btn btn-danger" type="button" data-remove>Remove</button></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="muted small" style="margin-top:10px">Reminder: if a cart includes categories mapped to different accounts, online payment will be blocked and customers must checkout separately or use offline transfer.</div>
+    </div>
+  </form>
+
+  <script>
+    (function () {
+      function randHex16() {
+        try {
+          var a = new Uint8Array(8);
+          crypto.getRandomValues(a);
+          return Array.from(a).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+        } catch (_) {
+          return String(Date.now()) + String(Math.random()).slice(2, 8);
+        }
+      }
+
+      var table = document.getElementById('fiuuAccountsTable');
+      var tbody = table ? table.querySelector('tbody') : null;
+      var addBtn = document.getElementById('addFiuuAccountBtn');
+
+      function wireRow(tr) {
+        var removeBtn = tr.querySelector('[data-remove]');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function () {
+            tr.remove();
+          });
+        }
+      }
+
+      if (tbody) {
+        Array.from(tbody.querySelectorAll('tr[data-row]')).forEach(wireRow);
+      }
+
+      if (addBtn && tbody) {
+        addBtn.addEventListener('click', function () {
+          var id = 'fiuu_' + randHex16();
+          var tr = document.createElement('tr');
+          tr.setAttribute('data-row', '');
+          tr.innerHTML = '' +
+            '<td style="width:92px">' +
+              '<input type="hidden" name="account_id" value="' + id + '" />' +
+              '<label style="display:flex; gap:8px; align-items:center">' +
+                '<input type="radio" name="default_account_id" value="' + id + '" />' +
+                '<span class="muted small">Default</span>' +
+              '</label>' +
+            '</td>' +
+            '<td><input class="input" name="account_label" value="" maxlength="128" required /></td>' +
+            '<td><input class="input" name="merchant_id" value="" maxlength="128" required /></td>' +
+            '<td><input class="input" type="password" name="verify_key" value="" maxlength="256" required /></td>' +
+            '<td><input class="input" type="password" name="secret_key" value="" maxlength="256" required /></td>' +
+            '<td style="width:90px"><button class="btn btn-danger" type="button" data-remove>Remove</button></td>';
+          tbody.appendChild(tr);
+          wireRow(tr);
+        });
+      }
+    })();
+  </script>
+</section>
+
+<section id="offline-transfer" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Offline bank transfer</h2>
+  <div class="muted small">Configure the recipient bank accounts shown at checkout for offline transfer.</div>
+
+  <form method="post" action="/admin/site/offline-transfer-banks" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="card" style="padding:12px">
+      <div class="row" style="justify-content:space-between; align-items:flex-end; gap:10px; flex-wrap:wrap">
+        <div>
+          <div style="font-weight:800">Bank accounts</div>
+          <div class="muted small" style="margin-top:4px">Tick “Show at checkout” for accounts customers can choose.</div>
+        </div>
+        <div class="actions" style="gap:8px">
+          <button class="btn" type="button" id="addOfflineBankBtn">Add bank</button>
+          <button class="btn btn-primary" type="submit">Save banks</button>
+        </div>
+      </div>
+
+      <div style="overflow:auto; margin-top:10px">
+        <table class="table" id="offlineBanksTable">
+          <thead>
+            <tr>
+              <th>Show at checkout</th>
+              <th>Bank</th>
+              <th>Account No</th>
+              <th>Account Name</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% (offlineTransferBanks || []).forEach(b => { %>
+              <tr data-row>
+                <td style="width:140px">
+                  <input type="hidden" name="bank_id" value="<%= b.id %>" />
+                  <label style="display:flex; gap:8px; align-items:center">
+                    <input type="checkbox" name="display_ids" value="<%= b.id %>" <%= b.display_at_checkout ? 'checked' : '' %> />
+                    <span class="muted small">Show</span>
+                  </label>
+                </td>
+                <td><input class="input" name="bank_name" value="<%= b.bank %>" maxlength="128" required /></td>
+                <td><input class="input" name="account_no" value="<%= b.account_no %>" maxlength="64" required /></td>
+                <td><input class="input" name="account_name" value="<%= b.account_name %>" maxlength="128" required /></td>
+                <td style="width:90px"><button class="btn btn-danger" type="button" data-remove>Remove</button></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="muted small" style="margin-top:10px">If no bank is marked “Show”, customers will still be able to place offline-transfer orders but won’t see a selectable bank list.</div>
+    </div>
+  </form>
+
+  <script>
+    (function () {
+      function randHex16() {
+        try {
+          var a = new Uint8Array(8);
+          crypto.getRandomValues(a);
+          return Array.from(a).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+        } catch (_) {
+          return String(Date.now()) + String(Math.random()).slice(2, 8);
+        }
+      }
+
+      var table = document.getElementById('offlineBanksTable');
+      var tbody = table ? table.querySelector('tbody') : null;
+      var addBtn = document.getElementById('addOfflineBankBtn');
+
+      function wireRow(tr) {
+        var removeBtn = tr.querySelector('[data-remove]');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function () {
+            tr.remove();
+          });
+        }
+      }
+
+      if (tbody) {
+        Array.from(tbody.querySelectorAll('tr[data-row]')).forEach(wireRow);
+      }
+
+      if (addBtn && tbody) {
+        addBtn.addEventListener('click', function () {
+          var id = 'bank_' + randHex16();
+          var tr = document.createElement('tr');
+          tr.setAttribute('data-row', '');
+          tr.innerHTML = '' +
+            '<td style="width:140px">' +
+              '<input type="hidden" name="bank_id" value="' + id + '" />' +
+              '<label style="display:flex; gap:8px; align-items:center">' +
+                '<input type="checkbox" name="display_ids" value="' + id + '" checked />' +
+                '<span class="muted small">Show</span>' +
+              '</label>' +
+            '</td>' +
+            '<td><input class="input" name="bank_name" value="" maxlength="128" required /></td>' +
+            '<td><input class="input" name="account_no" value="" maxlength="64" required /></td>' +
+            '<td><input class="input" name="account_name" value="" maxlength="128" required /></td>' +
+            '<td style="width:90px"><button class="btn btn-danger" type="button" data-remove>Remove</button></td>';
+          tbody.appendChild(tr);
+          wireRow(tr);
+        });
+      }
+    })();
+  </script>
+</section>

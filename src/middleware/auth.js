@@ -3,7 +3,6 @@ const userRepo = require('../repositories/userRepo');
 
 function logoutClosedAccountSessions(req, _res, next) {
   if (!req.session || !req.session.user) return next();
-  if (req.session.user.isAdmin) return next();
 
   // Throttle DB checks per-session to reduce load.
   const now = Date.now();
@@ -36,23 +35,36 @@ function requireUser(req, res, next) {
   }
 
   // If an account was closed after the session was created, force re-auth.
-  if (!req.session.user.isAdmin) {
-    try {
-      const u = userRepo.getById(req.session.user.user_id);
-      if (!u || u.is_closed) {
-        req.session.user = null;
-        req.session.flash = { type: 'error', message: 'This account has been closed.' };
-        return res.redirect('/login');
-      }
-    } catch (_) {
-      // ignore and allow request
+  try {
+    const u = userRepo.getById(req.session.user.user_id);
+    if (!u || u.is_closed) {
+      req.session.user = null;
+      req.session.flash = { type: 'error', message: 'This account has been closed.' };
+      return res.redirect('/login');
     }
+  } catch (_) {
+    // ignore and allow request
   }
   return next();
 }
 
 function computeIsAdmin(user) {
   if (!user) return false;
+  if (Number(user.is_admin || 0)) return true;
+  const username = String(user.username || '').toLowerCase();
+  const email = String(user.email || '').toLowerCase();
+
+  const allowedUsernames = env.adminUsernames.map((v) => v.toLowerCase());
+  const allowedEmails = env.adminEmails.map((v) => v.toLowerCase());
+
+  return allowedUsernames.includes(username) || allowedEmails.includes(email);
+}
+
+function computeIsSuperAdmin(user) {
+  if (!user) return false;
+  if (Number(user.is_super_admin || 0)) return true;
+
+  // Back-compat: allow env allowlist to behave as super-admin (bootstrap/admin recovery).
   const username = String(user.username || '').toLowerCase();
   const email = String(user.email || '').toLowerCase();
 
@@ -70,4 +82,19 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
-module.exports = { requireUser, requireAdmin, computeIsAdmin, logoutClosedAccountSessions };
+function requireSuperAdmin(req, res, next) {
+  if (!req.session.user || !req.session.user.isAdmin || !req.session.user.isSuperAdmin) {
+    req.session.flash = { type: 'error', message: 'Main admin access required.' };
+    return res.redirect('/admin');
+  }
+  return next();
+}
+
+module.exports = {
+  requireUser,
+  requireAdmin,
+  requireSuperAdmin,
+  computeIsAdmin,
+  computeIsSuperAdmin,
+  logoutClosedAccountSessions,
+};

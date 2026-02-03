@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { z } = require('zod');
 
-const { requireAdmin, computeIsAdmin } = require('../middleware/auth');
+const { requireAdmin, requireSuperAdmin, computeIsAdmin } = require('../middleware/auth');
 const { getDb } = require('../db/db');
 const { validate } = require('../middleware/validate');
 const { upload } = require('../middleware/uploads');
@@ -18,6 +18,7 @@ const userRepo = require('../repositories/userRepo');
 const imageService = require('../services/imageService');
 const orderService = require('../services/orderService');
 const emailService = require('../services/emailService');
+const { computeFieldChanges, logAdminChange, previewValue } = require('../services/adminAuditService');
 const { getPagination, getPageCount } = require('../utils/pagination');
 const adminNotificationRepo = require('../repositories/adminNotificationRepo');
 const orderRefundRepo = require('../repositories/orderRefundRepo');
@@ -28,6 +29,7 @@ const reportRepo = require('../repositories/reportRepo');
 const promoRepo = require('../repositories/promoRepo');
 const categorySectionRepo = require('../repositories/categorySectionRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
+const adminActivityRepo = require('../repositories/adminActivityRepo');
 const shippingService = require('../services/shippingService');
 const offlineTransferService = require('../services/offlineTransferService');
 const fiuuAccountsService = require('../services/fiuuAccountsService');
@@ -36,6 +38,182 @@ const { renderMarkdown, sanitizeHtmlFragment, sanitizeHtmlFragmentNoImages } = r
 const crypto = require('crypto');
 
 const router = express.Router();
+
+router.get('/admin-accounts', requireSuperAdmin, (req, res) => {
+  const page = Math.max(1, Number(req.query.page || 1) || 1);
+  const pageSize = Math.min(100, Math.max(10, Number(req.query.pageSize || 25) || 25));
+  const q = String(req.query.q || '').trim();
+
+  const total = userRepo.countAdminAccounts({ q });
+  const pageCount = getPageCount(total, pageSize);
+  const safePage = Math.min(page, Math.max(1, pageCount || 1));
+  const { limit, offset } = getPagination(safePage, pageSize);
+
+  const admins = userRepo.listAdminAccounts({ q, limit, offset });
+
+  return res.render('admin/admin_accounts', {
+    title: 'Admin – Admin accounts',
+    q,
+    page: safePage,
+    pageSize,
+    pageCount,
+    total,
+    admins,
+  });
+});
+
+router.post('/admin-accounts/:id/disable', requireSuperAdmin, (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      req.session.flash = { type: 'error', message: 'Invalid user id.' };
+      return res.redirect('/admin/admin-accounts');
+    }
+
+    if (req.session?.user?.user_id === id) {
+      req.session.flash = { type: 'error', message: 'You cannot disable your own account.' };
+      return res.redirect('/admin/admin-accounts');
+    }
+
+    const target = userRepo.getById(id);
+    if (!target || !target.is_admin) {
+      req.session.flash = { type: 'error', message: 'Admin account not found.' };
+      return res.redirect('/admin/admin-accounts');
+    }
+    if (target.is_super_admin) {
+      req.session.flash = { type: 'error', message: 'Main admin account cannot be disabled here.' };
+      return res.redirect('/admin/admin-accounts');
+    }
+    if (target.is_closed) {
+      req.session.flash = { type: 'info', message: 'This sub-admin is already disabled.' };
+      return res.redirect('/admin/admin-accounts');
+    }
+
+    userRepo.closeAccount(id);
+    req.session.flash = { type: 'success', message: 'Sub-admin disabled.' };
+    return res.redirect('/admin/admin-accounts');
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.post('/admin-accounts/:id/enable', requireSuperAdmin, (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      req.session.flash = { type: 'error', message: 'Invalid user id.' };
+      return res.redirect('/admin/admin-accounts');
+    }
+
+    const target = userRepo.getById(id);
+    if (!target || !target.is_admin) {
+      req.session.flash = { type: 'error', message: 'Admin account not found.' };
+      return res.redirect('/admin/admin-accounts');
+    }
+    if (target.is_super_admin) {
+      req.session.flash = { type: 'error', message: 'Main admin account cannot be enabled here.' };
+      return res.redirect('/admin/admin-accounts');
+    }
+    if (!target.is_closed) {
+      req.session.flash = { type: 'info', message: 'This sub-admin is already enabled.' };
+      return res.redirect('/admin/admin-accounts');
+    }
+
+    userRepo.reopenAccount(id);
+    req.session.flash = { type: 'success', message: 'Sub-admin enabled.' };
+    return res.redirect('/admin/admin-accounts');
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.get('/activity', requireAdmin, (req, res) => {
+  const page = Math.max(1, Number(req.query.page || 1) || 1);
+  const pageSize = Math.min(200, Math.max(10, Number(req.query.pageSize || 50) || 50));
+  const q = String(req.query.q || '').trim();
+  const actorUserId = String(req.query.actorUserId || '').trim();
+
+  // Defaults to settings-only; can be switched to show all logs for debugging.
+  const scopeRaw = String(req.query.scope || 'all').trim().toLowerCase();
+  const scope = scopeRaw === 'all' ? 'all' : 'settings';
+
+  const total = adminActivityRepo.countAdmin({
+    q,
+    actorUserId: actorUserId ? Number(actorUserId) : null,
+    scope,
+  });
+  const pageCount = getPageCount(total, pageSize);
+  const safePage = Math.min(page, Math.max(1, pageCount || 1));
+  const { limit, offset } = getPagination(safePage, pageSize);
+
+  const events = adminActivityRepo.listAdmin({
+    q,
+    actorUserId: actorUserId ? Number(actorUserId) : null,
+    scope,
+    limit,
+    offset,
+  });
+
+  return res.render('admin/activity', {
+    title: scope === 'all' ? 'Admin – Activity' : 'Admin – Settings history',
+    q,
+    actorUserId,
+    scope,
+    page: safePage,
+    pageSize,
+    pageCount,
+    total,
+    events,
+  });
+});
+
+router.post(
+  '/admin-accounts/create',
+  requireSuperAdmin,
+  validate(
+    z.object({
+      body: z.object({
+        username: z.string().trim().min(3).max(32),
+        email: z.string().trim().email().max(128),
+        password: z.string().min(8).max(200),
+      }),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      const { username, email, password } = req.validated.body;
+
+      // Prevent accidental collision with env allowlist identities.
+      if (computeIsAdmin({ username, email })) {
+        req.session.flash = { type: 'error', message: 'Username or email is reserved.' };
+        return res.redirect('/admin/admin-accounts');
+      }
+
+      const existingU = userRepo.findByUsernameOrEmail(username);
+      const existingE = userRepo.findByUsernameOrEmail(email);
+      if (existingU || existingE) {
+        req.session.flash = { type: 'error', message: 'Username or email already in use.' };
+        return res.redirect('/admin/admin-accounts');
+      }
+
+      const password_hash = await bcrypt.hash(password, 12);
+      userRepo.create({
+        username,
+        email,
+        password_hash,
+        is_admin: 1,
+        is_super_admin: 0,
+      });
+
+      req.session.flash = { type: 'success', message: 'Admin account created.' };
+      return res.redirect('/admin/admin-accounts');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
 
 function csvCell(value) {
   if (value == null) return '';
@@ -541,9 +719,8 @@ router.get('/settings', (req, res) => {
     return !p.archived;
   });
 
-  const offlineTransferBanks = offlineTransferService.getBanks();
-
-  const fiuuSettings = fiuuAccountsService.getAdminSettingsViewModel();
+  const adminNotifyTo = settingsRepo.get('email.admin_notify.to', '') || '';
+  const adminNotifyCc = settingsRepo.get('email.admin_notify.cc', '') || '';
 
   return res.render('admin/settings', {
     title: 'Admin – Settings',
@@ -557,10 +734,21 @@ router.get('/settings', (req, res) => {
     contactFacebookUrl,
     lowStockThreshold,
     promos,
+    adminNotifyTo,
+    adminNotifyCc,
+    promosView: promosView === 'ALL' || promosView === 'ARCHIVED' || promosView === 'ACTIVE' ? promosView : 'ACTIVE',
+  });
+});
+
+router.get('/settings/payment', (req, res) => {
+  const offlineTransferBanks = offlineTransferService.getBanks();
+  const fiuuSettings = fiuuAccountsService.getAdminSettingsViewModel();
+
+  return res.render('admin/payment_settings', {
+    title: 'Admin – Payment',
     offlineTransferBanks,
     fiuuAccounts: fiuuSettings.accounts,
     fiuuDefaultAccountId: fiuuSettings.defaultId,
-    promosView: promosView === 'ALL' || promosView === 'ARCHIVED' || promosView === 'ACTIVE' ? promosView : 'ACTIVE',
   });
 });
 
@@ -576,6 +764,29 @@ router.post(
   ),
   (req, res, next) => {
     try {
+      const beforeFiuu = (() => {
+        try {
+          const vm = fiuuAccountsService.getAdminSettingsViewModel();
+          return {
+            defaultId: vm.defaultId || '',
+            accounts: (vm.accounts || []).map((a) => ({
+              id: String(a.id || '').trim(),
+              label: String(a.label || '').trim(),
+              merchantId: String(a.merchantId || '').trim(),
+              gatewayUrl: String(a.gatewayUrl || '').trim(),
+              currency: String(a.currency || '').trim(),
+              paymentMethod: String(a.paymentMethod || '').trim(),
+              requestMethod: String(a.requestMethod || '').trim(),
+              vcodeMode: String(a.vcodeMode || '').trim(),
+              // Do NOT include verify/secret keys.
+              hasKeys: Boolean(String(a.verifyKey || '').trim() && String(a.secretKey || '').trim()),
+            })),
+          };
+        } catch (_) {
+          return null;
+        }
+      })();
+
       const body = req.validated.body || {};
 
       const toArray = (v) => {
@@ -611,7 +822,7 @@ router.post(
 
         if (!id) {
           req.session.flash = { type: 'error', message: 'Each FIUU account row must have an internal id. Please re-add the row.' };
-          return res.redirect('/admin/settings#payment-gateway');
+          return res.redirect('/admin/settings/payment#payment-gateway');
         }
 
         accounts.push({
@@ -625,7 +836,7 @@ router.post(
 
       if (accounts.length > 50) {
         req.session.flash = { type: 'error', message: 'Too many FIUU accounts (max 50).' };
-        return res.redirect('/admin/settings#payment-gateway');
+        return res.redirect('/admin/settings/payment#payment-gateway');
       }
 
       const defaultAccountId = String(body.default_account_id || '').trim();
@@ -635,12 +846,51 @@ router.post(
         defaultId: defaultAccountId,
       });
 
+      // Audit: FIUU settings change (sanitized; no secrets).
+      try {
+        const afterVm = fiuuAccountsService.getAdminSettingsViewModel();
+        const afterFiuu = {
+          defaultId: afterVm.defaultId || '',
+          accounts: (afterVm.accounts || []).map((a) => ({
+            id: String(a.id || '').trim(),
+            label: String(a.label || '').trim(),
+            merchantId: String(a.merchantId || '').trim(),
+            gatewayUrl: String(a.gatewayUrl || '').trim(),
+            currency: String(a.currency || '').trim(),
+            paymentMethod: String(a.paymentMethod || '').trim(),
+            requestMethod: String(a.requestMethod || '').trim(),
+            vcodeMode: String(a.vcodeMode || '').trim(),
+            hasKeys: Boolean(String(a.verifyKey || '').trim() && String(a.secretKey || '').trim()),
+          })),
+        };
+
+        const changes = computeFieldChanges({
+          before: { snapshot: beforeFiuu ? JSON.stringify(beforeFiuu) : '' },
+          after: { snapshot: JSON.stringify(afterFiuu) },
+          fields: [{ key: 'snapshot', label: 'FIUU accounts' }],
+        });
+
+        if (changes.length) {
+          logAdminChange({
+            req,
+            verb: 'Updated',
+            entity: 'settings',
+            entityLabel: 'Payment settings',
+            entityId: null,
+            changes,
+            meta: { area: 'fiuu_accounts' },
+          });
+        }
+      } catch (_) {
+        // ignore audit failures
+      }
+
       req.session.flash = { type: 'success', message: 'FIUU payment accounts saved.' };
-      return res.redirect('/admin/settings#payment-gateway');
+      return res.redirect('/admin/settings/payment#payment-gateway');
     } catch (e) {
       if (e && e.status === 400) {
         req.session.flash = { type: 'error', message: e.message };
-        return res.redirect('/admin/settings#payment-gateway');
+        return res.redirect('/admin/settings/payment#payment-gateway');
       }
       return next(e);
     }
@@ -659,6 +909,27 @@ router.post(
   ),
   (req, res, next) => {
     try {
+      const maskAcct = (s) => {
+        const raw = String(s || '').trim();
+        if (!raw) return '';
+        const last4 = raw.slice(-4);
+        return raw.length > 4 ? `****${last4}` : `****${last4}`;
+      };
+
+      const beforeBanks = (() => {
+        try {
+          return (offlineTransferService.getBanks() || []).map((b) => ({
+            id: String(b.id || '').trim(),
+            bank: String(b.bank || '').trim(),
+            account_no: maskAcct(b.account_no),
+            account_name: String(b.account_name || '').trim(),
+            display_at_checkout: Boolean(b.display_at_checkout),
+          }));
+        } catch (_) {
+          return null;
+        }
+      })();
+
       const body = req.validated.body || {};
 
       const toArray = (v) => {
@@ -687,12 +958,12 @@ router.post(
 
         if (!id) {
           req.session.flash = { type: 'error', message: 'Each bank row must have an internal id. Please re-add the row.' };
-          return res.redirect('/admin/settings#offline-transfer');
+          return res.redirect('/admin/settings/payment#offline-transfer');
         }
 
         if (!bank || !account_no || !account_name) {
           req.session.flash = { type: 'error', message: 'Bank, Account No, and Account Name are required for each row.' };
-          return res.redirect('/admin/settings#offline-transfer');
+          return res.redirect('/admin/settings/payment#offline-transfer');
         }
 
         out.push({
@@ -706,17 +977,104 @@ router.post(
 
       if (out.length > 50) {
         req.session.flash = { type: 'error', message: 'Too many bank accounts (max 50).' };
-        return res.redirect('/admin/settings#offline-transfer');
+        return res.redirect('/admin/settings/payment#offline-transfer');
       }
 
       if (out.length > 0 && out.every((b) => !b.display_at_checkout)) {
         req.session.flash = { type: 'error', message: 'Please enable “Show at checkout” for at least one bank.' };
-        return res.redirect('/admin/settings#offline-transfer');
+        return res.redirect('/admin/settings/payment#offline-transfer');
       }
 
       offlineTransferService.saveBanks(out);
+
+      // Audit: offline transfer bank settings change.
+      try {
+        const afterBanks = (offlineTransferService.getBanks() || []).map((b) => ({
+          id: String(b.id || '').trim(),
+          bank: String(b.bank || '').trim(),
+          account_no: maskAcct(b.account_no),
+          account_name: String(b.account_name || '').trim(),
+          display_at_checkout: Boolean(b.display_at_checkout),
+        }));
+
+        const changes = computeFieldChanges({
+          before: { snapshot: beforeBanks ? JSON.stringify(beforeBanks) : '' },
+          after: { snapshot: JSON.stringify(afterBanks) },
+          fields: [{ key: 'snapshot', label: 'Offline transfer banks' }],
+        });
+
+        if (changes.length) {
+          logAdminChange({
+            req,
+            verb: 'Updated',
+            entity: 'settings',
+            entityLabel: 'Payment settings',
+            entityId: null,
+            changes,
+            meta: { area: 'offline_transfer_banks' },
+          });
+        }
+      } catch (_) {
+        // ignore audit failures
+      }
+
       req.session.flash = { type: 'success', message: 'Offline transfer bank accounts saved.' };
-      return res.redirect('/admin/settings#offline-transfer');
+      return res.redirect('/admin/settings/payment#offline-transfer');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/site/admin-email-notifications',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z
+        .object({
+          admin_notify_to: z.string().trim().max(500).optional().or(z.literal('')),
+          admin_notify_cc: z.string().trim().max(500).optional().or(z.literal('')),
+        })
+        .passthrough(),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const beforeTo = settingsRepo.get('email.admin_notify.to', '') || '';
+      const beforeCc = settingsRepo.get('email.admin_notify.cc', '') || '';
+
+      const to = String(req.validated.body.admin_notify_to || '').trim();
+      const cc = String(req.validated.body.admin_notify_cc || '').trim();
+
+      settingsRepo.set('email.admin_notify.to', to);
+      settingsRepo.set('email.admin_notify.cc', cc);
+
+      const changes = computeFieldChanges({
+        before: { to: beforeTo, cc: beforeCc },
+        after: { to, cc },
+        fields: [
+          { key: 'to', label: 'To' },
+          { key: 'cc', label: 'CC' },
+        ],
+      });
+
+      if (changes.length) {
+        logAdminChange({
+          req,
+          verb: 'Updated',
+          entity: 'settings',
+          entityLabel: 'Email notifications',
+          entityId: null,
+          changes,
+          meta: { area: 'admin_email_notifications' },
+        });
+      }
+
+      req.session.flash = { type: 'success', message: 'Admin email notification settings saved.' };
+      return res.redirect('/admin/settings#email-notifications');
     } catch (e) {
       return next(e);
     }
@@ -739,6 +1097,8 @@ router.post(
   ),
   (req, res, next) => {
     try {
+      const before = String(settingsRepo.get('inventory.low_stock_threshold', '5') || '').trim();
+
       const raw = String(req.validated.body.low_stock_threshold || '').trim();
       const n = raw ? Number(raw) : 5;
       const threshold = Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
@@ -747,6 +1107,24 @@ router.post(
         return res.redirect('/admin/settings#inventory');
       }
       settingsRepo.set('inventory.low_stock_threshold', String(threshold));
+
+      const changes = computeFieldChanges({
+        before: { low_stock_threshold: before },
+        after: { low_stock_threshold: String(threshold) },
+        fields: [{ key: 'low_stock_threshold', label: 'Low stock threshold' }],
+      });
+      if (changes.length) {
+        logAdminChange({
+          req,
+          verb: 'Updated',
+          entity: 'settings',
+          entityLabel: 'Inventory settings',
+          entityId: null,
+          changes,
+          meta: { area: 'inventory' },
+        });
+      }
+
       req.session.flash = { type: 'success', message: 'Inventory settings saved.' };
       return res.redirect('/admin/settings#inventory');
     } catch (e) {
@@ -1239,6 +1617,16 @@ router.post(
   ),
   (req, res, next) => {
     try {
+      const keys = [
+        'site.footer.technician_support_url',
+        'site.footer.copyright',
+        'site.contact.phone',
+        'site.contact.whatsapp',
+        'site.contact.email',
+        'site.contact.address',
+        'site.contact.facebook_url',
+      ];
+      const before = settingsRepo.getMany(keys);
       const rawUrl = String(req.validated.body.technician_support_url || '').trim();
       const technicianUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : '';
 
@@ -1260,6 +1648,32 @@ router.post(
        settingsRepo.set('site.contact.email', contactEmail);
        settingsRepo.set('site.contact.address', contactAddress);
        settingsRepo.set('site.contact.facebook_url', facebookUrl);
+
+      const after = settingsRepo.getMany(keys);
+      const changes = computeFieldChanges({
+        before,
+        after,
+        fields: [
+          { key: 'site.footer.technician_support_url', label: 'Technician support URL' },
+          { key: 'site.footer.copyright', label: 'Footer copyright' },
+          { key: 'site.contact.phone', label: 'Contact phone' },
+          { key: 'site.contact.whatsapp', label: 'Contact WhatsApp' },
+          { key: 'site.contact.email', label: 'Contact email' },
+          { key: 'site.contact.address', label: 'Contact address' },
+          { key: 'site.contact.facebook_url', label: 'Facebook URL' },
+        ],
+      });
+      if (changes.length) {
+        logAdminChange({
+          req,
+          verb: 'Updated',
+          entity: 'settings',
+          entityLabel: 'Footer & contact',
+          entityId: null,
+          changes,
+          meta: { area: 'footer_pages' },
+        });
+      }
 
       req.session.flash = { type: 'success', message: 'Footer & pages updated.' };
       return res.redirect('/admin/settings#footer-pages');
@@ -1403,9 +1817,32 @@ function savePageEditor(slug) {
         throw err;
       }
 
+      const beforeHtml = settingsRepo.get(meta.keyHtml, '');
+
       const raw = String(req.validated.body.content_html || '');
       const clean = sanitizeHtmlFragment(raw);
       settingsRepo.set(meta.keyHtml, clean);
+
+      const changes = computeFieldChanges({
+        before: {
+          content: `${previewValue(beforeHtml || '', { max: 120 })} (len ${String(beforeHtml || '').length})`,
+        },
+        after: {
+          content: `${previewValue(clean || '', { max: 120 })} (len ${String(clean || '').length})`,
+        },
+        fields: [{ key: 'content', label: `${meta.title} content` }],
+      });
+      if (changes.length) {
+        logAdminChange({
+          req,
+          verb: 'Updated',
+          entity: 'settings',
+          entityLabel: `${meta.title} page`,
+          entityId: null,
+          changes,
+          meta: { area: `page_${meta.slug}`, settingKey: meta.keyHtml },
+        });
+      }
 
       // Keep the uploads folder clean: delete any orphaned editor images.
       purgeOrphanedSitePageImages();
@@ -1555,6 +1992,8 @@ router.post(
   ),
   async (req, res, next) => {
     try {
+      const beforeLogo = settingsRepo.get('site.logo.image', '') || '';
+
       if (req.validated.body.clear_logo === '1') {
         settingsRepo.set('site.logo.image', '');
       }
@@ -1567,6 +2006,24 @@ router.post(
         } catch (_) {
           // ignore
         }
+      }
+
+      const afterLogo = settingsRepo.get('site.logo.image', '') || '';
+      const changes = computeFieldChanges({
+        before: { logo: beforeLogo },
+        after: { logo: afterLogo },
+        fields: [{ key: 'logo', label: 'Site logo' }],
+      });
+      if (changes.length) {
+        logAdminChange({
+          req,
+          verb: 'Updated',
+          entity: 'settings',
+          entityLabel: 'Branding',
+          entityId: null,
+          changes,
+          meta: { area: 'branding' },
+        });
       }
 
       req.session.flash = { type: 'success', message: 'Branding updated.' };
@@ -2573,6 +3030,36 @@ router.post(
         }
       }
 
+      // Audit: creation snapshot (treat as from "" to value).
+      try {
+        const after = inventoryRepo.getById(created.product_id);
+        if (after) {
+          const changes = computeFieldChanges({
+            before: {},
+            after,
+            fields: [
+              { key: 'name', label: 'Name' },
+              { key: 'category', label: 'Category' },
+              { key: 'price', label: 'Price (RM)', format: (v) => formatMoneyRm2(v) },
+              { key: 'stock', label: 'Stock' },
+              { key: 'visibility', label: 'Visible' },
+              { key: 'archived', label: 'Archived' },
+            ],
+          });
+          logAdminChange({
+            req,
+            verb: 'Created',
+            entity: 'product',
+            entityLabel: 'Product',
+            entityId: created.product_id,
+            changes,
+            meta: { productName: after.name || null },
+          });
+        }
+      } catch (_) {
+        // ignore audit failures
+      }
+
       req.session.flash = { type: 'success', message: 'Product created.' };
       return res.redirect('/admin/products');
     } catch (e) {
@@ -2695,6 +3182,52 @@ router.post(
         product_image: imagePath,
       });
 
+      // Audit: field-level changes.
+      try {
+        const after = inventoryRepo.getById(id);
+        if (after) {
+          const changes = computeFieldChanges({
+            before: {
+              ...product,
+              description_preview: previewValue(product.description || '', { max: 120 }),
+            },
+            after: {
+              ...after,
+              description_preview: previewValue(after.description || '', { max: 120 }),
+            },
+            fields: [
+              { key: 'name', label: 'Name' },
+              { key: 'category', label: 'Category' },
+              { key: 'price', label: 'Price (RM)', format: (v) => formatMoneyRm2(v) },
+              { key: 'cost_price', label: 'Cost (RM)', format: (v) => (v == null ? '' : formatMoneyRm2(v)) },
+              { key: 'stock', label: 'Stock' },
+              { key: 'visibility', label: 'Visible' },
+              { key: 'archived', label: 'Archived' },
+              { key: 'weight_kg', label: 'Weight (kg)' },
+              { key: 'height_cm', label: 'Height (cm)' },
+              { key: 'length_cm', label: 'Length (cm)' },
+              { key: 'width_cm', label: 'Width (cm)' },
+              { key: 'product_image', label: 'Main image' },
+              { key: 'description_preview', label: 'Description' },
+            ],
+          });
+
+          if (changes.length) {
+            logAdminChange({
+              req,
+              verb: 'Updated',
+              entity: 'product',
+              entityLabel: 'Product',
+              entityId: id,
+              changes,
+              meta: { productName: after.name || null },
+            });
+          }
+        }
+      } catch (_) {
+        // ignore audit failures
+      }
+
       req.session.flash = { type: 'success', message: 'Product updated.' };
       return res.redirect('/admin/products');
     } catch (e) {
@@ -2722,6 +3255,29 @@ router.post(
       }
 
       const removed = productImageRepo.deleteById({ id: imageId, productId });
+
+      // Audit: image removal.
+      try {
+        logAdminChange({
+          req,
+          verb: 'Deleted',
+          entity: 'product_image',
+          entityLabel: 'Product image',
+          entityId: imageId,
+          changes: [
+            { field: 'product_id', label: 'Product', before: '', after: String(productId) },
+            {
+              field: 'image_url',
+              label: 'Image URL',
+              before: removed && removed.image_url ? String(removed.image_url) : '',
+              after: '',
+            },
+          ],
+          meta: { productId },
+        });
+      } catch (_) {
+        // ignore audit failures
+      }
       if (removed && removed.image_url) {
         const url = String(removed.image_url || '');
         if (url.startsWith('/uploads/products/')) {

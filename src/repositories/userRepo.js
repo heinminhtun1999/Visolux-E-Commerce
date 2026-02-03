@@ -14,6 +14,8 @@ function mapUser(row) {
     city: row.city,
     state: row.state,
     postcode: row.postcode,
+    is_admin: Number(row.is_admin || 0) ? 1 : 0,
+    is_super_admin: Number(row.is_super_admin || 0) ? 1 : 0,
     is_closed: Number(row.is_closed || 0) ? 1 : 0,
     closed_at: row.closed_at || null,
     password_reset_token_hash: row.password_reset_token_hash,
@@ -38,11 +40,24 @@ function findByUsernameOrEmail(identifier) {
   );
 }
 
-function create({ username, email, password_hash, phone, address, address_line1, address_line2, city, state, postcode }) {
+function create({
+  username,
+  email,
+  password_hash,
+  phone,
+  address,
+  address_line1,
+  address_line2,
+  city,
+  state,
+  postcode,
+  is_admin,
+  is_super_admin,
+}) {
   const db = getDb();
   const stmt = db.prepare(
-    `INSERT INTO users (username, email, password_hash, phone, address, address_line1, address_line2, city, state, postcode)
-     VALUES (@username, @email, @password_hash, @phone, @address, @address_line1, @address_line2, @city, @state, @postcode)`
+    `INSERT INTO users (username, email, password_hash, phone, address, address_line1, address_line2, city, state, postcode, is_admin, is_super_admin)
+     VALUES (@username, @email, @password_hash, @phone, @address, @address_line1, @address_line2, @city, @state, @postcode, @is_admin, @is_super_admin)`
   );
   const result = stmt.run({
     username,
@@ -55,8 +70,44 @@ function create({ username, email, password_hash, phone, address, address_line1,
     city: city || null,
     state: state || null,
     postcode: postcode || null,
+    is_admin: is_admin ? 1 : 0,
+    is_super_admin: is_super_admin ? 1 : 0,
   });
   return getById(result.lastInsertRowid);
+}
+
+function listAdminAccounts({ q, limit, offset } = {}) {
+  const db = getDb();
+  const where = ['is_admin=1'];
+  const params = { limit, offset };
+
+  const query = String(q || '').trim();
+  if (query) {
+    where.push('(username LIKE @q OR email LIKE @q)');
+    params.q = `%${query}%`;
+  }
+
+  const sql = `SELECT * FROM users
+    WHERE ${where.join(' AND ')}
+    ORDER BY is_super_admin DESC, created_at DESC, user_id DESC
+    LIMIT @limit OFFSET @offset`;
+
+  return db.prepare(sql).all(params).map(mapUser);
+}
+
+function countAdminAccounts({ q } = {}) {
+  const db = getDb();
+  const where = ['is_admin=1'];
+  const params = {};
+
+  const query = String(q || '').trim();
+  if (query) {
+    where.push('(username LIKE @q OR email LIKE @q)');
+    params.q = `%${query}%`;
+  }
+
+  const sql = `SELECT COUNT(*) as c FROM users WHERE ${where.join(' AND ')}`;
+  return db.prepare(sql).get(params).c;
 }
 
 function updateProfile(userId, { email, phone, address, address_line1, address_line2, city, state, postcode }) {
@@ -217,6 +268,8 @@ module.exports = {
   findByValidPasswordResetTokenHash,
   listAdmin,
   countAdmin,
+  listAdminAccounts,
+  countAdminAccounts,
   closeAccount,
   reopenAccount,
 };

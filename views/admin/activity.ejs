@@ -1,0 +1,121 @@
+<%- include('../shared/top', { title }) %>
+
+<% const scopeSafe = (typeof scope !== 'undefined' && scope) ? String(scope) : 'all'; %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end; gap:12px">
+  <div>
+    <h1 class="h1"><%= scopeSafe === 'all' ? 'Activity' : 'Settings history' %></h1>
+    <% if (scopeSafe === 'all') { %>
+      <div class="muted small">All admin logs (useful for debugging).</div>
+    <% } else { %>
+      <div class="muted small">Tracks configuration changes made by admins (not page views).</div>
+    <% } %>
+  </div>
+</div>
+
+<div class="card card--pad card--mt">
+  <form method="get" action="/admin/activity" class="row" style="align-items:flex-end; gap:10px">
+    <div class="col" style="min-width:260px">
+      <label>Search</label>
+      <input class="input" name="q" value="<%= q %>" placeholder="search by action or user" />
+    </div>
+
+    <div style="width:180px">
+      <label>Show</label>
+      <select name="scope">
+        <% const scopes = [{ v: 'all', label: 'All changes' }, { v: 'settings', label: 'Settings only' }]; %>
+        <% scopes.forEach(s => { %>
+          <option value="<%= s.v %>" <%= scopeSafe === String(s.v) ? 'selected' : '' %>><%= s.label %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div style="width:200px">
+      <label>Actor user ID</label>
+      <input class="input" name="actorUserId" value="<%= actorUserId %>" placeholder="e.g. 1" inputmode="numeric" />
+    </div>
+
+    <div style="width:160px">
+      <label>Per page</label>
+      <select name="pageSize">
+        <% [25,50,100,200].forEach(n => { %>
+          <option value="<%= n %>" <%= String(pageSize) === String(n) ? 'selected' : '' %>><%= n %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="actions" style="margin-left:auto">
+      <button class="btn btn-primary" type="submit">Apply</button>
+      <a class="btn" href="/admin/activity">Clear</a>
+    </div>
+  </form>
+
+  <div style="margin-top:12px" class="muted small"><%= total %> total</div>
+
+  <div style="overflow:auto; margin-top:12px">
+    <table class="table" data-table-sort>
+      <thead>
+        <tr>
+          <th data-sort="string">When</th>
+          <th data-sort="string">Actor</th>
+          <th data-sort="string">Action</th>
+          <th data-sort="string">Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!events || !events.length) { %>
+          <tr><td colspan="4" class="muted">No activity found.</td></tr>
+        <% } else { %>
+          <% events.forEach(ev => { %>
+            <tr>
+              <td class="muted"><%= ev.created_at || '' %></td>
+              <td>
+                <strong><%= ev.actor_username %></strong>
+                <% if (ev.actor_is_super_admin) { %>
+                  <span class="badge ok" style="margin-left:6px">Main</span>
+                <% } %>
+                <div class="muted small">#<%= ev.actor_user_id %></div>
+              </td>
+              <td>
+                <div><%= ev.action || 'Performed an admin action' %></div>
+                <% const ch = ev && ev.meta && Array.isArray(ev.meta.changes) ? ev.meta.changes : []; %>
+                <% if (ch.length) { %>
+                  <div class="muted small" style="margin-top:6px">
+                    <% ch.slice(0, 8).forEach(c => { %>
+                      <div>
+                        <strong><%= c.label || c.field || 'Field' %></strong>: <%= (c.before == null || String(c.before) === '') ? '—' : c.before %> → <%= (c.after == null || String(c.after) === '') ? '—' : c.after %>
+                      </div>
+                    <% }) %>
+                    <% if (ch.length > 8) { %>
+                      <div>… (+<%= ch.length - 8 %> more)</div>
+                    <% } %>
+                  </div>
+                <% } %>
+              </td>
+              <td>
+                <% if (ev.status_code != null && ev.status_code >= 400) { %>
+                  <span class="badge no">Failed</span>
+                <% } else { %>
+                  <span class="badge ok">OK</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager">
+    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
+    <% const _qs = (extra) => new URLSearchParams({ q, actorUserId, pageSize: String(pageSize), scope: scopeSafe, ...extra }).toString(); %>
+    <% if (page > 1) { %>
+      <a href="/admin/activity?<%= _qs({ page: String(page - 1) }) %>">Prev</a>
+    <% } %>
+    <% if (page < pageCount) { %>
+      <a href="/admin/activity?<%= _qs({ page: String(page + 1) }) %>">Next</a>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../shared/bottom') %>

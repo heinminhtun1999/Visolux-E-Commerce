@@ -102,6 +102,45 @@ function icon(name, opts = {}) {
         <path d="M16 10a4 4 0 0 1-8 0"/>
         `
       );
+    case 'credit-card':
+    case 'payment':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <rect x="2" y="5" width="20" height="14" rx="2"/>
+        <path d="M2 10h20"/>
+        <path d="M6 15h4"/>
+        `
+      );
+    case 'truck':
+    case 'delivery':
+    case 'shipping':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M3 7h11v10H3z"/>
+        <path d="M14 10h4l3 3v4h-7z"/>
+        <circle cx="7.5" cy="19" r="1.5"/>
+        <circle cx="18" cy="19" r="1.5"/>
+        `
+      );
+    case 'activity':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M22 12h-4l-3 9-4-18-3 9H2"/>
+        `
+      );
+    case 'user-plus':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="8.5" cy="7" r="4"/>
+        <path d="M20 8v6"/>
+        <path d="M17 11h6"/>
+        `
+      );
     case 'users':
     case 'customers':
       return svg(
