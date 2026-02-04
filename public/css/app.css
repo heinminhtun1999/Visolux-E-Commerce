@@ -92,10 +92,9 @@ body{
 .site-header{
   display:flex;
   align-items:center;
-  justify-content:space-between;
   gap:12px;
 }
-.site-header__actions{align-items:center; justify-content:flex-end}
+.site-header__actions{align-items:center; justify-content:flex-end; margin-left: auto;}
 .site-header__actions.actions.icon-row{padding-top:0; padding-right:0; align-items:center}
 
 .admin-whoami{
@@ -142,7 +141,7 @@ html[data-theme="dark"] .site-header--sticky{
 .theme-icon--sun{display:none}
 html[data-theme="dark"] .theme-icon--sun{display:inline-flex}
 html[data-theme="dark"] .theme-icon--moon{display:none}
-.site-header__brand{flex:1; display:flex; justify-content:flex-start}
+.site-header__brand{display:flex; justify-content:flex-start}
 .site-header__brand{align-items:center; gap:10px}
 .site-brand{
   display:flex;
