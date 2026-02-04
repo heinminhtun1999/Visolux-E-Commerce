@@ -2510,7 +2510,6 @@ router.post(
     z.object({
       body: z.object({
         name: z.string().trim().min(2).max(80),
-        slug: z.string().trim().max(80).optional().or(z.literal('')),
         visible: z.string().optional(),
         fiuu_account_id: z.string().trim().max(128).optional().or(z.literal('')),
       }),
@@ -2521,8 +2520,7 @@ router.post(
   (req, res, next) => {
     try {
       const name = req.validated.body.name;
-      let slug = String(req.validated.body.slug || '').trim();
-      if (!slug) slug = slugifyCategory(name);
+      let slug = slugifyCategory(name);
       slug = assertValidCategorySlug(slug);
 
       // Ensure uniqueness; auto-suffix if needed.
@@ -2563,7 +2561,6 @@ router.post(
     z.object({
       body: z.object({
         name: z.string().trim().min(2).max(80),
-        slug: z.string().trim().min(2).max(80),
         fiuu_account_id: z.string().trim().max(128).optional().or(z.literal('')),
       }),
       params: z.object({ id: z.string() }),
@@ -2585,26 +2582,13 @@ router.post(
         throw err;
       }
 
-      const slug = assertValidCategorySlug(String(req.validated.body.slug || '').trim());
-      const existing = categoryRepo.getBySlug(slug);
-      if (existing && existing.id !== id) {
-        const err = new Error('Category slug already exists.');
-        err.status = 400;
-        throw err;
-      }
-
-      if (current.slug !== slug) {
-        inventoryRepo.updateCategorySlug(current.slug, slug);
-      }
-      categoryRepo.update(id, { name: req.validated.body.name, slug });
+      // Slugs are immutable after creation; update name only.
+      categoryRepo.update(id, { name: req.validated.body.name });
 
       const selectedAccountId = String(req.validated.body.fiuu_account_id || '').trim();
       if (selectedAccountId) {
-        fiuuAccountsService.setCategoryAccountForSlug({ slug, accountId: selectedAccountId });
+        fiuuAccountsService.setCategoryAccountForSlug({ slug: current.slug, accountId: selectedAccountId });
       } else {
-        fiuuAccountsService.clearCategoryMappingForSlug(slug);
-      }
-      if (current.slug !== slug) {
         fiuuAccountsService.clearCategoryMappingForSlug(current.slug);
       }
 
