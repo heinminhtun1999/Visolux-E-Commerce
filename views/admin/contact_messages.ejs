@@ -25,7 +25,7 @@
 
     <div class="actions" style="gap:8px">
       <button class="btn btn-primary" type="submit">Filter</button>
-      <a class="btn" href="/admin/contact-messages">Reset</a>
+      <button class="btn" type="button" data-href="/admin/contact-messages">Reset</button>
     </div>
   </form>
 </div>
@@ -61,7 +61,7 @@
           </td>
           <td>
             <div class="actions icon-row">
-              <a class="btn btn-icon icon-only" href="/admin/contact-messages/<%= m.id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></a>
+              <button class="btn btn-icon icon-only" type="button" data-href="/admin/contact-messages/<%= m.id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></button>
             </div>
           </td>
         </tr>

@@ -6,7 +6,7 @@
     <div class="muted small"><%= total %> slips</div>
   </div>
   <div class="actions">
-    <a class="btn" href="/orders/history">Orders</a>
+    <button class="btn" type="button" data-href="/orders/history">Orders</button>
   </div>
 </div>
 
@@ -67,7 +67,7 @@
           </td>
           <td><%= r.slip.bank_name %></td>
           <td><%= r.slip.reference_number %></td>
-          <td><a class="btn" href="/orders/<%= r.order.order_id %>">View order</a></td>
+          <td><button class="btn" type="button" data-href="/orders/<%= r.order.order_id %>">View order</button></td>
         </tr>
       <% }) %>
     </tbody>

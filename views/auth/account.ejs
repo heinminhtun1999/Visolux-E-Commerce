@@ -6,9 +6,9 @@
     <div class="muted small">Manage contact details and password</div>
   </div>
   <div class="actions">
-    <a class="btn" href="/">Home</a>
+    <button class="btn" type="button" data-href="/">Home</button>
     <% if (!isAdmin) { %>
-      <a class="btn" href="/orders/history">Orders</a>
+      <button class="btn" type="button" data-href="/orders/history">Orders</button>
     <% } %>
   </div>
 </div>

@@ -29,10 +29,10 @@
     <% const exportHref = `/admin/exports/products.csv?${baseQs.toString()}`; %>
 
     <div class="actions-group">
-      <a class="btn btn-secondary btn-icon" href="<%= exportHref %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
+      <button class="btn btn-secondary btn-icon" type="button" data-href="<%= exportHref %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
         <%- icon('file-text') %>
         <span class="btn-text">Export</span>
-      </a>
+      </button>
 
       <button class="btn btn-secondary btn-icon" type="button" data-filters-toggle aria-controls="filters-panel" aria-expanded="true">
         <%- icon('filter') %>
@@ -45,7 +45,7 @@
         <option value="<%= gridHref %>" <%= view === 'grid' ? 'selected' : '' %>>Grid view</option>
       </select>
 
-      <a class="btn btn-primary btn-icon" href="/admin/products/new" title="New product" aria-label="New product" data-label="New"><%- icon('plus') %></a>
+      <button class="btn btn-primary btn-icon" type="button" data-href="/admin/products/new" title="New product" aria-label="New product" data-label="New"><%- icon('plus') %></button>
     </div>
   </div>
 </div>
@@ -65,7 +65,7 @@
         <strong><%= Number(lowStockCount || 0) %></strong> product(s) at or below <strong><%= lowT %></strong> units
       </span>
     </div>
-    <a class="btn btn-secondary" href="<%= lowStockHref %>">View low stock</a>
+    <button class="btn btn-secondary" type="button" data-href="<%= lowStockHref %>">View low stock</button>
   </div>
 <% } %>
 
@@ -156,7 +156,7 @@
 
     <div class="actions actions_primary" style="margin-left:auto; align-items:flex-end">
       <button class="btn btn-primary" type="submit">Apply</button>
-      <a class="btn" href="/admin/products?view=<%= view || 'list' %>">Clear</a>
+      <button class="btn" type="button" data-href="/admin/products?view=<%= view || 'list' %>">Clear</button>
     </div>
   </form>
 </div>
@@ -192,7 +192,7 @@
             </div>
           </a>
           <div class="actions" style="margin-top:10px">
-            <a class="btn btn-icon" href="/admin/products/<%= p.product_id %>/edit" title="Edit" aria-label="Edit" data-label="Edit"><%- icon('edit') %></a>
+            <button class="btn btn-icon" type="button" data-href="/admin/products/<%= p.product_id %>/edit" title="Edit" aria-label="Edit" data-label="Edit"><%- icon('edit') %></button>
           </div>
         </div>
       <% }) %>
@@ -250,7 +250,7 @@
             <td><%= p.visibility ? 'Yes' : 'No' %></td>
             <td><%= p.archived ? 'Yes' : 'No' %></td>
             <td class="muted"><%= formatDateTime(p.updated_at) %></td>
-            <td><a class="btn btn-icon" href="/admin/products/<%= p.product_id %>/edit" title="Edit" aria-label="Edit" data-label="Edit"><%- icon('edit') %></a></td>
+            <td><button class="btn btn-icon" type="button" data-href="/admin/products/<%= p.product_id %>/edit" title="Edit" aria-label="Edit" data-label="Edit"><%- icon('edit') %></button></td>
           </tr>
         <% }) %>
       </tbody>

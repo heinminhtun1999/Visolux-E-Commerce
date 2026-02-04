@@ -7,8 +7,8 @@
   </p>
 
   <div class="actions" style="margin-top:12px">
-    <a class="btn btn-primary" href="/login?returnTo=<%= encodeURIComponent(returnTo || '/') %>">Sign in</a>
-    <a class="btn" href="/">Back to shop</a>
+    <button class="btn btn-primary" type="button" data-href="/login?returnTo=<%= encodeURIComponent(returnTo || '/') %>">Sign in</button>
+    <button class="btn" type="button" data-href="/">Back to shop</button>
   </div>
 
   <% if (typeof hint !== 'undefined' && hint) { %>

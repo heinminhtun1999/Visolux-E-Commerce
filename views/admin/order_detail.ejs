@@ -1,8 +1,8 @@
 <%- include('../shared/top', { title }) %>
 
 <div class="actions icon-row" style="margin-bottom:12px">
-  <a class="btn btn-icon icon-only" href="/admin/orders" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></a>
-  <a class="btn btn-icon icon-only" href="/orders/<%= order.order_id %>/receipt" title="Receipt" aria-label="Receipt" data-label="Receipt"><%- icon('view') %></a>
+  <button class="btn btn-icon icon-only" type="button" data-href="/admin/orders" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></button>
+  <button class="btn btn-icon icon-only" type="button" data-href="/orders/<%= order.order_id %>/receipt" title="Receipt" aria-label="Receipt" data-label="Receipt"><%- icon('view') %></button>
 </div>
 
 <div class="card" style="padding:16px">

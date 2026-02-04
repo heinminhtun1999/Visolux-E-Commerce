@@ -20,7 +20,7 @@
 
     <div class="actions actions_primary" style="margin-left:auto">
       <button class="btn btn-primary" type="submit">Apply</button>
-      <a class="btn" href="/admin/categories">Clear</a>
+      <button class="btn" type="button" data-href="/admin/categories">Clear</button>
     </div>
   </form>
 </div>
@@ -74,7 +74,7 @@
         <th>ID</th>
         <th>Name</th>
         <th>Slug</th>
-        <th>PG</th>
+        <th>Fiuu Merchant Account</th>
         <th>Image</th>
         <th>Visible</th>
         <th>Archived</th>
@@ -148,7 +148,7 @@
             <% } %>
           </td>
           <td>
-            <a class="btn" href="/admin/categories/<%= c.id %>/sections">Manage</a>
+            <button class="btn" type="button" data-href="/admin/categories/<%= c.id %>/sections">Manage</button>
           </td>
           <td style="white-space:nowrap">
             <form id="catForm-<%= c.id %>" method="post" action="/admin/categories/<%= c.id %>" style="display:inline">
