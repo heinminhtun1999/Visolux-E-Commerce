@@ -14,7 +14,7 @@
   </div>
 
   <div class="actions icon-row">
-    <a class="btn btn-icon" href="/admin/users" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></a>
+    <button class="btn btn-icon" type="button" data-href="/admin/users" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></button>
 
     <% if (user.is_closed) { %>
       <form method="post" action="/admin/users/<%= user.user_id %>/reopen" style="display:inline">
@@ -133,7 +133,7 @@
             <td><%= o.payment_status %></td>
             <td><%= o.fulfilment_status %></td>
             <td><%= formatMoney(o.total_amount) %></td>
-            <td><a class="btn btn-icon" href="/admin/orders/<%= o.order_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></a></td>
+            <td><button class="btn btn-icon" type="button" data-href="/admin/orders/<%= o.order_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></button></td>
           </tr>
         <% }) %>
         <% if (!(orders || []).length) { %>

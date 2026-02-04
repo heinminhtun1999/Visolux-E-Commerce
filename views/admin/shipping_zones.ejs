@@ -7,8 +7,8 @@
   </div>
   <div class="actions icon-row">
     <div class="actions-group">
-      <a class="btn btn-icon" href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></a>
-      <a class="btn btn-primary" href="/admin/site/shipping-zones/new">New zone</a>
+      <button class="btn btn-icon" type="button" data-href="/admin/settings" title="Settings" aria-label="Settings" data-label="Settings"><%- icon('gear') %></button>
+      <button class="btn btn-primary" type="button" data-href="/admin/site/shipping-zones/new">New zone</button>
     </div>
   </div>
 </div>
@@ -17,7 +17,7 @@
   <% if (!(zones || []).length) { %>
     <div class="muted">No shipping zones configured yet.</div>
     <div style="margin-top:10px">
-      <a class="btn btn-primary" href="/admin/site/shipping-zones/new">Create first zone</a>
+      <button class="btn btn-primary" type="button" data-href="/admin/site/shipping-zones/new">Create first zone</button>
     </div>
   <% } else { %>
     <table class="table">
@@ -41,7 +41,7 @@
             <td class="muted"><%= z.coverageText %></td>
             <td><%= z.methodsCount %> method<%= z.methodsCount === 1 ? '' : 's' %></td>
             <td style="text-align:right">
-              <a class="btn" href="/admin/site/shipping-zones/<%= z.id %>">Edit</a>
+              <button class="btn" type="button" data-href="/admin/site/shipping-zones/<%= z.id %>">Edit</button>
             </td>
           </tr>
         <% }) %>

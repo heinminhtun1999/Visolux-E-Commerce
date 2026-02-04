@@ -35,7 +35,7 @@
           <td>
             <div class="actions icon-row">
               <% if (n.link) { %>
-                <a class="btn btn-icon icon-only" href="/admin/notifications/<%= n.id %>/open" title="Open" aria-label="Open" data-label="Open"><%- icon('view') %></a>
+                <button class="btn btn-icon icon-only" type="button" data-href="/admin/notifications/<%= n.id %>/open" title="Open" aria-label="Open" data-label="Open"><%- icon('view') %></button>
               <% } %>
               <% if (!n.read_at) { %>
                 <form method="post" action="/admin/notifications/<%= n.id %>/read" style="display:inline">

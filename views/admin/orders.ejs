@@ -14,10 +14,10 @@
     <% if (fulfilment_status) exportQs.set('fulfilment_status', fulfilment_status); %>
     <% if (date_from) exportQs.set('date_from', date_from); %>
     <% if (date_to) exportQs.set('date_to', date_to); %>
-    <a class="btn btn-secondary btn-icon" href="/admin/exports/orders.csv?<%= exportQs.toString() %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
+    <button class="btn btn-secondary btn-icon" type="button" data-href="/admin/exports/orders.csv?<%= exportQs.toString() %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
       <%- icon('file-text') %>
       <span class="btn-text">Export</span>
-    </a>
+    </button>
   </div>
 </div>
 
@@ -105,7 +105,7 @@
           </td>
           <td><%= o.fulfilment_status %></td>
           <td><%= formatMoney(o.total_amount) %></td>
-          <td><a class="btn btn-icon" href="/admin/orders/<%= o.order_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></a></td>
+          <td><button class="btn btn-icon" type="button" data-href="/admin/orders/<%= o.order_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></button></td>
         </tr>
       <% }) %>
     </tbody>

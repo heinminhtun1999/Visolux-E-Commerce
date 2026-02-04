@@ -78,7 +78,7 @@
           <td><%= o.payment_status %></td>
           <td><%= o.fulfilment_status %></td>
           <td><%= formatMoney(o.total_amount) %></td>
-          <td><a class="btn" href="/orders/<%= o.order_id %>">View</a></td>
+          <td><button class="btn" type="button" data-href="/orders/<%= o.order_id %>">View</button></td>
         </tr>
       <% }) %>
     </tbody>

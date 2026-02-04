@@ -6,7 +6,7 @@
     <div class="muted small">Message #<%= message.id %> • <%= formatDateTime(message.created_at) %></div>
   </div>
   <div class="actions icon-row">
-    <a class="btn btn-icon icon-only" href="/admin/contact-messages" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></a>
+    <button class="btn btn-icon icon-only" type="button" data-href="/admin/contact-messages" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></button>
 
     <% if (!message.is_read) { %>
       <form method="post" action="/admin/contact-messages/<%= message.id %>/read" style="display:inline">

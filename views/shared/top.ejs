@@ -132,50 +132,50 @@
         <% const showAdminLink = _isAdmin && !isAdminArea; %>
 
         <% if (!_isAdmin) { %>
-          <a class="btn btn-icon <%= (_currentPath || '').startsWith('/cart') ? 'is-active' : '' %>" href="/cart" title="Cart" aria-label="Cart" data-label="Cart">
+          <button class="btn btn-icon <%= (_currentPath || '').startsWith('/cart') ? 'is-active' : '' %>" type="button" data-href="/cart" title="Cart" aria-label="Cart" data-label="Cart">
             <%- iconFn('cart') %>
             <span class="btn-text">Cart</span>
             <% const _cartItemCount = (typeof cartItemCount !== 'undefined' && Number.isFinite(Number(cartItemCount))) ? Number(cartItemCount) : 0; %>
             <% if (_cartItemCount > 0) { %><span class="btn-badge" aria-label="<%= _cartItemCount %> items in cart"><%= _cartItemCount %></span><% } %>
-          </a>
+          </button>
         <% } %>
 
         <% if (_currentUser && !_isAdmin) { %>
-          <a class="btn btn-icon <%= (_currentPath || '').startsWith('/orders') ? 'is-active' : '' %>" href="/orders/history" title="Orders" aria-label="Orders" data-label="Orders">
+          <button class="btn btn-icon <%= (_currentPath || '').startsWith('/orders') ? 'is-active' : '' %>" type="button" data-href="/orders/history" title="Orders" aria-label="Orders" data-label="Orders">
             <%- iconFn('orders') %>
             <span class="btn-text">Orders</span>
-          </a>
-          <a class="btn btn-icon <%= (_currentPath || '').startsWith('/account') ? 'is-active' : '' %>" href="/account" title="Account" aria-label="Account" data-label="Account">
+          </button>
+          <button class="btn btn-icon <%= (_currentPath || '').startsWith('/account') ? 'is-active' : '' %>" type="button" data-href="/account" title="Account" aria-label="Account" data-label="Account">
             <%- iconFn('user') %>
             <span class="btn-text">Account</span>
-          </a>
+          </button>
         <% } %>
 
         <% if (!_currentUser) { %>
-          <a class="btn btn-icon <%= (_currentPath || '').startsWith('/login') ? 'is-active' : '' %>" href="/login" title="Sign in" aria-label="Sign in" data-label="Sign in">
+          <button class="btn btn-icon <%= (_currentPath || '').startsWith('/login') ? 'is-active' : '' %>" type="button" data-href="/login" title="Sign in" aria-label="Sign in" data-label="Sign in">
             <%- iconFn('login') %>
             <span class="btn-text">Sign in</span>
-          </a>
+          </button>
         <% } %>
 
         <% if (showAdminBell) { %>
           <% const _adminUnreadNotificationCount = (typeof adminUnreadNotificationCount !== 'undefined' && Number.isFinite(Number(adminUnreadNotificationCount))) ? Number(adminUnreadNotificationCount) : 0; %>
-          <a class="btn btn-icon icon-only" href="/admin/notifications" title="Notifications" aria-label="Notifications" data-label="Notifications" data-admin-notification-bell>
+          <button class="btn btn-icon icon-only" type="button" data-href="/admin/notifications" title="Notifications" aria-label="Notifications" data-label="Notifications" data-admin-notification-bell>
             <%- iconFn('bell') %>
             <% if (_adminUnreadNotificationCount > 0) { %><span class="btn-badge"><%= _adminUnreadNotificationCount %></span><% } %>
-          </a>
+          </button>
         <% } %>
 
         <% if (_isAdmin) { %>
           <% const _adminUnreadContactMessageCount = (typeof adminUnreadContactMessageCount !== 'undefined' && Number.isFinite(Number(adminUnreadContactMessageCount))) ? Number(adminUnreadContactMessageCount) : 0; %>
-          <a class="btn btn-icon icon-only" href="/admin/contact-messages" title="Contact messages" aria-label="Contact messages" data-label="Contact messages">
+          <button class="btn btn-icon icon-only" type="button" data-href="/admin/contact-messages" title="Contact messages" aria-label="Contact messages" data-label="Contact messages">
             <%- iconFn('mail') %>
             <% if (_adminUnreadContactMessageCount > 0) { %><span class="btn-badge"><%= _adminUnreadContactMessageCount %></span><% } %>
-          </a>
+          </button>
         <% } %>
 
         <% if (showAdminLink) { %>
-          <a class="btn btn-icon icon-only" href="/admin" title="Admin" aria-label="Admin" data-label="Admin"><%- iconFn('user') %></a>
+          <button class="btn btn-icon icon-only" type="button" data-href="/admin" title="Admin" aria-label="Admin" data-label="Admin"><%- iconFn('user') %></button>
         <% } %>
 
         <% if (_currentUser) { %>

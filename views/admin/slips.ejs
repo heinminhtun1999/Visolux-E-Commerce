@@ -65,7 +65,7 @@
           <td><strong><%= r.order.customer_name %></strong><div class="muted small"><%= r.order.email %></div></td>
           <td>
             <div class="actions icon-row">
-              <a class="btn" href="/admin/orders/<%= r.order.order_id %>">View</a>
+              <button class="btn" type="button" data-href="/admin/orders/<%= r.order.order_id %>">View</button>
               <% if (!r.slip.verified && !r.slip.slip_deleted) { %>
                 <form method="post" action="/admin/slips/<%= r.order.order_id %>/approve" style="display:inline">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />

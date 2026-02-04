@@ -9,10 +9,10 @@
     <% const exportQs = new URLSearchParams(); %>
     <% if (q) exportQs.set('q', q); %>
     <% if (status) exportQs.set('status', status); %>
-    <a class="btn btn-secondary btn-icon" href="/admin/exports/users.csv?<%= exportQs.toString() %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
+    <button class="btn btn-secondary btn-icon" type="button" data-href="/admin/exports/users.csv?<%= exportQs.toString() %>" title="Export CSV" aria-label="Export CSV" data-label="Export">
       <%- icon('file-text') %>
       <span class="btn-text">Export</span>
-    </a>
+    </button>
   </div>
 </div>
 
@@ -64,7 +64,7 @@
             <td><%= Number(u.orders_count || 0) %></td>
             <td class="muted"><%= u.last_order_at ? formatDateTime(u.last_order_at) : '—' %></td>
             <td>
-              <a class="btn btn-icon" href="/admin/users/<%= u.user_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></a>
+              <button class="btn btn-icon" type="button" data-href="/admin/users/<%= u.user_id %>" title="View" aria-label="View" data-label="View"><%- icon('view') %></button>
             </td>
           </tr>
         <% }) %>

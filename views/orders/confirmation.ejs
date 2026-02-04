@@ -56,10 +56,10 @@
   </table>
 
   <div class="actions" style="margin-top:12px">
-    <a class="btn" href="/orders/<%= order.order_id %>">View order</a>
-    <a class="btn" href="/">Continue shopping</a>
+    <button class="btn" type="button" data-href="/orders/<%= order.order_id %>">View order</button>
+    <button class="btn" type="button" data-href="/">Continue shopping</button>
     <% if (!currentUser) { %>
-      <a class="btn" href="/register">Create account</a>
+      <button class="btn" type="button" data-href="/register">Create account</button>
     <% } %>
   </div>
 </div>

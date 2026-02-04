@@ -1,9 +1,5 @@
 <%- include('../shared/top', { title }) %>
 
-<div class="actions icon-row" style="margin-bottom:12px">
-  <a class="btn btn-icon" href="/admin/products" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></a>
-</div>
-
 <div class="card" style="padding:16px; width:100%">
   <h1 class="h1"><%= product ? ('Edit #' + product.product_id) : 'New product' %></h1>
 
@@ -96,8 +92,8 @@
     <% } %>
 
     <div class="actions" style="margin-top:12px">
-      <button class="btn btn-primary btn-icon" type="submit" title="Save" aria-label="Save" data-label="Save"><%- icon('check') %></button>
-      <a class="btn btn-icon" href="/admin/products" title="Cancel" aria-label="Cancel" data-label="Cancel"><%- icon('x') %></a>
+      <button class="btn btn-primary btn-icon" type="submit" title="Save" aria-label="Save" data-label="Save"><%- product ? 'Save' : 'Add' %></button>
+      <button class="btn btn-icon" type="button" data-href="/admin/products" title="Cancel" aria-label="Cancel" data-label="Cancel">Cancel</button>
     </div>
   </form>
 

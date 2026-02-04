@@ -61,7 +61,7 @@
 
     <div class="actions" style="margin-left:auto">
       <button class="btn btn-primary btn-icon icon-only" type="submit" title="Apply filters" aria-label="Apply filters" data-label="Apply"><%- icon('filter') %></button>
-      <a class="btn btn-icon icon-only" href="/products" title="Clear filters" aria-label="Clear filters" data-label="Clear"><%- icon('x') %></a>
+      <button class="btn btn-icon icon-only" type="button" data-href="/products" title="Clear filters" aria-label="Clear filters" data-label="Clear"><%- icon('x') %></button>
     </div>
   </form>
 </div>
@@ -100,7 +100,7 @@
             <button class="btn btn-primary" type="submit" <%= effStock > 0 ? '' : 'disabled' %>>Add to cart</button>
           </form>
         <% } %>
-        <a class="btn" href="/products/<%= p.product_id %>" style="flex:1">View</a>
+        <button class="btn" type="button" data-href="/products/<%= p.product_id %>" style="flex:1">View</button>
       </div>
     </div>
   <% }) %>
