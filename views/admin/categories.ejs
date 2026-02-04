@@ -35,12 +35,6 @@
       <input class="input" name="name" required minlength="2" maxlength="80" placeholder="e.g. Water Filter Parts" />
     </div>
 
-    <div class="field is-lg">
-      <label>Slug (optional)</label>
-      <input class="input" name="slug" maxlength="80" placeholder="e.g. water-filter-parts" />
-      <div class="muted small" style="margin-top:6px">Leave blank to auto-generate.</div>
-    </div>
-
     <div class="field is-sm">
       <label>Visibility</label>
       <select name="visible">
@@ -73,7 +67,6 @@
       <tr>
         <th>ID</th>
         <th>Name</th>
-        <th>Slug</th>
         <th>Fiuu Merchant Account</th>
         <th>Image</th>
         <th>Visible</th>
@@ -88,9 +81,6 @@
           <td>#<%= c.id %></td>
           <td>
             <input class="input" name="name" value="<%= c.name %>" required maxlength="80" form="catForm-<%= c.id %>" />
-          </td>
-          <td>
-            <input class="input" name="slug" value="<%= c.slug %>" required maxlength="80" form="catForm-<%= c.id %>" />
           </td>
           <td style="min-width:220px">
             <% const currentPg = (fiuuCategoryMap && fiuuCategoryMap[c.slug]) ? String(fiuuCategoryMap[c.slug]) : ''; %>
