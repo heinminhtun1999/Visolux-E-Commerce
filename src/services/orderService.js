@@ -189,7 +189,7 @@ function deductStockAtomicallyForOrder(order) {
   tx();
 }
 
-function markOrderPaidAndDeductStock({ orderId, note }) {
+function markOrderPaidAndDeductStock({ orderId, note, actor }) {
   const db = getDb();
 
   const tx = db.transaction(() => {
@@ -208,16 +208,17 @@ function markOrderPaidAndDeductStock({ orderId, note }) {
     // but we cancel fulfilment and record the issue for manual refund/handling.
     try {
       deductStockAtomicallyForOrder(order);
-      orderRepo.updatePaymentStatus(orderId, 'PAID', note || 'Payment confirmed');
-      orderRepo.updateFulfilmentStatus(orderId, 'PROCESSING', 'Paid; ready to fulfil');
+      orderRepo.updatePaymentStatus(orderId, 'PAID', note || 'Payment confirmed', actor);
+      orderRepo.updateFulfilmentStatus(orderId, 'PROCESSING', 'Paid; ready to fulfil', actor);
       return { order: orderRepo.getWithItems(orderId), alreadyPaid: false, stockDeducted: true };
     } catch (e) {
       if (e instanceof StockInsufficientError) {
-        orderRepo.updatePaymentStatus(orderId, 'PAID', `${note || 'Payment confirmed'} (stock insufficient)`);
+        orderRepo.updatePaymentStatus(orderId, 'PAID', `${note || 'Payment confirmed'} (stock insufficient)`, actor);
         orderRepo.updateFulfilmentStatus(
           orderId,
           'CANCELLED',
-          'Payment succeeded but stock insufficient. Manual refund/adjustment required.'
+          'Payment succeeded but stock insufficient. Manual refund/adjustment required.',
+          actor
         );
         return { order: orderRepo.getWithItems(orderId), alreadyPaid: false, stockDeducted: false, stockError: e.message };
       }

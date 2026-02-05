@@ -255,9 +255,12 @@ CREATE TABLE IF NOT EXISTS order_status_history (
   status_type TEXT NOT NULL CHECK (status_type IN ('PAYMENT','FULFILMENT')),
   old_status TEXT,
   new_status TEXT NOT NULL,
+  actor_user_id INTEGER,
+  actor_username TEXT,
   changed_at TEXT NOT NULL DEFAULT (datetime('now')),
   note TEXT,
-  FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
+  FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE,
+  FOREIGN KEY (actor_user_id) REFERENCES users(user_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_order_status_history_order ON order_status_history(order_id, changed_at);

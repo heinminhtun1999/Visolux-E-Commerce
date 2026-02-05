@@ -56,7 +56,7 @@ function computeDefaultRefundAmountCents({ order, promo, orderItem, quantityToRe
   return Math.round((netPaidForLine * q) / qty);
 }
 
-function refreshOrderRefundStatus({ orderId }) {
+function refreshOrderRefundStatus({ orderId, actor }) {
   const order = orderRepo.getWithItems(orderId);
   if (!order) return null;
 
@@ -78,11 +78,11 @@ function refreshOrderRefundStatus({ orderId }) {
   if (paidAmount > 0) {
     if (refundStatus === 'FULL_REFUND') {
       if (order.payment_status !== 'REFUNDED') {
-        orderRepo.updatePaymentStatus(orderId, 'REFUNDED', 'Order fully refunded');
+        orderRepo.updatePaymentStatus(orderId, 'REFUNDED', 'Order fully refunded', actor);
       }
     } else if (refundStatus === 'PARTIAL_REFUND') {
       if (order.payment_status !== 'PARTIALLY_REFUNDED') {
-        orderRepo.updatePaymentStatus(orderId, 'PARTIALLY_REFUNDED', 'Order partially refunded');
+        orderRepo.updatePaymentStatus(orderId, 'PARTIALLY_REFUNDED', 'Order partially refunded', actor);
       }
     }
   }
@@ -97,7 +97,7 @@ function isFpxOnlineOrder(order) {
   return /^FPX/i.test(ch);
 }
 
-async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountRefunded, reason }) {
+async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountRefunded, reason, actor }) {
   const db = getDb();
 
   // Step 1: validate + compute amount inside a short DB transaction.
@@ -165,12 +165,22 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
     const defaultAmount = computeDefaultRefundAmountCents({ order, promo, orderItem: item, quantityToRefund: qty });
 
     let amount = amountRefunded == null ? null : Number(amountRefunded);
-    if (amount == null || !Number.isFinite(amount) || amount < 0) amount = defaultAmount;
+    const isAutoAmount = amount == null || !Number.isFinite(amount) || amount < 0;
+    if (isAutoAmount) amount = defaultAmount;
     amount = Math.floor(amount);
 
     const alreadyAmount = Number(itemSummary.amount_refunded || 0);
-    const maxForThisLine = computeDefaultRefundAmountCents({ order, promo, orderItem: item, quantityToRefund: remainingQty });
-    const remainingAmount = Math.max(0, maxForThisLine - alreadyAmount);
+    // Max refundable for the *entire* line, minus any already-refunded amount.
+    // (Using remainingQty here is incorrect and breaks sequential refunds due to rounding.)
+    const maxForLineTotal = computeDefaultRefundAmountCents({ order, promo, orderItem: item, quantityToRefund: Number(item.quantity || 0) });
+    const remainingAmount = Math.max(0, maxForLineTotal - alreadyAmount);
+
+    // When refunding the last remaining quantity for this item, consume the exact remaining cents
+    // so repeated partial refunds can't fail due to rounding drift.
+    if (isAutoAmount && qty === remainingQty) {
+      amount = remainingAmount;
+    }
+
     if (amount > remainingAmount) {
       const err = new Error('Refund amount exceeds remaining refundable amount for this item.');
       err.status = 400;
@@ -280,12 +290,12 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
       providerResponseJson: JSON.stringify({ ...resp, _initial_request_signature_ok: gw.signatureOk }),
     });
 
-    const updated = refreshOrderRefundStatus({ orderId });
+    const updated = refreshOrderRefundStatus({ orderId, actor });
     return { created, updated, gateway: gw };
   })();
 }
 
-async function refundOrderExtraAmount({ orderId, amountRefunded, reason }) {
+async function refundOrderExtraAmount({ orderId, amountRefunded, reason, actor }) {
   const db = getDb();
 
   const prepared = db.transaction(() => {
@@ -425,7 +435,7 @@ async function refundOrderExtraAmount({ orderId, amountRefunded, reason }) {
       providerResponseJson: JSON.stringify({ ...resp, _initial_request_signature_ok: gw.signatureOk }),
     });
 
-    const updated = refreshOrderRefundStatus({ orderId });
+    const updated = refreshOrderRefundStatus({ orderId, actor });
     return { created, updated, gateway: gw };
   })();
 }

@@ -23,6 +23,7 @@
     <table class="table">
       <thead>
         <tr>
+          <th style="width:120px">Priority</th>
           <th>Zone</th>
           <th>Match</th>
           <th>Coverage</th>
@@ -30,9 +31,16 @@
           <th></th>
         </tr>
       </thead>
-      <tbody>
-        <% zones.forEach(z => { %>
-          <tr>
+      <tbody id="zonesTbody" data-csrf="<%= csrfToken %>">
+        <% zones.forEach((z, idx) => { %>
+          <tr data-zone-id="<%= z.id %>">
+            <td>
+              <div class="row" style="gap:8px; align-items:center">
+                <button class="btn btn-icon" type="button" title="Drag to reorder" aria-label="Drag to reorder" data-dnd-handle="1" style="cursor:grab"><%- icon('grip-vertical') %></button>
+
+                <div class="muted small priority-number" style="min-width:36px">#<%= idx + 1 %></div>
+              </div>
+            </td>
             <td>
               <div style="font-weight:800"><%= z.name || 'Untitled' %></div>
               <div class="muted small"><%= z.id %></div>
@@ -50,8 +58,146 @@
   <% } %>
 
   <div class="muted small" style="margin-top:10px">
-    Shipping fees are calculated only from zones. Ensure your zones cover all delivery addresses you want to support.
+    Zones are checked from top to bottom. Put higher priority (more specific) zones at the top.
+    <span id="zonesSaveStatus" class="muted" style="margin-left:8px"></span>
   </div>
 </div>
+
+<style>
+  #zonesTbody tr.dragging { opacity: 0.55; }
+  #zonesTbody tr.dnd-over { outline: 2px dashed rgba(0,0,0,0.25); outline-offset: -2px; }
+</style>
+
+<script>
+(function () {
+  var tbody = document.getElementById('zonesTbody');
+  if (!tbody) return;
+
+  var csrf = tbody.getAttribute('data-csrf') || '';
+  var statusEl = document.getElementById('zonesSaveStatus');
+
+  var dragRow = null;
+  var draggingFromHandle = false;
+
+  function setStatus(text) {
+    if (!statusEl) return;
+    statusEl.textContent = text || '';
+  }
+
+  function rows() {
+    return Array.prototype.slice.call(tbody.querySelectorAll('tr[data-zone-id]'));
+  }
+
+  function updateNumbers() {
+    rows().forEach(function (tr, idx) {
+      var n = tr.querySelector('.priority-number');
+      if (n) n.textContent = '#' + String(idx + 1);
+    });
+  }
+
+  function clearOver() {
+    rows().forEach(function (tr) { tr.classList.remove('dnd-over'); });
+  }
+
+  function getOrderIds() {
+    return rows().map(function (tr) { return String(tr.getAttribute('data-zone-id') || '').trim(); }).filter(Boolean);
+  }
+
+  var saveTimer = null;
+  function persistOrder() {
+    if (saveTimer) clearTimeout(saveTimer);
+    // Debounce to avoid spamming while user is dragging around.
+    saveTimer = setTimeout(function () {
+      var order = getOrderIds();
+      if (!order.length) return;
+      setStatus('Saving…');
+      fetch('/admin/site/shipping-zones/reorder', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'accept': 'application/json',
+          'x-csrf-token': csrf,
+        },
+        body: JSON.stringify({ order: order }),
+        credentials: 'same-origin',
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error('save_failed');
+          return r.json();
+        })
+        .then(function () {
+          setStatus('Saved');
+          setTimeout(function () { setStatus(''); }, 1200);
+        })
+        .catch(function () {
+          setStatus('Save failed');
+        });
+    }, 150);
+  }
+
+  tbody.addEventListener('mousedown', function (e) {
+    var handle = e.target && e.target.closest ? e.target.closest('[data-dnd-handle]') : null;
+    if (!handle) return;
+    draggingFromHandle = true;
+    var tr = handle.closest('tr[data-zone-id]');
+    if (!tr) return;
+    tr.setAttribute('draggable', 'true');
+  });
+
+  document.addEventListener('mouseup', function () {
+    draggingFromHandle = false;
+    // Remove draggable from all rows to prevent accidental drag when clicking other buttons.
+    rows().forEach(function (tr) { tr.removeAttribute('draggable'); });
+  });
+
+  tbody.addEventListener('dragstart', function (e) {
+    var tr = e.target && e.target.closest ? e.target.closest('tr[data-zone-id]') : null;
+    if (!tr) return;
+    if (!draggingFromHandle) {
+      e.preventDefault();
+      return;
+    }
+    dragRow = tr;
+    tr.classList.add('dragging');
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(tr.getAttribute('data-zone-id') || ''));
+    }
+  });
+
+  tbody.addEventListener('dragover', function (e) {
+    if (!dragRow) return;
+    e.preventDefault();
+    var target = e.target && e.target.closest ? e.target.closest('tr[data-zone-id]') : null;
+    if (!target || target === dragRow) return;
+
+    clearOver();
+    target.classList.add('dnd-over');
+
+    var rect = target.getBoundingClientRect();
+    var before = (e.clientY - rect.top) < (rect.height / 2);
+    if (before) {
+      tbody.insertBefore(dragRow, target);
+    } else {
+      tbody.insertBefore(dragRow, target.nextSibling);
+    }
+  });
+
+  tbody.addEventListener('drop', function (e) {
+    if (!dragRow) return;
+    e.preventDefault();
+    clearOver();
+    updateNumbers();
+    persistOrder();
+  });
+
+  tbody.addEventListener('dragend', function () {
+    if (dragRow) dragRow.classList.remove('dragging');
+    clearOver();
+    dragRow = null;
+    updateNumbers();
+  });
+})();
+</script>
 
 <%- include('../shared/bottom') %>

@@ -246,51 +246,7 @@ function parsePriceToCentsMinRM1(input) {
     err.status = 400;
     throw err;
   }
-  if (cents < 100) {
-    const err = new Error('Minimum product price is RM 1.00');
-    err.status = 400;
-    throw err;
-  }
   return cents;
-}
-
-function parseMoneyToCentsAllowZero(input) {
-  const s = String(input == null ? '' : input).trim();
-  if (!s) return null;
-  if (!/^[0-9]+(\.[0-9]{1,2})?$/.test(s.replace(/,/g, ''))) {
-    const err = new Error('Invalid amount format. Use for example 12.50');
-    err.status = 400;
-    throw err;
-  }
-  const n = Number(s.replace(/,/g, ''));
-  if (!Number.isFinite(n) || n < 0) {
-    const err = new Error('Invalid amount.');
-    err.status = 400;
-    throw err;
-  }
-  return Math.round(n * 100);
-}
-
-function parseNonNegativeNumberOrNull(input, { label }) {
-  const s = String(input == null ? '' : input).trim();
-  if (!s) return null;
-  const n = Number(s);
-  if (!Number.isFinite(n) || n < 0) {
-    const err = new Error(`${label} must be a non-negative number.`);
-    err.status = 400;
-    throw err;
-  }
-  return n;
-}
-
-function slugifyCategory(input) {
-  const s = String(input || '').trim().toLowerCase();
-  if (!s) return '';
-  return s
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 80);
 }
 
 function assertValidCategorySlug(slug) {
@@ -418,6 +374,55 @@ router.get('/site/shipping-zones/:id', (req, res) => {
     zipCodesText: Array.isArray(zone.zip_codes) ? zone.zip_codes.join('\n') : '',
   });
 });
+
+router.post(
+  '/site/shipping-zones/reorder',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({
+        order: z.array(z.string().trim().min(1)).min(1),
+      }),
+      params: z.any().optional(),
+      query: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const zones = shippingService.getZones() || [];
+      const byId = new Map(zones.map((z) => [String(z && z.id != null ? z.id : ''), z]));
+
+      // Keep unique, preserve incoming order.
+      const seen = new Set();
+      const requested = (req.validated.body.order || [])
+        .map((id) => String(id || '').trim())
+        .filter((id) => id && byId.has(id))
+        .filter((id) => {
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+
+      // Append any zones not included, preserving original order.
+      const nextZones = [];
+      for (const id of requested) nextZones.push(byId.get(id));
+      for (const z of zones) {
+        const id = String(z && z.id != null ? z.id : '');
+        if (!id || seen.has(id)) continue;
+        nextZones.push(z);
+      }
+
+      shippingService.saveZones(nextZones);
+
+      const accept = String(req.get('accept') || '').toLowerCase();
+      if (accept.includes('application/json')) return res.json({ ok: true });
+      req.session.flash = { type: 'success', message: 'Shipping zone priority updated.' };
+      return res.redirect('/admin/site/shipping-zones');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
 
 router.post(
   '/site/shipping-zones',
@@ -3413,6 +3418,10 @@ router.post(
     let amountCents;
     let reason;
     try {
+      const actor = req.session?.user?.isAdmin
+        ? { user_id: req.session.user.user_id, username: req.session.user.username }
+        : null;
+
       const orderId = Number(req.params.id);
       const orderItemId = Number(req.params.itemId);
       if (!Number.isFinite(orderId) || orderId <= 0) {
@@ -3438,6 +3447,7 @@ router.post(
         quantityRefunded: qty,
         amountRefunded: amountCents,
         reason,
+        actor,
       });
 
       // Best-effort customer email (do not notify staff).
@@ -3519,6 +3529,10 @@ router.post(
   ),
   async (req, res, next) => {
     try {
+      const actor = req.session?.user?.isAdmin
+        ? { user_id: req.session.user.user_id, username: req.session.user.username }
+        : null;
+
       const orderId = Number(req.params.id);
       if (!Number.isFinite(orderId) || orderId <= 0) {
         return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid order id.' });
@@ -3542,6 +3556,7 @@ router.post(
         orderId,
         amountRefunded: amountCents,
         reason,
+        actor,
       });
 
       req.session.flash = { type: 'success', message: 'Refund request sent to Fiuu.' };
@@ -3568,6 +3583,10 @@ router.post(
   ),
   (req, res, next) => {
     try {
+      const actor = req.session?.user?.isAdmin
+        ? { user_id: req.session.user.user_id, username: req.session.user.username }
+        : null;
+
       const orderId = Number(req.params.id);
       if (!Number.isFinite(orderId) || orderId <= 0) {
         return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid order id.' });
@@ -3627,7 +3646,7 @@ router.post(
         providerResponseJson: null,
       });
 
-      refundService.refreshOrderRefundStatus({ orderId });
+      refundService.refreshOrderRefundStatus({ orderId, actor });
       req.session.flash = { type: 'success', message: 'Refund recorded (manual).' };
       return res.redirect(`/admin/orders/${orderId}`);
     } catch (e) {
@@ -3661,6 +3680,10 @@ router.post(
   ),
   (req, res, next) => {
     try {
+      const actor = req.session?.user?.isAdmin
+        ? { user_id: req.session.user.user_id, username: req.session.user.username }
+        : null;
+
       const orderId = Number(req.params.id);
       const orderItemId = Number(req.params.itemId);
       if (!Number.isFinite(orderId) || orderId <= 0) {
@@ -3738,7 +3761,7 @@ router.post(
         providerResponseJson: null,
       });
 
-      refundService.refreshOrderRefundStatus({ orderId });
+      refundService.refreshOrderRefundStatus({ orderId, actor });
       req.session.flash = { type: 'success', message: 'Refund marked as completed (manual).' };
       return res.redirect(`/admin/orders/${orderId}`);
     } catch (e) {
@@ -3798,6 +3821,10 @@ router.post(
     }
 
     try {
+      const actor = req.session?.user?.isAdmin
+        ? { user_id: req.session.user.user_id, username: req.session.user.username }
+        : null;
+
       const orderId = Number(req.params.id);
       const orderItemId = Number(req.params.itemId);
       if (!Number.isFinite(orderId) || orderId <= 0) {
@@ -3854,15 +3881,26 @@ router.post(
       const defaultAmount = computeDefaultRefundAmountCents({ order, promo, orderItem: item, quantityToRefund: qty });
 
       let amountCents = req.validated.body.amount ? parseMoneyToCentsAllowZero(req.validated.body.amount) : null;
-      if (amountCents == null) amountCents = defaultAmount;
+      const isAutoAmount = amountCents == null;
+      if (isAutoAmount) amountCents = defaultAmount;
 
-      const maxForRemainingQty = computeDefaultRefundAmountCents({
+      // Remaining refundable for this item is based on the *full* line max refundable,
+      // minus any already-recorded refunded amount. Using remainingQty here is incorrect
+      // and can break sequential refunds due to rounding.
+      const maxForLineTotal = computeDefaultRefundAmountCents({
         order,
         promo,
         orderItem: item,
-        quantityToRefund: remainingQty,
+        quantityToRefund: Number(item.quantity || 0),
       });
-      const remainingAmount = Math.max(0, maxForRemainingQty - alreadyAmount);
+      const remainingAmount = Math.max(0, maxForLineTotal - alreadyAmount);
+
+      // If refunding the last remaining quantity and amount is left blank,
+      // refund the exact remaining cents to avoid rounding drift.
+      if (isAutoAmount && qty === remainingQty) {
+        amountCents = remainingAmount;
+      }
+
       if (amountCents > remainingAmount) {
         const err = new Error('Refund amount exceeds remaining refundable amount for this item.');
         err.status = 400;
@@ -3888,7 +3926,7 @@ router.post(
         providerResponseJson: null,
       });
 
-      refundService.refreshOrderRefundStatus({ orderId });
+      refundService.refreshOrderRefundStatus({ orderId, actor });
       req.session.flash = { type: 'success', message: 'Refund recorded (manual).' };
       return res.redirect(`/admin/orders/${orderId}`);
     } catch (e) {
@@ -3920,6 +3958,10 @@ router.post(
   ),
   (req, res, next) => {
     try {
+      const actor = req.session?.user?.isAdmin
+        ? { user_id: req.session.user.user_id, username: req.session.user.username }
+        : null;
+
       const orderId = Number(req.params.id);
       const order = orderRepo.getById(orderId);
       if (!order) {
@@ -3931,7 +3973,7 @@ router.post(
       const newStatus = req.validated.body.fulfilment_status;
       const note = req.validated.body.note ? String(req.validated.body.note).trim() : '';
       const oldStatus = order.fulfilment_status;
-      orderRepo.updateFulfilmentStatus(orderId, newStatus, note || `Admin updated fulfilment to ${newStatus}`);
+      orderRepo.updateFulfilmentStatus(orderId, newStatus, note || `Admin updated fulfilment to ${newStatus}`, actor);
 
       // Best-effort customer email
       try {
@@ -3969,6 +4011,10 @@ router.post(
   ),
   (req, res, next) => {
     try {
+      const actor = req.session?.user?.isAdmin
+        ? { user_id: req.session.user.user_id, username: req.session.user.username }
+        : null;
+
       const orderId = Number(req.params.id);
       const order = orderRepo.getById(orderId);
       if (!order) {
@@ -3983,9 +4029,9 @@ router.post(
       const oldStatus = order.payment_status;
 
       if (newStatus === 'PAID') {
-        orderService.markOrderPaidAndDeductStock({ orderId, note: note || 'Payment marked as PAID by admin' });
+        orderService.markOrderPaidAndDeductStock({ orderId, note: note || 'Payment marked as PAID by admin', actor });
       } else {
-        orderRepo.updatePaymentStatus(orderId, newStatus, note || `Admin updated payment to ${newStatus}`);
+        orderRepo.updatePaymentStatus(orderId, newStatus, note || `Admin updated payment to ${newStatus}`, actor);
       }
 
       // Best-effort customer email
@@ -4012,6 +4058,10 @@ router.post(
 
 router.post('/orders/:id/offline/verify', (req, res, next) => {
   try {
+    const actor = req.session?.user?.isAdmin
+      ? { user_id: req.session.user.user_id, username: req.session.user.username }
+      : null;
+
     const orderId = Number(req.params.id);
     const order = orderRepo.getById(orderId);
     if (!order) {
@@ -4043,7 +4093,7 @@ router.post('/orders/:id/offline/verify', (req, res, next) => {
     }
 
     orderRepo.setOfflineTransferVerified(orderId, true);
-    orderService.markOrderPaidAndDeductStock({ orderId, note: 'Offline transfer verified by admin' });
+  orderService.markOrderPaidAndDeductStock({ orderId, note: 'Offline transfer verified by admin', actor });
 
     // Best-effort customer email
     try {
@@ -4068,6 +4118,10 @@ router.post('/orders/:id/offline/verify', (req, res, next) => {
 
 router.post('/orders/:id/offline/reject', (req, res, next) => {
   try {
+    const actor = req.session?.user?.isAdmin
+      ? { user_id: req.session.user.user_id, username: req.session.user.username }
+      : null;
+
     const orderId = Number(req.params.id);
     const order = orderRepo.getById(orderId);
     if (!order) {
@@ -4103,7 +4157,7 @@ router.post('/orders/:id/offline/reject', (req, res, next) => {
     orderRepo.rejectOfflineTransfer({ orderId, reason: rejectionReason });
 
     const note = rejectionReason ? `Slip rejected by admin: ${rejectionReason}` : 'Slip rejected by admin';
-    orderRepo.insertStatusHistory(orderId, 'PAYMENT', 'AWAITING_VERIFICATION', 'AWAITING_VERIFICATION', note);
+  orderRepo.insertStatusHistory(orderId, 'PAYMENT', 'AWAITING_VERIFICATION', 'AWAITING_VERIFICATION', note, actor);
 
     // Best-effort customer email
     try {
@@ -4381,6 +4435,10 @@ router.post(
 
 router.post('/slips/:orderId/approve', (req, res, next) => {
   try {
+    const actor = req.session?.user?.isAdmin
+      ? { user_id: req.session.user.user_id, username: req.session.user.username }
+      : null;
+
     const orderId = Number(req.params.orderId);
     const offline = orderRepo.getOfflineTransfer(orderId);
     if (!offline) {
@@ -4390,7 +4448,7 @@ router.post('/slips/:orderId/approve', (req, res, next) => {
     }
 
     orderRepo.setOfflineTransferVerified(orderId, true);
-    orderService.markOrderPaidAndDeductStock({ orderId, note: 'Offline transfer approved by admin' });
+  orderService.markOrderPaidAndDeductStock({ orderId, note: 'Offline transfer approved by admin', actor });
 
     req.session.flash = { type: 'success', message: 'Slip approved; payment marked as paid.' };
     return res.redirect(`/admin/orders/${orderId}`);
@@ -4401,6 +4459,10 @@ router.post('/slips/:orderId/approve', (req, res, next) => {
 
 router.post('/slips/:orderId/reject', (req, res, next) => {
   try {
+    const actor = req.session?.user?.isAdmin
+      ? { user_id: req.session.user.user_id, username: req.session.user.username }
+      : null;
+
     const orderId = Number(req.params.orderId);
     const offline = orderRepo.getOfflineTransfer(orderId);
     if (!offline) {
@@ -4413,7 +4475,7 @@ router.post('/slips/:orderId/reject', (req, res, next) => {
     orderRepo.rejectOfflineTransfer({ orderId, reason: rejectionReason });
 
     const note = rejectionReason ? `Slip rejected by admin: ${rejectionReason}` : 'Slip rejected by admin';
-    orderRepo.insertStatusHistory(orderId, 'PAYMENT', 'AWAITING_VERIFICATION', 'AWAITING_VERIFICATION', note);
+  orderRepo.insertStatusHistory(orderId, 'PAYMENT', 'AWAITING_VERIFICATION', 'AWAITING_VERIFICATION', note, actor);
 
     req.session.flash = { type: 'success', message: 'Slip rejected (customer may re-upload).' };
     return res.redirect(`/admin/orders/${orderId}`);

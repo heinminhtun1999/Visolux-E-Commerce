@@ -53,6 +53,7 @@ function initializeSchema(database) {
   ensureOrderItemRefundGatewayColumns(database);
   ensureOrderRefunds(database);
   ensureOrderRefundGatewayColumns(database);
+  ensureOrderStatusHistoryActor(database);
   ensureAdminNotifications(database);
   ensureAdminActivityLogs(database);
   ensureOfflineTransferPurge(database);
@@ -129,6 +130,27 @@ function ensureProductImages(database) {
     )`
   );
   database.exec('CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id, sort_order, id)');
+}
+
+function ensureOrderStatusHistoryActor(database) {
+  try {
+    const row = database
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='order_status_history'")
+      .get();
+    if (!row) return;
+
+    const cols = database.prepare("PRAGMA table_info('order_status_history')").all();
+    const has = (name) => cols.some((c) => c.name === name);
+
+    if (!has('actor_user_id')) {
+      database.exec('ALTER TABLE order_status_history ADD COLUMN actor_user_id INTEGER');
+    }
+    if (!has('actor_username')) {
+      database.exec("ALTER TABLE order_status_history ADD COLUMN actor_username TEXT");
+    }
+  } catch (_) {
+    // ignore
+  }
 }
 
 function ensureUsersAccountClosure(database) {

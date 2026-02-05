@@ -11,8 +11,22 @@ function icon(name, opts = {}) {
 
   switch (String(name)) {
     // Lucide icons (preferred)
+    case 'chevron-up':
+      return svg(baseAttrs, `${titleTag}<path d="m18 15-6-6-6 6"/>`);
     case 'chevron-down':
       return svg(baseAttrs, `${titleTag}<path d="m6 9 6 6 6-6"/>`);
+    case 'grip-vertical':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <circle cx="9" cy="5" r="1"/>
+        <circle cx="9" cy="12" r="1"/>
+        <circle cx="9" cy="19" r="1"/>
+        <circle cx="15" cy="5" r="1"/>
+        <circle cx="15" cy="12" r="1"/>
+        <circle cx="15" cy="19" r="1"/>
+        `
+      );
     case 'sun':
       return svg(
         baseAttrs,

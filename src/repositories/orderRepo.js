@@ -340,12 +340,23 @@ function listAdminFiltered({
   return db.prepare(sql).all(params).map(mapOrder);
 }
 
-function insertStatusHistory(orderId, statusType, oldStatus, newStatus, note) {
+function insertStatusHistory(orderId, statusType, oldStatus, newStatus, note, actor) {
   const db = getDb();
-  db.prepare(
-    `INSERT INTO order_status_history (order_id, status_type, old_status, new_status, note)
-     VALUES (?,?,?,?,?)`
-  ).run(orderId, statusType, oldStatus || null, newStatus, note || null);
+  const actorUserId = actor && (actor.user_id ?? actor.actor_user_id ?? actor.actorUserId);
+  const actorUsername = actor && (actor.username ?? actor.actor_username ?? actor.actorUsername);
+
+  // Prefer new schema (with actor columns). Fall back for older DBs.
+  try {
+    db.prepare(
+      `INSERT INTO order_status_history (order_id, status_type, old_status, new_status, actor_user_id, actor_username, note)
+       VALUES (?,?,?,?,?,?,?)`
+    ).run(orderId, statusType, oldStatus || null, newStatus, actorUserId ?? null, actorUsername ?? null, note || null);
+  } catch (_) {
+    db.prepare(
+      `INSERT INTO order_status_history (order_id, status_type, old_status, new_status, note)
+       VALUES (?,?,?,?,?)`
+    ).run(orderId, statusType, oldStatus || null, newStatus, note || null);
+  }
 }
 
 function listStatusHistory(orderId) {
@@ -364,6 +375,8 @@ function listStatusHistory(orderId) {
       status_type: r.status_type,
       old_status: r.old_status || null,
       new_status: r.new_status,
+      actor_user_id: r.actor_user_id == null ? null : Number(r.actor_user_id),
+      actor_username: r.actor_username || '',
       note: r.note || '',
       changed_at: r.changed_at,
     }));
@@ -571,25 +584,25 @@ function createOrder({
   return getWithItems(orderId);
 }
 
-function updatePaymentStatus(orderId, newStatus, note) {
+function updatePaymentStatus(orderId, newStatus, note, actor) {
   const db = getDb();
   const current = getById(orderId);
   if (!current) return null;
   if (current.payment_status === newStatus) return current;
 
   db.prepare('UPDATE orders SET payment_status=? WHERE order_id=?').run(newStatus, orderId);
-  insertStatusHistory(orderId, 'PAYMENT', current.payment_status, newStatus, note);
+  insertStatusHistory(orderId, 'PAYMENT', current.payment_status, newStatus, note, actor);
   return getById(orderId);
 }
 
-function updateFulfilmentStatus(orderId, newStatus, note) {
+function updateFulfilmentStatus(orderId, newStatus, note, actor) {
   const db = getDb();
   const current = getById(orderId);
   if (!current) return null;
   if (current.fulfilment_status === newStatus) return current;
 
   db.prepare('UPDATE orders SET fulfilment_status=? WHERE order_id=?').run(newStatus, orderId);
-  insertStatusHistory(orderId, 'FULFILMENT', current.fulfilment_status, newStatus, note);
+  insertStatusHistory(orderId, 'FULFILMENT', current.fulfilment_status, newStatus, note, actor);
   return getById(orderId);
 }
 

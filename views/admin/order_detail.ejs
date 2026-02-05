@@ -109,6 +109,10 @@
               <% if (h.note) { %>
                 <div class="muted small" style="margin-top:4px"><%= h.note %></div>
               <% } %>
+              <% const actorName = String(h.actor_username || '').trim(); %>
+              <% if (actorName) { %>
+                <div class="muted small" style="margin-top:4px">Updated by: <strong><%= actorName %></strong></div>
+              <% } %>
             </div>
           </div>
         <% }) %>
@@ -377,7 +381,7 @@
                 <% if (!offline.verified && !offline.slip_deleted) { %>
                   <form method="post" action="/admin/orders/<%= order.order_id %>/offline/verify" style="display:inline" onsubmit="return confirm('Verify this bank transfer slip and mark payment as PAID? This will deduct stock.');">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-                    <button class="btn btn-primary" type="submit">Verify payment</button>
+                    <button class="btn btn-primary" type="submit">Approve payment</button>
                   </form>
                 <% } %>
                 <% if (!offline.verified && !offline.slip_deleted) { %>

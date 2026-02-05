@@ -28,11 +28,12 @@ function adminActionFromRequest(req) {
     const name = safeBodyString(req, 'name', { max: 120 });
     return name ? `Created shipping zone “${name}”` : 'Created shipping zone';
   }
-  if (method === 'POST' && /^\/site\/shipping-zones\/.+/.test(rel)) {
+  if (method === 'POST' && /^\/site\/shipping-zones\/.+\/delete$/.test(rel)) return 'Deleted shipping zone';
+  if (method === 'POST' && rel === '/site/shipping-zones/reorder') return 'Reordered shipping zone priority';
+  if (method === 'POST' && /^\/site\/shipping-zones\/[^/]+$/.test(rel)) {
     const name = safeBodyString(req, 'name', { max: 120 });
     return name ? `Updated shipping zone “${name}”` : 'Updated shipping zone';
   }
-  if (method === 'POST' && /^\/site\/shipping-zones\/.+\/delete$/.test(rel)) return 'Deleted shipping zone';
 
   // Branding
   if (method === 'POST' && rel === '/site/branding') {
