@@ -80,6 +80,32 @@ function csrfProtection({ exemptPaths = [], ignoreMultipart = true } = {}) {
 
     const token = String(req.body?._csrf || req.get('x-csrf-token') || '').trim();
     if (!token || !req.session?.csrfToken || token !== req.session.csrfToken) {
+      // Common UX issue: server restarts / session refresh / long-lived tabs can lead to stale tokens.
+      // For HTML requests, recover by rotating the token and redirecting back (POST -> GET).
+      if (req.accepts && req.accepts('html')) {
+        if (req.session) {
+          req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+          req.session.flash = { type: 'error', message: 'Session expired. Please try again.' };
+        }
+
+        const referer = String(req.get('referer') || '').trim();
+        let redirectTo = '/';
+        try {
+          const refOrigin = safeOrigin(referer);
+          if (refOrigin) {
+            const allowed = getAllowedOrigins(req);
+            if (allowed.has(refOrigin)) {
+              const u = new URL(referer);
+              redirectTo = `${u.pathname || '/'}${u.search || ''}`;
+            }
+          }
+        } catch (_) {
+          // ignore
+        }
+
+        return res.redirect(303, redirectTo);
+      }
+
       const err = new Error('Invalid CSRF token');
       err.status = 403;
       return next(err);

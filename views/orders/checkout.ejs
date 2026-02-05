@@ -1,8 +1,8 @@
 <%- include('../shared/top', { title }) %>
 
-<div class="row">
-  <div class="col" style="min-width:320px">
-    <div class="card" style="padding:16px">
+<div class="row checkout-grid">
+  <div class="col">
+    <div class="card card--pad-lg">
       <h1 class="h1">Checkout</h1>
       <form method="post" action="/checkout" id="checkoutForm">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
@@ -15,7 +15,7 @@
         <label>Email <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="email" type="email" required value="<%= prefill ? (prefill.email || '') : '' %>" />
 
-        <h2 class="h2" style="margin-top:12px">Delivery address (Malaysia)</h2>
+        <h2 class="h2 u-mt-12">Delivery address (Malaysia)</h2>
 
         <label>Address line 1 <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="address_line1" minlength="3" required value="<%= prefill ? (prefill.address_line1 || '') : '' %>" />
@@ -37,17 +37,19 @@
         <label>Postcode <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="postcode" inputmode="numeric" pattern="\d{5}" required value="<%= prefill ? (prefill.postcode || '') : '' %>" />
 
-        <div class="muted small" style="margin-top:6px">
+        <div class="muted small u-mt-6">
           Delivery zone: <strong id="regionLabel"><%= (typeof prefillShippingLabel !== 'undefined' && prefillShippingLabel) ? prefillShippingLabel : '-' %></strong>
-          <span id="shippingMessage" class="muted" style="margin-left:8px"></span>
+          <span id="shippingMessage" class="muted shipping-message"></span>
         </div>
 
         <label>Promo code (optional)</label>
-        <div class="row" style="gap:10px; align-items:center">
-          <input class="input" name="promo_code" id="promoCodeInput" placeholder="WELCOME10" style="flex:1" />
+        <div class="row row--tight row--center">
+          <div class="col">
+            <input class="input" name="promo_code" id="promoCodeInput" placeholder="WELCOME10" />
+          </div>
           <button class="btn" type="button" id="promoCheckBtn">Check</button>
         </div>
-        <div class="muted small" id="promoMessage" style="margin-top:6px"></div>
+        <div class="muted small u-mt-6" id="promoMessage"></div>
 
         <label>Payment method</label>
         <select name="payment_method" id="paymentMethodSelect" required>
@@ -57,11 +59,11 @@
           <option value="OFFLINE_TRANSFER">Offline bank transfer (upload slip)</option>
         </select>
 
-        <div class="card" id="offlineBankDetails" style="padding:12px; margin-top:12px; display:none">
-          <div class="muted small" style="font-weight:800; letter-spacing:.02em; text-transform:uppercase">Offline bank transfer details</div>
+        <div class="card card--pad card--mt" id="offlineBankDetails" style="display:none">
+          <div class="muted small kicker">Offline bank transfer details</div>
 
           <% if (offlineTransferBanks && offlineTransferBanks.length) { %>
-            <label style="margin-top:10px">Select bank</label>
+            <label>Select bank</label>
             <select class="input" name="offline_transfer_bank_id" id="offlineTransferBankSelect">
               <option value="">Select a bank</option>
               <% offlineTransferBanks.forEach(b => { %>
@@ -75,22 +77,22 @@
             </select>
           <% } %>
 
-          <div style="margin-top:8px" class="small">
+          <div class="small u-mt-8">
             <div><strong>Bank Acc.</strong>: <span id="offlineBankName">-</span></div>
             <div><strong>Acc. No.</strong>: <span id="offlineAccountNo">-</span></div>
             <div><strong>Acc. Name</strong>: <span id="offlineAccountName">-</span></div>
           </div>
-          <div class="muted small" style="margin-top:8px">After payment, upload your bank slip for verification.</div>
+          <div class="muted small u-mt-8">After payment, upload your bank slip for verification.</div>
         </div>
 
-        <div class="actions actions_primary" style="margin-top:12px">
+        <div class="actions actions_primary u-mt-12">
           <button class="btn btn-primary" id="placeOrderBtn" type="submit">Place order</button>
           <button class="btn" type="button" data-href="/">Cancel</button>
         </div>
 
-        <div id="checkoutFormMessage" class="muted small" style="margin-top:8px"></div>
+        <div id="checkoutFormMessage" class="muted small u-mt-8"></div>
 
-        <div class="muted small" style="margin-top:10px">
+        <div class="muted small u-mt-10">
           <% if (!canOnlinePay) { %>
             Online payment is currently disabled.
           <% } %>
@@ -99,8 +101,8 @@
     </div>
   </div>
 
-  <div class="col" style="min-width:320px">
-    <div class="card" style="padding:16px">
+  <div class="col">
+    <div class="card card--pad-lg">
       <h2 class="h2">Order summary</h2>
       <div
         id="checkoutTotals"
@@ -117,7 +119,7 @@
           <% cart.items.forEach(line => { %>
             <tr>
               <td>
-                <div style="font-weight:700"><%= line.product.name %></div>
+                <div class="text-strong"><%= line.product.name %></div>
                 <div class="muted small"><%= formatMoney(line.product.price) %> each</div>
                 <% if (line.product && line.product.weight_kg != null) { %>
                   <div class="muted small">Weight: <%= Number(line.product.weight_kg || 0).toFixed(2) %> kg</div>
@@ -129,16 +131,16 @@
           <% }) %>
         </tbody>
       </table>
-      <div class="kv" style="margin-top:10px">
+      <div class="kv u-mt-10">
         <span class="muted">Total weight</span>
         <strong><%= (typeof totalWeightKg !== 'undefined' ? Number(totalWeightKg || 0) : 0).toFixed(2) %> kg</strong>
       </div>
-      <div class="kv" style="margin-top:10px"><span class="muted">Total</span> <strong><%= formatMoney(cart.total) %></strong></div>
-      <div class="kv" style="margin-top:6px"><span class="muted">Courier charge</span> <strong id="shippingFee"><%= formatMoney(prefillShippingFee || 0) %></strong></div>
-      <div class="kv" style="margin-top:6px"><span class="muted">Before discount</span> <strong id="preDiscountTotal"><%= formatMoney(cart.total + (prefillShippingFee || 0)) %></strong></div>
-      <div class="kv" style="margin-top:6px"><span class="muted">Discount</span> <strong id="discountAmount"><%= formatMoney(0) %></strong></div>
-      <div class="kv" style="margin-top:6px"><span class="muted">Grand total</span> <strong id="grandTotal"><%= formatMoney(cart.total + (prefillShippingFee || 0)) %></strong></div>
-      <div class="muted small" style="margin-top:8px">
+      <div class="kv u-mt-10"><span class="muted">Total</span> <strong><%= formatMoney(cart.total) %></strong></div>
+      <div class="kv u-mt-6"><span class="muted">Courier charge</span> <strong id="shippingFee"><%= formatMoney(prefillShippingFee || 0) %></strong></div>
+      <div class="kv u-mt-6"><span class="muted">Before discount</span> <strong id="preDiscountTotal"><%= formatMoney(cart.total + (prefillShippingFee || 0)) %></strong></div>
+      <div class="kv u-mt-6"><span class="muted">Discount</span> <strong id="discountAmount"><%= formatMoney(0) %></strong></div>
+      <div class="kv u-mt-6"><span class="muted">Grand total</span> <strong id="grandTotal"><%= formatMoney(cart.total + (prefillShippingFee || 0)) %></strong></div>
+      <div class="muted small u-mt-8">
         Courier charge depends on your delivery zone and total cart weight.
       </div>
     </div>

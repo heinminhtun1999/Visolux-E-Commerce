@@ -1,16 +1,16 @@
 <%- include('./shared/top', { title }) %>
 
-<div class="card" style="padding:16px">
+<div class="card card--pad-lg">
   <div class="home-hero">
     <div>
-      <h1 class="h1" style="margin:0">Visolux Store</h1>
-      <div class="muted" style="margin-top:6px">Shop parts and components online. Select a category to start shopping.</div>
+      <h1 class="h1 u-m0">Visolux Store</h1>
+      <div class="muted u-mt-6">Shop parts and components online. Select a category to start shopping.</div>
     </div>
   </div>
 
-  <div class="home-categories" style="margin-top:14px">
+  <div class="home-categories u-mt-14">
     <% categories.forEach(c => { %>
-      <a href="/categories/<%= encodeURIComponent(c.slug) %>" class="category-tile" style="text-decoration:none" aria-label="Browse <%= c.name %>">
+      <a href="/categories/<%= encodeURIComponent(c.slug) %>" class="category-tile link-reset" aria-label="Browse <%= c.name %>">
         <div class="category-tile__media">
           <% if (c.image_url) { %>
             <img src="<%= c.image_url %>" alt="<%= c.name %>" loading="lazy" decoding="async" />

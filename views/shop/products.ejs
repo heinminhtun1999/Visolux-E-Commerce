@@ -1,6 +1,6 @@
 <%- include('../shared/top', { title }) %>
 
-<div class="row" style="justify-content:space-between; align-items:flex-end; gap:12px">
+<div class="page-head">
   <div>
     <h1 class="h1">Products</h1>
     <div class="muted small">Browse parts and components.</div>
@@ -18,12 +18,12 @@
     <div class="filters-panel__title">Filters</div>
     <button class="btn btn-icon icon-only" type="button" data-filters-close title="Close filters" aria-label="Close filters" data-label="Close"><%- icon('x') %></button>
   </div>
-  <form method="get" action="/products" class="row" style="align-items:flex-end">
-    <div class="col" style="min-width:220px">
+  <form method="get" action="/products" class="form-row">
+    <div class="field is-lg">
       <label>Search</label>
       <input class="input" name="q" value="<%= q %>" placeholder="Search products" />
     </div>
-    <div style="width:240px">
+    <div class="field is-md">
       <label>Category</label>
       <select name="category">
         <option value="" <%= category ? '' : 'selected' %>>All</option>
@@ -32,7 +32,7 @@
         <% }) %>
       </select>
     </div>
-    <div style="width:220px">
+    <div class="field is-md">
       <label>Availability</label>
       <select name="availability">
         <option value="" <%= availability ? '' : 'selected' %>>All</option>
@@ -41,16 +41,16 @@
       </select>
     </div>
 
-    <div style="width:160px">
+    <div class="field is-sm">
       <label>Min price</label>
       <input class="input" name="min_price" inputmode="decimal" value="<%= min_price %>" placeholder="0.00" />
     </div>
-    <div style="width:160px">
+    <div class="field is-sm">
       <label>Max price</label>
       <input class="input" name="max_price" inputmode="decimal" value="<%= max_price %>" placeholder="9999.00" />
     </div>
 
-    <div style="width:160px">
+    <div class="field is-xs">
       <label>Per page</label>
       <select name="pageSize">
         <option value="12" <%= String(pageSize || 12) === '12' ? 'selected' : '' %>>12</option>
@@ -59,17 +59,17 @@
       </select>
     </div>
 
-    <div class="actions" style="margin-left:auto">
+    <div class="actions">
       <button class="btn btn-primary btn-icon icon-only" type="submit" title="Apply filters" aria-label="Apply filters" data-label="Apply"><%- icon('filter') %></button>
       <button class="btn btn-icon icon-only" type="button" data-href="/products" title="Clear filters" aria-label="Clear filters" data-label="Clear"><%- icon('x') %></button>
     </div>
   </form>
 </div>
 
-<div style="margin-top:12px" class="grid">
+<div class="grid u-mt-12">
   <% products.forEach(p => { %>
     <div class="card product-card">
-      <a href="/products/<%= p.product_id %>" style="text-decoration:none; color:inherit; width: 100%;">
+      <a href="/products/<%= p.product_id %>" class="product-card__link link-reset">
         <div class="product-img-wrap">
           <img class="product-img" src="<%= p.product_image || '/public/placeholder.svg' %>" alt="<%= p.name %>" />
           <% const effStock = (p.available_stock == null ? p.stock : p.available_stock); %>
@@ -77,8 +77,8 @@
             <div class="product-stock-overlay" aria-label="Out of stock"><%= (Number(p.stock || 0) > 0) ? 'Temporarily out of stock' : 'Out of stock' %></div>
           <% } %>
         </div>
-        <div style="margin-top:10px; font-weight:700"><%= p.name %></div>
-        <div class="muted small" style="margin-top:4px"><%= p.category_name || p.category %></div>
+        <div class="product-card__title"><%= p.name %></div>
+        <div class="muted small product-card__sub"><%= p.category_name || p.category %></div>
         <div class="kv">
           <div><span class="muted">Price</span> <strong><%= formatMoney(p.price) %></strong></div>
           <div>
@@ -91,16 +91,16 @@
         </div>
       </a>
 
-      <div style="margin-top:12px" class="actions product-card__actions actions_primary">
+      <div class="actions product-card__actions actions_primary">
         <% if (!isAdmin) { %>
-          <form method="post" action="/cart/add" style="flex:1">
+          <form method="post" action="/cart/add" class="btn-grow">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
             <input type="hidden" name="product_id" value="<%= p.product_id %>" />
             <input type="hidden" name="return_to" value="<%= currentUrl %>" />
-            <button class="btn btn-primary" type="submit" <%= effStock > 0 ? '' : 'disabled' %>>Add to cart</button>
+            <button class="btn btn-primary btn-block" type="submit" <%= effStock > 0 ? '' : 'disabled' %>>Add to cart</button>
           </form>
         <% } %>
-        <button class="btn" type="button" data-href="/products/<%= p.product_id %>" style="flex:1">View</button>
+        <button class="btn btn-grow" type="button" data-href="/products/<%= p.product_id %>">View</button>
       </div>
     </div>
   <% }) %>
@@ -117,13 +117,13 @@
 </div>
 
 <% if (category && categorySections && categorySections.length) { %>
-  <div class="card" style="padding:16px; margin-top:12px">
+  <div class="card card--pad-lg card--mt">
     <% const catObj = (categories || []).find(c => c.slug === category); %>
-    <h2 class="h2" style="margin-top:0">More about <%= (catObj && catObj.name) ? catObj.name : category %></h2>
+    <h2 class="h2">More about <%= (catObj && catObj.name) ? catObj.name : category %></h2>
     <% categorySections.forEach(s => { %>
-      <div style="margin-top:14px">
+      <div class="u-mt-14">
         <% if (String(s.title || '').trim()) { %>
-          <div style="font-weight:800; margin-bottom:6px"><%= s.title %></div>
+          <div class="section-title"><%= s.title %></div>
         <% } %>
         <div class="md"><%- s.html %></div>
       </div>

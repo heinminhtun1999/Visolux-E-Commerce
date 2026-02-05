@@ -67,7 +67,7 @@
   <div class="container <%= (typeof containerClass !== 'undefined' && containerClass) ? containerClass : '' %>">
 
 
-    <header class="site-header site-header--sticky" style="margin-top:10px; margin-bottom:12px">
+    <header class="site-header site-header--sticky">
       <div class="site-header__brand">
         <% if (isAdminArea) { %>
           <button class="btn btn-icon icon-only" type="button" data-admin-sidebar-toggle title="Toggle sidebar" aria-label="Toggle sidebar" data-label="Toggle sidebar"><%- iconFn('panel-left') %></button>
@@ -179,7 +179,7 @@
         <% } %>
 
         <% if (_currentUser) { %>
-          <form method="post" action="/logout" style="display:inline">
+          <form method="post" action="/logout" class="inline-form">
             <% const _csrfToken = (typeof csrfToken !== 'undefined' && csrfToken) ? String(csrfToken) : ''; %>
             <input type="hidden" name="_csrf" value="<%= _csrfToken %>" />
             <button class="btn btn-icon icon-only" type="submit" title="Sign out" aria-label="Sign out" data-label="Sign out"><%- iconFn('logout') %></button>

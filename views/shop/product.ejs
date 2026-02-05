@@ -1,8 +1,8 @@
 <%- include('../shared/top', { title }) %>
 
-<div class="card" style="padding:16px">
+<div class="card card--pad-lg">
   <div class="row">
-    <div style="flex:1">
+    <div class="col">
       <% const galleryUrls = []; %>
       <% if (product && product.product_image) galleryUrls.push(product.product_image); %>
       <% (images || []).forEach(img => { if (img && img.image_url) galleryUrls.push(img.image_url); }); %>
@@ -36,20 +36,20 @@
         <% } %>
       </div>
 
-      <div class="muted small" style="margin-top:8px">Scroll/pinch to zoom, drag to pan, double-click to reset.</div>
+      <div class="muted small u-mt-8">Scroll/pinch to zoom, drag to pan, double-click to reset.</div>
     </div>
-    <div style="flex:1">
+    <div class="col">
       <h1 class="h1"><%= product.name %></h1>
       <div class="muted"><%= product.category_name || product.category %></div>
-      <div style="margin-top:10px; font-size:18px; font-weight:800"><%= formatMoney(product.price) %></div>
-      <div style="margin-top:10px">
+      <div class="product-price u-mt-10"><%= formatMoney(product.price) %></div>
+      <div class="u-mt-10">
         <% if (effStock > 0) { %>
           <span class="badge ok">In stock: <%= effStock %></span>
         <% } else { %>
           <span class="badge no"><%= (Number(product.stock || 0) > 0) ? 'Temporarily out of stock' : 'Out of stock' %></span>
         <% } %>
       </div>
-      <div style="margin-top:12px" class="muted">
+      <div class="muted u-mt-12">
         <% if (String(product.description_html || '').trim()) { %>
           <div class="md"><%- product.description_html %></div>
         <% } else { %>
@@ -58,15 +58,15 @@
       </div>
 
       <% if (!isAdmin) { %>
-        <form method="post" action="/cart/add" style="margin-top:12px" class="row">
+        <form method="post" action="/cart/add" class="row row--align-end u-mt-12">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
           <input type="hidden" name="product_id" value="<%= product.product_id %>" />
           <input type="hidden" name="return_to" value="<%= currentUrl %>" />
-          <div style="width:140px">
+          <div class="field is-xs">
             <label>Qty</label>
             <input class="input" type="number" name="quantity" min="1" max="<%= Math.min(99, Math.max(1, effStock || 1)) %>" value="1" <%= effStock > 0 ? '' : 'disabled' %> />
           </div>
-          <div style="display: flex; align-content: end;" id="add-to-cart">
+          <div class="field is-md" id="add-to-cart">
             <label>&nbsp;</label>
             <button class="btn btn-primary" type="submit" <%= effStock > 0 ? '' : 'disabled' %>>Add to cart</button>
           </div>
