@@ -7,6 +7,8 @@ function mapUser(row) {
     username: row.username,
     email: row.email,
     password_hash: row.password_hash,
+    google_sub: row.google_sub || null,
+    facebook_id: row.facebook_id || null,
     phone: row.phone,
     address: row.address,
     address_line1: row.address_line1,
@@ -38,6 +40,34 @@ function findByUsernameOrEmail(identifier) {
       .prepare('SELECT * FROM users WHERE lower(username)=lower(?) OR lower(email)=lower(?)')
       .get(value, value)
   );
+}
+
+function findByGoogleSub(googleSub) {
+  const db = getDb();
+  const sub = String(googleSub || '').trim();
+  if (!sub) return null;
+  return mapUser(db.prepare('SELECT * FROM users WHERE google_sub=?').get(sub));
+}
+
+function findByFacebookId(facebookId) {
+  const db = getDb();
+  const id = String(facebookId || '').trim();
+  if (!id) return null;
+  return mapUser(db.prepare('SELECT * FROM users WHERE facebook_id=?').get(id));
+}
+
+function setGoogleSub(userId, googleSub) {
+  const db = getDb();
+  const sub = String(googleSub || '').trim();
+  db.prepare('UPDATE users SET google_sub=? WHERE user_id=?').run(sub || null, userId);
+  return getById(userId);
+}
+
+function setFacebookId(userId, facebookId) {
+  const db = getDb();
+  const id = String(facebookId || '').trim();
+  db.prepare('UPDATE users SET facebook_id=? WHERE user_id=?').run(id || null, userId);
+  return getById(userId);
 }
 
 function create({
@@ -260,7 +290,11 @@ function reopenAccount(userId) {
 module.exports = {
   getById,
   findByUsernameOrEmail,
+  findByGoogleSub,
+  findByFacebookId,
   create,
+  setGoogleSub,
+  setFacebookId,
   updateProfile,
   updatePassword,
   setPasswordResetToken,

@@ -5,6 +5,7 @@ const session = require('express-session');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const SQLiteStoreFactory = require('connect-sqlite3');
+const passport = require('passport');
 
 const { env } = require('./config/env');
 const { getDb } = require('./db/db');
@@ -257,6 +258,10 @@ function createApp() {
       },
     })
   );
+
+  // OAuth (Passport) initialization. We do not use passport session serialization;
+  // app sessions are handled via req.session.user.
+  app.use(passport.initialize());
 
   // If an account is closed after a session was created, clear the session user.
   // Keep it before attachLocals so the UI immediately reflects the logged-out state.

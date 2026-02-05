@@ -38,6 +38,7 @@ function initializeSchema(database) {
   ensureUsersAddressColumns(database);
   ensureUsersAccountClosure(database);
   ensureUsersAdminRoles(database);
+  ensureUsersOAuthIdentities(database);
   bootstrapSuperAdminsFromEnv(database);
   ensureSiteSettings(database);
   ensureOrdersOrderCode(database);
@@ -70,6 +71,26 @@ function initializeSchema(database) {
   seedCategoriesFromInventory(database);
   // Backfill is best-effort; existing orders fall back to order_id in UI if needed.
   backfillOrderCodes(database);
+}
+
+function ensureUsersOAuthIdentities(database) {
+  try {
+    const cols = database.prepare("PRAGMA table_info('users')").all();
+    const has = (name) => cols.some((c) => c.name === name);
+
+    if (!has('google_sub')) {
+      database.exec('ALTER TABLE users ADD COLUMN google_sub TEXT');
+    }
+    if (!has('facebook_id')) {
+      database.exec('ALTER TABLE users ADD COLUMN facebook_id TEXT');
+    }
+
+    // Enforce uniqueness when values are present.
+    database.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL');
+    database.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_facebook_id ON users(facebook_id) WHERE facebook_id IS NOT NULL');
+  } catch (_) {
+    // ignore
+  }
 }
 
 function preflightAdminActivityLogsActionColumn(database) {

@@ -111,6 +111,9 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  -- OAuth identities (nullable; unique when present)
+  google_sub TEXT,
+  facebook_id TEXT,
   phone TEXT,
   address TEXT,
   address_line1 TEXT,

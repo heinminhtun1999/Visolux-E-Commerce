@@ -72,6 +72,17 @@ const env = {
 
   passwordResetTokenTtlMinutes: Number(process.env.PASSWORD_RESET_TTL_MINUTES || 60),
 
+  oauth: {
+    google: {
+      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '',
+    },
+    facebook: {
+      appId: process.env.FACEBOOK_OAUTH_APP_ID || '',
+      appSecret: process.env.FACEBOOK_OAUTH_APP_SECRET || '',
+    },
+  },
+
   rateLimit: {
     enabled: (() => {
       const raw = String(process.env.RATE_LIMIT_ENABLED || '').trim().toLowerCase();

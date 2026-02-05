@@ -2,6 +2,20 @@
 
 <div class="card" style="padding:16px; max-width:520px; margin:0 auto">
   <h1 class="h1">Sign in</h1>
+
+  <% if (oauth?.google || oauth?.facebook) { %>
+    <div class="actions" style="margin:12px 0; display:flex; gap:8px; flex-wrap:wrap">
+      <% if (oauth?.google) { %>
+        <a class="btn" href="/auth/google<%= returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '' %>" target="_top" rel="noopener">Continue with Google</a>
+      <% } %>
+      <% if (oauth?.facebook) { %>
+        <a class="btn" href="/auth/facebook<%= returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '' %>" target="_top" rel="noopener">Continue with Facebook</a>
+      <% } %>
+    </div>
+
+    <div style="margin:12px 0; text-align:center; opacity:0.7">or</div>
+  <% } %>
+
   <form method="post" action="/login">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
     <input type="hidden" name="returnTo" value="<%= returnTo || '' %>" />
