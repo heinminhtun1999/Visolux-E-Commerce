@@ -604,6 +604,82 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 .password-field .input{flex:1}
 .password-toggle-btn{white-space:nowrap}
 
+/* Auth (login/register) */
+.auth-wrap{max-width:560px; margin:0 auto}
+.auth-card{overflow:hidden}
+.auth-card__main{
+  padding:20px;
+  background:
+    radial-gradient(800px 240px at 15% 10%, rgba(32,152,209,.12), transparent 60%),
+    radial-gradient(700px 220px at 92% 0%, rgba(24,119,242,.10), transparent 55%),
+    var(--card);
+}
+
+.auth-brand{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(32,152,209,.10);
+  border:1px solid rgba(32,152,209,.18);
+  color:var(--accent);
+  margin-bottom:10px;
+}
+
+.auth-heading{margin:0; font-size:20px; font-weight:950; letter-spacing:.01em}
+.auth-help{margin:6px 0 14px}
+
+.auth-oauth{display:flex; flex-direction:column; gap:10px; margin-top:6px}
+.oauth-btn{justify-content:flex-start; gap:10px; padding:12px 12px; border-radius:12px}
+.oauth-btn__icon{display:inline-flex; width:22px; height:22px; align-items:center; justify-content:center}
+.oauth-btn__icon svg{display:block}
+
+/* Keep icons single-color but styled per provider */
+.oauth-btn--google{background:color-mix(in srgb, var(--card) 70%, #fff 30%)}
+.oauth-btn--google .oauth-btn__icon{color:var(--text)}
+.oauth-btn--google:hover{background:rgba(32,152,209,.06); border-color:rgba(32,152,209,.20)}
+
+.oauth-btn--facebook{background:color-mix(in srgb, var(--card) 70%, #fff 30%)}
+.oauth-btn--facebook .oauth-btn__icon{color:#1877F2}
+.oauth-btn--facebook:hover{background:rgba(24,119,242,.08); border-color:rgba(24,119,242,.22)}
+
+.auth-divider{
+  margin:14px 0;
+  position:relative;
+  height:1px;
+  background:var(--border);
+}
+.auth-divider::after{
+  content:'or';
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  padding:0 10px;
+  background:var(--card);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+
+.auth-form{display:flex; flex-direction:column; gap:6px}
+.auth-field{margin-top:2px}
+.auth-input{position:relative; display:flex; align-items:center; gap:10px}
+.auth-input__icon{position:absolute; left:12px; color:var(--muted); display:inline-flex}
+.auth-input .input{padding-left:40px}
+
+.auth-actions{margin-top:12px; display:flex; flex-direction:column; gap:10px}
+.auth-submit{width:100%; padding:12px 14px; border-radius:12px}
+.auth-links{display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between}
+.auth-link{flex:1 1 auto; justify-content:center; border-radius:12px}
+@media (max-width: 520px){
+  .auth-links{flex-direction:column}
+  .auth-link{width:100%}
+}
+
 .chart-tooltip{
   position:absolute;
   z-index:5;

@@ -49,6 +49,16 @@ function icon(name, opts = {}) {
         <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/>
         `
       );
+
+    case 'lock':
+      return svg(
+        baseAttrs,
+        `${titleTag}
+        <rect x="5" y="11" width="14" height="11" rx="2"/>
+        <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+        <path d="M12 16v2"/>
+        `
+      );
     case 'panel-left':
       return svg(
         baseAttrs,

@@ -1,39 +1,76 @@
 <%- include('../shared/top', { title }) %>
 
-<div class="card" style="padding:16px; max-width:520px; margin:0 auto">
-  <h1 class="h1">Sign in</h1>
+<% const oauthReturnTo = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''; %>
 
-  <% if (oauth?.google || oauth?.facebook) { %>
-    <div class="actions" style="margin:12px 0; display:flex; gap:8px; flex-wrap:wrap">
-      <% if (oauth?.google) { %>
-        <a class="btn" href="/auth/google<%= returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '' %>" target="_top" rel="noopener">Continue with Google</a>
+<div class="auth-wrap">
+  <div class="auth-card card">
+    <section class="auth-card__main" aria-label="Sign in">
+      <div class="auth-brand" aria-hidden="true"><%- icon('store', { size: 18 }) %></div>
+      <h1 class="auth-heading">Sign in</h1>
+      <p class="auth-help muted">Use your email/username and password, or continue with OAuth.</p>
+
+      <% if (oauth?.google || oauth?.facebook) { %>
+        <div class="auth-oauth">
+          <% if (oauth?.google) { %>
+            <a class="btn oauth-btn oauth-btn--google" href="/auth/google<%= oauthReturnTo %>" target="_top" rel="noopener">
+              <span class="oauth-btn__icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 10.2v3.8h5.4c-.22 1.2-.9 2.22-1.92 2.9v2.46h3.1c1.82-1.68 2.87-4.15 2.87-7.09 0-.66-.06-1.3-.18-1.92H12Z" fill="currentColor" opacity=".88"/>
+                  <path d="M12 22c2.6 0 4.78-.86 6.37-2.34l-3.1-2.46c-.86.58-1.96.92-3.27.92-2.51 0-4.64-1.7-5.4-3.98H3.4v2.53C4.98 19.98 8.22 22 12 22Z" fill="currentColor" opacity=".72"/>
+                  <path d="M6.6 14.14A5.98 5.98 0 0 1 6.29 12c0-.74.13-1.46.31-2.14V7.33H3.4A9.99 9.99 0 0 0 2 12c0 1.62.39 3.15 1.4 4.67l3.2-2.53Z" fill="currentColor" opacity=".62"/>
+                  <path d="M12 5.88c1.41 0 2.68.48 3.68 1.44l2.76-2.76C16.77 2.98 14.6 2 12 2 8.22 2 4.98 4.02 3.4 7.33l3.2 2.53C7.36 7.58 9.49 5.88 12 5.88Z" fill="currentColor"/>
+                </svg>
+              </span>
+              <span>Continue with Google</span>
+            </a>
+          <% } %>
+
+          <% if (oauth?.facebook) { %>
+            <a class="btn oauth-btn oauth-btn--facebook" href="/auth/facebook<%= oauthReturnTo %>" target="_top" rel="noopener">
+              <span class="oauth-btn__icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M13.5 22v-8h2.6l.4-3h-3V9.2c0-.87.24-1.46 1.48-1.46H16.6V5.06C16.32 5.02 15.36 4.9 14.25 4.9c-2.32 0-3.9 1.42-3.9 4.02V11H8v3h2.35v8h3.15Z" fill="currentColor"/>
+                </svg>
+              </span>
+              <span>Continue with Facebook</span>
+            </a>
+          <% } %>
+        </div>
+
+        <div class="auth-divider" role="separator" aria-label="Or"></div>
       <% } %>
-      <% if (oauth?.facebook) { %>
-        <a class="btn" href="/auth/facebook<%= returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '' %>" target="_top" rel="noopener">Continue with Facebook</a>
-      <% } %>
-    </div>
 
-    <div style="margin:12px 0; text-align:center; opacity:0.7">or</div>
-  <% } %>
+      <form method="post" action="/login" class="auth-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <input type="hidden" name="returnTo" value="<%= returnTo || '' %>" />
 
-  <form method="post" action="/login">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-    <input type="hidden" name="returnTo" value="<%= returnTo || '' %>" />
-    <label>Username or email</label>
-    <input class="input" name="identifier" required />
+        <div class="auth-field">
+          <label for="identifier">Username or email</label>
+          <div class="auth-input">
+            <span class="auth-input__icon" aria-hidden="true"><%- icon('mail', { size: 18 }) %></span>
+            <input class="input" id="identifier" name="identifier" autocomplete="username" required />
+          </div>
+        </div>
 
-    <label>Password</label>
-    <div class="password-field" data-password-field>
-      <input class="input" type="password" name="password" required />
-      <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
-    </div>
+        <div class="auth-field">
+          <label for="password">Password</label>
+          <div class="password-field auth-input" data-password-field>
+            <span class="auth-input__icon" aria-hidden="true"><%- icon('lock', { size: 18 }) %></span>
+            <input class="input" id="password" type="password" name="password" autocomplete="current-password" required />
+            <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
+          </div>
+        </div>
 
-    <div class="actions" style="margin-top:12px">
-      <button class="btn btn-primary" type="submit">Sign in</button>
-      <button class="btn" type="button" data-href="/register">Create account</button>
-      <button class="btn" type="button" data-href="/forgot-password">Forgot password</button>
-    </div>
-  </form>
+        <div class="auth-actions">
+          <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
+          <div class="auth-links">
+            <a class="btn btn-ghost auth-link" href="/register">Create account</a>
+            <a class="btn btn-ghost auth-link" href="/forgot-password">Forgot password</a>
+          </div>
+        </div>
+      </form>
+    </section>
+  </div>
 </div>
 
 <%- include('../shared/bottom') %>
