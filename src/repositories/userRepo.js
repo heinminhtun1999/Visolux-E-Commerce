@@ -70,6 +70,20 @@ function setFacebookId(userId, facebookId) {
   return getById(userId);
 }
 
+function clearFacebookId(userId) {
+  const db = getDb();
+  db.prepare('UPDATE users SET facebook_id=NULL WHERE user_id=?').run(userId);
+  return getById(userId);
+}
+
+function clearFacebookIdByFacebookId(facebookId) {
+  const id = String(facebookId || '').trim();
+  if (!id) return null;
+  const user = findByFacebookId(id);
+  if (!user) return null;
+  return clearFacebookId(user.user_id);
+}
+
 function create({
   username,
   email,
@@ -295,6 +309,8 @@ module.exports = {
   create,
   setGoogleSub,
   setFacebookId,
+  clearFacebookId,
+  clearFacebookIdByFacebookId,
   updateProfile,
   updatePassword,
   setPasswordResetToken,

@@ -303,7 +303,16 @@ function createApp() {
   // CSRF: required because cookies are cross-site in iframe mode (SameSite=None).
   // Exempt payment return/callback because they are initiated by the gateway.
   app.use(ensureCsrfToken);
-  app.use(csrfProtection({ exemptPaths: ['/payment/callback', '/payment/return', '/payment/refund/notify'] }));
+  app.use(csrfProtection({
+    exemptPaths: [
+      '/payment/callback',
+      '/payment/return',
+      '/payment/refund/notify',
+      // Meta/Facebook compliance webhooks (server-to-server POSTs)
+      '/facebook/deauthorize',
+      '/facebook/data-deletion',
+    ],
+  }));
 
   // Home page is provided by shop routes.
 

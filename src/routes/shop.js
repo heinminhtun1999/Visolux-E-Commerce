@@ -8,6 +8,7 @@ const { validate } = require('../middleware/validate');
 const categoryRepo = require('../repositories/categoryRepo');
 const categorySectionRepo = require('../repositories/categorySectionRepo');
 const settingsRepo = require('../repositories/settingsRepo');
+const { env } = require('../config/env');
 const { renderMarkdown, sanitizeHtmlFragment } = require('../utils/markdown');
 const productImageRepo = require('../repositories/productImageRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
@@ -71,6 +72,54 @@ router.get('/how-to-order', (req, res) => {
     title: 'How to Order',
     pageTitle: 'How to Order',
     html,
+  });
+});
+
+function getSupportEmailForDataDeletion() {
+  const fromSettings = String(settingsRepo.get('site.contact.email', '') || '').trim();
+  if (fromSettings) return fromSettings;
+  const fromEnv = String(env?.email?.orderNotifyTo || env?.email?.from || '').trim();
+  return fromEnv || '';
+}
+
+router.get('/data-deletion', (req, res) => {
+  const supportEmail = getSupportEmailForDataDeletion();
+  const storedHtml = settingsRepo.get('page.data_deletion.html', '');
+  const md = settingsRepo.get('page.data_deletion.md', '');
+
+  const fallbackMd =
+    `# Data deletion\n\n` +
+    `If you want us to delete your personal data from **Visolux Store**, please contact us with the email address used on your account and include the subject **Data Deletion Request**.\n\n` +
+    (supportEmail ? `Contact email: **${supportEmail}**\n\n` : '') +
+    `## What we may store\n\n` +
+    `Depending on how you use the site, we may store your account profile (username/email), order history, and OAuth identifiers (e.g. a Facebook user ID) used to sign in.\n\n` +
+    `## What to include\n\n` +
+    `- Your name\n` +
+    `- Your account email\n` +
+    `- A brief request to delete your data\n\n` +
+    `We will process deletion requests as soon as possible.`;
+
+  const html = storedHtml
+    ? sanitizeHtmlFragment(storedHtml)
+    : renderMarkdown(md || fallbackMd);
+
+  return res.render('site/page', {
+    title: 'Data Deletion',
+    pageTitle: 'Data Deletion',
+    html,
+  });
+});
+
+router.get('/data-deletion/status', (req, res) => {
+  const code = String(req.query.code || '').trim();
+  const md =
+    `# Data deletion request received\n\n` +
+    `Your request has been received.\n\n` +
+    (code ? `Confirmation code: **${code}**\n` : '');
+  return res.render('site/page', {
+    title: 'Data Deletion Status',
+    pageTitle: 'Data Deletion Status',
+    html: renderMarkdown(md),
   });
 });
 

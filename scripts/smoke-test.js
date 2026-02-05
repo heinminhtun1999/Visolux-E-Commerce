@@ -100,6 +100,18 @@ async function main() {
     })
   )) && ok;
 
+  // Generic site pages (privacy/terms/data deletion all use this template)
+  ok = (await renderTemplate(
+    'views/site/page.ejs',
+    getBaseLocals({
+      title: 'Site Page',
+      currentPath: '/privacy',
+      currentUrl: '/privacy',
+      pageTitle: 'Privacy',
+      html: '<p>Smoke test page.</p>',
+    })
+  )) && ok;
+
   // Admin templates touched recently
   ok = (await renderTemplate(
     'views/admin/settings.ejs',

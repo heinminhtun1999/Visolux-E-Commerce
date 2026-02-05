@@ -689,7 +689,7 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 .auth-heading{margin:0; font-size:20px; font-weight:950; letter-spacing:.01em}
 .auth-help{margin:6px 0 14px}
 
-.auth-oauth{display:flex; flex-direction:column; gap:10px; margin-top:6px}
+.auth-oauth{display:flex; gap:10px; margin-top:6px; justify-content: space-around;}
 .oauth-btn{justify-content:flex-start; gap:10px; padding:12px 12px; border-radius:12px}
 .oauth-btn__icon{display:inline-flex; width:22px; height:22px; align-items:center; justify-content:center}
 .oauth-btn__icon svg{display:block}
@@ -731,11 +731,11 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 
 .auth-actions{margin-top:12px; display:flex; flex-direction:column; gap:10px}
 .auth-submit{width:100%; padding:12px 14px; border-radius:12px}
-.auth-links{display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between}
-.auth-link{flex:1 1 auto; justify-content:center; border-radius:12px}
+.auth-links{display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between; font-size:13px}
+.auth-link{color:var(--accent); font-weight:900; text-decoration:none; padding:4px 0}
+.auth-link:hover{text-decoration:underline}
 @media (max-width: 520px){
-  .auth-links{flex-direction:column}
-  .auth-link{width:100%}
+  .auth-links{flex-direction:column; gap:8px; align-items:flex-start}
 }
 
 .chart-tooltip{

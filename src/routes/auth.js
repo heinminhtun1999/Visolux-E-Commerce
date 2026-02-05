@@ -21,6 +21,53 @@ function sha256Hex(value) {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');
 }
 
+function base64UrlToBuffer(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return Buffer.alloc(0);
+  const normalized = raw.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = normalized.length % 4;
+  const padded = pad ? normalized + '='.repeat(4 - pad) : normalized;
+  return Buffer.from(padded, 'base64');
+}
+
+function parseFacebookSignedRequest(signedRequest, appSecret) {
+  const raw = String(signedRequest || '').trim();
+  if (!raw || !raw.includes('.')) {
+    const err = new Error('Missing signed_request');
+    err.status = 400;
+    throw err;
+  }
+
+  const [encodedSig, encodedPayload] = raw.split('.', 2);
+  const sig = base64UrlToBuffer(encodedSig);
+  const payloadBuf = base64UrlToBuffer(encodedPayload);
+
+  const expected = crypto.createHmac('sha256', String(appSecret || '')).update(encodedPayload).digest();
+  if (sig.length !== expected.length || !crypto.timingSafeEqual(sig, expected)) {
+    const err = new Error('Invalid signed_request');
+    err.status = 400;
+    throw err;
+  }
+
+  let payload = null;
+  try {
+    payload = JSON.parse(payloadBuf.toString('utf8'));
+  } catch (_) {
+    const err = new Error('Invalid signed_request payload');
+    err.status = 400;
+    throw err;
+  }
+
+  const alg = String(payload?.algorithm || '').toUpperCase();
+  if (alg && alg !== 'HMAC-SHA256') {
+    const err = new Error('Unsupported signed_request algorithm');
+    err.status = 400;
+    throw err;
+  }
+
+  return payload;
+}
+
 function isGoogleOAuthConfigured() {
   return Boolean(env.oauth?.google?.clientId && env.oauth?.google?.clientSecret);
 }
@@ -327,6 +374,43 @@ router.get('/auth/facebook/callback', (req, res, next) => {
       return res.redirect('/login');
     }
   })(req, res, next);
+});
+
+// Meta requirement: Deauthorize Callback URL
+// Called by Facebook when a user removes the app (disconnects Facebook Login).
+router.post('/facebook/deauthorize', (req, res, next) => {
+  try {
+    if (!isFacebookOAuthConfigured()) return res.status(200).send('OK');
+    const signedRequest = req.body?.signed_request;
+    const fbPayload = parseFacebookSignedRequest(signedRequest, env.oauth.facebook.appSecret);
+    const facebookUserId = String(fbPayload?.user_id || '').trim();
+    if (facebookUserId) userRepo.clearFacebookIdByFacebookId(facebookUserId);
+    return res.status(200).send('OK');
+  } catch (e) {
+    return next(e);
+  }
+});
+
+// Meta requirement: User Data Deletion Callback URL
+// Called when a user initiates a data-deletion request from Facebook.
+router.post('/facebook/data-deletion', (req, res, next) => {
+  try {
+    if (!isFacebookOAuthConfigured()) {
+      return res.status(400).json({ error: { message: 'Facebook app not configured' } });
+    }
+
+    const signedRequest = req.body?.signed_request;
+    const fbPayload = parseFacebookSignedRequest(signedRequest, env.oauth.facebook.appSecret);
+    const facebookUserId = String(fbPayload?.user_id || '').trim();
+    if (facebookUserId) userRepo.clearFacebookIdByFacebookId(facebookUserId);
+
+    const confirmationCode = crypto.randomBytes(16).toString('hex');
+    const base = getPublicBaseUrl();
+    const url = `${base}/data-deletion/status?code=${encodeURIComponent(confirmationCode)}`;
+    return res.json({ url, confirmation_code: confirmationCode });
+  } catch (e) {
+    return next(e);
+  }
 });
 router.get('/register', (req, res) =>
   res.render('auth/register', { title: 'Create account', malaysiaStates: MALAYSIA_STATES })

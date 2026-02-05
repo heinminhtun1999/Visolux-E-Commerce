@@ -5,11 +5,40 @@
 <div class="auth-wrap">
   <div class="auth-card card">
     <section class="auth-card__main" aria-label="Sign in">
-      <div class="auth-brand" aria-hidden="true"><%- icon('store', { size: 18 }) %></div>
       <h1 class="auth-heading">Sign in</h1>
-      <p class="auth-help muted">Use your email/username and password, or continue with OAuth.</p>
+
+      <form method="post" action="/login" class="auth-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <input type="hidden" name="returnTo" value="<%= returnTo || '' %>" />
+
+        <div class="auth-field">
+          <label for="identifier">Username or email</label>
+          <div class="auth-input">
+            <span class="auth-input__icon" aria-hidden="true"><%- icon('mail', { size: 18 }) %></span>
+            <input class="input" id="identifier" name="identifier" autocomplete="username" required />
+          </div>
+        </div>
+
+        <div class="auth-field">
+          <label for="password">Password</label>
+          <div class="password-field auth-input" data-password-field>
+            <span class="auth-input__icon" aria-hidden="true"><%- icon('lock', { size: 18 }) %></span>
+            <input class="input" id="password" type="password" name="password" autocomplete="current-password" required />
+            <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
+          </div>
+        </div>
+
+        <div class="auth-actions">
+          <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
+          <div class="auth-links">
+            <a class="auth-link" href="/register">Create account</a>
+            <a class="auth-link" href="/forgot-password">Forgot password</a>
+          </div>
+        </div>
+      </form>
 
       <% if (oauth?.google || oauth?.facebook) { %>
+        <div class="auth-divider" role="separator" aria-label="Or"></div>
         <div class="auth-oauth">
           <% if (oauth?.google) { %>
             <a class="btn oauth-btn oauth-btn--google" href="/auth/google<%= oauthReturnTo %>" target="_top" rel="noopener">
@@ -37,38 +66,10 @@
           <% } %>
         </div>
 
-        <div class="auth-divider" role="separator" aria-label="Or"></div>
+        
       <% } %>
 
-      <form method="post" action="/login" class="auth-form">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-        <input type="hidden" name="returnTo" value="<%= returnTo || '' %>" />
-
-        <div class="auth-field">
-          <label for="identifier">Username or email</label>
-          <div class="auth-input">
-            <span class="auth-input__icon" aria-hidden="true"><%- icon('mail', { size: 18 }) %></span>
-            <input class="input" id="identifier" name="identifier" autocomplete="username" required />
-          </div>
-        </div>
-
-        <div class="auth-field">
-          <label for="password">Password</label>
-          <div class="password-field auth-input" data-password-field>
-            <span class="auth-input__icon" aria-hidden="true"><%- icon('lock', { size: 18 }) %></span>
-            <input class="input" id="password" type="password" name="password" autocomplete="current-password" required />
-            <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
-          </div>
-        </div>
-
-        <div class="auth-actions">
-          <button class="btn btn-primary auth-submit" type="submit">Sign in</button>
-          <div class="auth-links">
-            <a class="btn btn-ghost auth-link" href="/register">Create account</a>
-            <a class="btn btn-ghost auth-link" href="/forgot-password">Forgot password</a>
-          </div>
-        </div>
-      </form>
+      
     </section>
   </div>
 </div>
