@@ -31,7 +31,8 @@ function logoutClosedAccountSessions(req, _res, next) {
 function requireUser(req, res, next) {
   if (!req.session.user) {
     req.session.flash = { type: 'error', message: 'Please sign in first.' };
-    return res.redirect('/login');
+    const returnTo = String(req.originalUrl || '').trim();
+    return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
   }
 
   // If an account was closed after the session was created, force re-auth.
@@ -40,7 +41,8 @@ function requireUser(req, res, next) {
     if (!u || u.is_closed) {
       req.session.user = null;
       req.session.flash = { type: 'error', message: 'This account has been closed.' };
-      return res.redirect('/login');
+      const returnTo = String(req.originalUrl || '').trim();
+      return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
     }
   } catch (_) {
     // ignore and allow request

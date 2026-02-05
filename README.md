@@ -3,7 +3,7 @@
 Server-rendered Node.js + Express + SQLite e-commerce app designed to be embedded inside an iframe (no global header/footer). Includes:
 
 - Storefront: product listing, search, pagination, cart
-- Checkout: guest checkout + logged-in checkout
+- Checkout: authenticated checkout
 - Payments:
   - Offline bank transfer slip upload + admin approval
   - Fiuu Hosted Payment Page (return/callback/cancel + signature verification + idempotency)

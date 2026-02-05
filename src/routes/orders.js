@@ -27,7 +27,6 @@ const promoService = require('../services/promoService');
 const offlineTransferService = require('../services/offlineTransferService');
 const fiuuAccountsService = require('../services/fiuuAccountsService');
 const { logger } = require('../utils/logger');
-const { verifyOrderViewToken } = require('../utils/orderViewToken');
 
 const router = express.Router();
 
@@ -39,62 +38,36 @@ function resolveOrderParamToId(param) {
   return byCode?.order_id || null;
 }
 
-function canAccessOrder(req, order) {
-  if (!order) return false;
-  if (req.session.user?.isAdmin) return true;
-  if (req.session.user && order.user_id && req.session.user.user_id === order.user_id) return true;
-  if (!order.user_id && req.session.lastGuestOrderId && Number(req.session.lastGuestOrderId) === order.order_id) return true;
-  return false;
-}
-
-function canAccessOrderViaEmailToken(req, order) {
-  if (!order || order.user_id) return false;
-  const token = String(req.query.t || '').trim();
-  if (!token) return false;
-
-  try {
-    if (!verifyOrderViewToken({ token, orderId: order.order_id })) return false;
-    // Promote token-based access into the session for subsequent navigation.
-    req.session.lastGuestOrderId = order.order_id;
-    return true;
-  } catch (e) {
-    logger.warn({ event: 'order_email_token_verify_failed', err: e, orderId: order.order_id }, 'failed to verify order email token');
-    return false;
-  }
-}
-
-function requireOrderAccess(req, res, order) {
+function requireCustomerOrderAccess(req, res, order) {
   if (!order) return false;
 
-  // Admins can view any order.
-  if (req.session.user?.isAdmin) return true;
-
-  // Orders made with an account must be viewed by that same logged-in account.
-  if (order.user_id) {
-    if (!req.session.user) {
-      return res.status(401).render('orders/login_required', {
-        title: 'Sign in required',
-        returnTo: req.originalUrl || '/',
-      });
-    }
-
-    if (req.session.user.user_id !== order.user_id) {
-      return res.status(403).render('shared/error', {
-        title: 'Access Denied',
-        message: 'You do not have access to this order. Please sign in with the account used to place the order.',
-      });
-    }
-
-    return true;
+  // Admins should use admin order views.
+  if (req.session.user?.isAdmin) {
+    return res.redirect(`/admin/orders/${order.order_id}`);
   }
 
-  // Guest orders can be viewed via session access (checkout flow) or email token.
-  if (canAccessOrder(req, order) || canAccessOrderViaEmailToken(req, order)) return true;
+  if (!req.session.user) {
+    req.session.flash = { type: 'error', message: 'Please sign in first.' };
+    const returnTo = String(req.originalUrl || '').trim();
+    return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
+  }
 
-  return false;
+  // Guest checkout has been removed; orders must be tied to a user account.
+  if (!order.user_id) {
+    return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+  }
+
+  if (req.session.user.user_id !== order.user_id) {
+    return res.status(403).render('shared/error', {
+      title: 'Access Denied',
+      message: 'You do not have access to this order. Please sign in with the account used to place the order.',
+    });
+  }
+
+  return true;
 }
 
-router.get('/checkout', async (req, res) => {
+router.get('/checkout', requireUser, async (req, res) => {
   if (req.session.user?.isAdmin) {
     req.session.flash = { type: 'error', message: 'Admin accounts are not allowed to place orders.' };
     return res.redirect('/admin/orders');
@@ -181,6 +154,9 @@ router.post(
     })
   ),
   async (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ ok: false, message: 'Please sign in first.' });
+    }
     if (req.session.user?.isAdmin) {
       return res.status(403).json({ ok: false, message: 'Admins cannot place orders.' });
     }
@@ -272,6 +248,9 @@ router.post(
     })
   ),
   async (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ ok: false, message: 'Please sign in first.' });
+    }
     if (req.session.user?.isAdmin) {
       return res.status(403).json({ ok: false, message: 'Admins cannot place orders.' });
     }
@@ -346,6 +325,7 @@ router.post(
 
 router.post(
   '/checkout',
+  requireUser,
   validate(
     z.object({
       body: z.object({
@@ -432,7 +412,7 @@ router.post(
       }
 
       const order = orderService.placeOrder({
-        user: req.session.user ? { user_id: req.session.user.user_id } : null,
+        user: { user_id: req.session.user.user_id },
         customer,
         cartItems: hydrated.items,
         promoCode: req.validated.body.promo_code,
@@ -452,8 +432,6 @@ router.post(
       }
 
       cartService.clear(req.session);
-
-      if (!order.user_id) req.session.lastGuestOrderId = order.order_id;
 
       if (order.payment_method === 'OFFLINE_TRANSFER') {
         req.session.flash = { type: 'success', message: 'Order placed. Upload your bank slip to proceed.' };
@@ -542,7 +520,7 @@ router.get('/orders/:id/confirmation', (req, res) => {
   if (!order) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
-  const ok = requireOrderAccess(req, res, order);
+  const ok = requireCustomerOrderAccess(req, res, order);
   if (ok !== true) {
     // requireOrderAccess already handled redirect OR access was denied.
     if (ok) return ok;
@@ -615,7 +593,7 @@ router.get('/orders/:id', (req, res) => {
   if (!order) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
-  const ok = requireOrderAccess(req, res, order);
+  const ok = requireCustomerOrderAccess(req, res, order);
   if (ok !== true) {
     if (ok) return ok;
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
@@ -623,7 +601,6 @@ router.get('/orders/:id', (req, res) => {
   return res.render('orders/detail', {
     title: `Order ${order.order_code || `#${order.order_id}`}`,
     order,
-    token: String(req.query.t || '').trim(),
     promo: orderRepo.getPromoForOrder(id),
     offline: orderRepo.getOfflineTransfer(id),
     statusHistory: orderRepo.listStatusHistory(id),
@@ -638,7 +615,7 @@ router.get('/orders/:id/receipt', (req, res) => {
   if (!order) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
-  const ok = requireOrderAccess(req, res, order);
+  const ok = requireCustomerOrderAccess(req, res, order);
   if (ok !== true) {
     if (ok) return ok;
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
@@ -646,7 +623,6 @@ router.get('/orders/:id/receipt', (req, res) => {
   return res.render('orders/receipt', {
     title: `Receipt ${order.order_code || `#${order.order_id}`}`,
     order,
-    token: String(req.query.t || '').trim(),
   });
 });
 
@@ -656,7 +632,7 @@ router.get('/orders/:id/offline-transfer', (req, res) => {
   if (!order) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
-  const ok = requireOrderAccess(req, res, order);
+  const ok = requireCustomerOrderAccess(req, res, order);
   if (ok !== true) {
     if (ok) return ok;
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
@@ -690,7 +666,7 @@ router.post(
       const id = resolveOrderParamToId(req.params.id);
       const order = id ? orderRepo.getWithItems(id) : null;
       if (!order) return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
-      const ok = requireOrderAccess(req, res, order);
+      const ok = requireCustomerOrderAccess(req, res, order);
       if (ok !== true) {
         if (ok) return ok;
         return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });

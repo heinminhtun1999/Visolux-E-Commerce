@@ -4,8 +4,8 @@
   <h1 class="h1">Order <%= order.order_code || ('#' + order.order_id) %></h1>
 
   <div class="actions icon-row" style="margin:-6px 0 12px; justify-content:flex-end">
-    <button class="btn btn-icon" type="button" data-href="/orders/<%= order.order_id %>/receipt<%= token ? ('?t=' + encodeURIComponent(token)) : '' %>" title="Receipt" aria-label="Receipt" data-label="Receipt"><%- icon('view') %></button>
-    <button class="btn" type="button" data-href="/orders/<%= order.order_id %>/receipt<%= token ? ('?t=' + encodeURIComponent(token)) : '' %>">Download receipt</button>
+    <button class="btn btn-icon" type="button" data-href="/orders/<%= order.order_id %>/receipt" title="Receipt" aria-label="Receipt" data-label="Receipt"><%- icon('view') %></button>
+    <button class="btn" type="button" data-href="/orders/<%= order.order_id %>/receipt">Download receipt</button>
   </div>
 
   <div class="row" style="gap:18px">

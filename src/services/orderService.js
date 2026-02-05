@@ -78,6 +78,12 @@ function placeOrder({
   offline_transfer_recipient,
   online_payment_snapshot,
 }) {
+  if (!user || !Number.isFinite(Number(user.user_id)) || Number(user.user_id) <= 0) {
+    const err = new Error('Sign in required to place an order.');
+    err.status = 401;
+    throw err;
+  }
+
   const built = buildOrderFromCart({ cartItems });
 
   const totalWeightKg = computeTotalWeightKgFromCartItems(cartItems);
@@ -121,7 +127,7 @@ function placeOrder({
   const fulfilment_status = 'NEW';
 
   const order = orderRepo.createOrder({
-    user_id: user?.user_id || null,
+    user_id: Number(user.user_id),
     customer_name: customer.customer_name,
     phone: customer.phone,
     email: customer.email,

@@ -73,10 +73,7 @@ Important:
 ### 6.1 Logged-in users
 - Go to **Orders** to view your order history.
 
-### 6.2 Guest checkout
-- If you checked out as a guest, you can still view your order from the confirmation link.
-
-### 6.3 Receipt
+### 6.2 Receipt
 - The receipt shows items, totals, shipping fee, discount (if any), and total weight.
 
 ---

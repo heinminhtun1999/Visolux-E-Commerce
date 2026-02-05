@@ -2,7 +2,6 @@ const nodemailer = require('nodemailer');
 
 const { env } = require('../config/env');
 const settingsRepo = require('../repositories/settingsRepo');
-const { createOrderViewToken } = require('../utils/orderViewToken');
 const { formatDateTime } = require('../utils/datetime');
 
 function isSmtpConfigured() {
@@ -360,8 +359,7 @@ async function sendOrderPlacedEmailToCustomer({ order, promo }) {
   }
 
   const base = getPublicBaseUrl();
-  const token = order.user_id ? '' : createOrderViewToken({ orderId: order.order_id, ttlDays: 180 });
-  const orderLink = `${base}/orders/${order.order_id}${token ? `?t=${encodeURIComponent(token)}` : ''}`;
+  const orderLink = `${base}/orders/${order.order_id}`;
   const msg = buildCustomerOrderEmail({ order, promo, orderLink });
 
   const transport = createTransport();
@@ -396,8 +394,7 @@ async function sendOrderStatusChangedEmailToCustomer({ order, event, note }) {
   }
 
   const base = getPublicBaseUrl();
-  const token = order.user_id ? '' : createOrderViewToken({ orderId: order.order_id, ttlDays: 180 });
-  const orderLink = `${base}/orders/${order.order_id}${token ? `?t=${encodeURIComponent(token)}` : ''}`;
+  const orderLink = `${base}/orders/${order.order_id}`;
   const msg = buildCustomerOrderStatusEmail({ order, event, note, orderLink });
 
   const transport = createTransport();

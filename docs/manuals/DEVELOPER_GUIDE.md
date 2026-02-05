@@ -173,7 +173,7 @@ Notes:
   - If online: redirects to payment gateway (GET redirect or auto-post form)
 
 #### `GET /orders/:id`
-- Auth: order owner, or guest session for last guest order
+- Auth: logged-in order owner (admin should use `/admin/orders/:id`)
 - Response: HTML
 
 #### `GET /orders/history`

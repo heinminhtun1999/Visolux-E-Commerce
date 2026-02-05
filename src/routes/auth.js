@@ -44,13 +44,11 @@ function regenerateSession(req) {
   return new Promise((resolve, reject) => {
     const preserved = {
       cart: req.session?.cart,
-      lastGuestOrderId: req.session?.lastGuestOrderId,
     };
 
     req.session.regenerate((err) => {
       if (err) return reject(err);
       if (preserved.cart) req.session.cart = preserved.cart;
-      if (preserved.lastGuestOrderId) req.session.lastGuestOrderId = preserved.lastGuestOrderId;
       return resolve();
     });
   });
@@ -315,7 +313,7 @@ router.post(
       if (user.is_closed) {
         logger.warn({ event: 'login_failed', reason: 'account_closed', userId: user.user_id, ip: req.ip }, 'login failed');
         req.session.flash = { type: 'error', message: 'This account has been closed.' };
-        return res.redirect('/login');
+        return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
 
       const ok = await bcrypt.compare(password, user.password_hash);
@@ -356,7 +354,10 @@ router.post('/logout', (req, res) => {
 });
 
 router.get('/account', (req, res) => {
-  if (!req.session.user) return res.redirect('/login');
+  if (!req.session.user) {
+    const returnTo = safeReturnTo(req.originalUrl, '');
+    return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
+  }
   const user = userRepo.getById(req.session.user.user_id);
   return res.render('auth/account', { title: 'Account', user, malaysiaStates: MALAYSIA_STATES });
 });
@@ -390,7 +391,10 @@ router.post(
   ),
   (req, res, next) => {
     try {
-      if (!req.session.user) return res.redirect('/login');
+      if (!req.session.user) {
+        const returnTo = safeReturnTo(req.originalUrl, '');
+        return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
+      }
 
       const { email, phone, address_line1, address_line2, city, state, postcode } = req.validated.body;
 
@@ -440,7 +444,10 @@ router.post(
   ),
   async (req, res, next) => {
     try {
-      if (!req.session.user) return res.redirect('/login');
+      if (!req.session.user) {
+        const returnTo = safeReturnTo(req.originalUrl, '');
+        return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
+      }
       const { current_password, new_password } = req.validated.body;
       const user = userRepo.getById(req.session.user.user_id);
 

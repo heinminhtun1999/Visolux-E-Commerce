@@ -9,8 +9,7 @@ Visolux E-Commerce is a server-rendered Node.js + Express + SQLite e-commerce ap
 - Storefront: product grid, search, pagination, product detail
 - Cart: session-based cart
 - Checkout:
-  - Guest checkout
-  - Authenticated checkout
+  - Authenticated checkout (login required)
   - Promo codes
 - Payments:
   - Offline bank transfer with slip upload and admin approval
@@ -202,9 +201,7 @@ When checkout is posted:
 4) Status history records initial PAYMENT and FULFILMENT statuses
 5) Cart is cleared
 
-Guest order access:
-
-- For guest checkout, the server stores `session.lastGuestOrderId` to allow viewing that order without a login.
+Checkout requires an authenticated user account (guest checkout is not supported).
 
 ### 6.3 Stock deduction rules
 

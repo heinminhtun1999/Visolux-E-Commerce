@@ -7,7 +7,7 @@
   </div>
 
   <div class="actions icon-row">
-    <button class="btn btn-icon" type="button" data-href="/orders/<%= order.order_id %><%= token ? ('?t=' + encodeURIComponent(token)) : '' %>" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></button>
+    <button class="btn btn-icon" type="button" data-href="/orders/<%= order.order_id %>" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></button>
 
     <button class="btn btn-primary" type="button" data-download-receipt-pdf data-receipt-target="receipt" data-label="Download PDF" data-download-name="receipt_<%= order.order_code || order.order_id %>.pdf">Download PDF</button>
     <button class="btn" type="button" data-download-receipt-png data-receipt-target="receipt" data-label="Download PNG" data-download-name="receipt_<%= order.order_code || order.order_id %>.png">Download PNG</button>
