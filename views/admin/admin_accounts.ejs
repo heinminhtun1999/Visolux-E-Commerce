@@ -90,16 +90,10 @@
     </table>
   </div>
 
-  <div class="pager">
-    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
-    <% const _qs = (extra) => new URLSearchParams({ q, pageSize: String(pageSize), ...extra }).toString(); %>
-    <% if (page > 1) { %>
-      <a href="/admin/admin-accounts?<%= _qs({ page: String(page - 1) }) %>">Prev</a>
-    <% } %>
-    <% if (page < pageCount) { %>
-      <a href="/admin/admin-accounts?<%= _qs({ page: String(page + 1) }) %>">Next</a>
-    <% } %>
-  </div>
+  <% const qs = new URLSearchParams(); %>
+  <% if (q) qs.set('q', q); %>
+  <% if (pageSize) qs.set('pageSize', String(pageSize)); %>
+  <%- include('../shared/pagination', { basePath: '/admin/admin-accounts', query: qs.toString(), page, pageCount }) %>
 </div>
 
 <div class="card card--pad card--mt">

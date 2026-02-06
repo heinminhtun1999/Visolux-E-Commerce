@@ -106,15 +106,8 @@
   <% }) %>
 </div>
 
-<div class="pager">
-  <span class="muted small">Page <%= page %> / <%= pageCount %> • <%= total %> items</span>
-  <% if (page > 1) { %>
-    <a href="/products?<%= new URLSearchParams({ q, category, availability, min_price, max_price, sort, pageSize: String(pageSize || 12), page: String(page-1) }).toString() %>">Prev</a>
-  <% } %>
-  <% if (page < pageCount) { %>
-    <a href="/products?<%= new URLSearchParams({ q, category, availability, min_price, max_price, sort, pageSize: String(pageSize || 12), page: String(page+1) }).toString() %>">Next</a>
-  <% } %>
-</div>
+<% const pagerQs = new URLSearchParams({ q, category, availability, min_price, max_price, sort, pageSize: String(pageSize || 12) }); %>
+<%- include('../shared/pagination', { basePath: '/products', query: pagerQs.toString(), page, pageCount, metaText: `Page ${page} / ${pageCount} • ${total} items` }) %>
 
 <% if (category && categorySections && categorySections.length) { %>
   <div class="card card--pad-lg card--mt">

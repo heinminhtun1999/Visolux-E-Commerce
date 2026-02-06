@@ -75,16 +75,10 @@
     </tbody>
   </table>
 
-  <div class="pager">
-    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
-    <% const qs = `q=${encodeURIComponent(q || '')}&status=${encodeURIComponent(status || 'NEW')}`; %>
-    <% if (page > 1) { %>
-      <a href="/admin/contact-messages?<%= qs %>&page=<%= page - 1 %>">Prev</a>
-    <% } %>
-    <% if (page < pageCount) { %>
-      <a href="/admin/contact-messages?<%= qs %>&page=<%= page + 1 %>">Next</a>
-    <% } %>
-  </div>
+  <% const qs = new URLSearchParams(); %>
+  <% if (q) qs.set('q', q); %>
+  <% qs.set('status', status || 'NEW'); %>
+  <%- include('../shared/pagination', { basePath: '/admin/contact-messages', query: qs.toString(), page, pageCount }) %>
 </div>
 
 <script>

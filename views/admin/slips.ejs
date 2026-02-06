@@ -89,22 +89,12 @@
     </tbody>
   </table>
 
-  <div class="pager">
-    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
-    <% const qs = new URLSearchParams(); %>
-    <% if (q) qs.set('q', q); %>
-    <% if (status) qs.set('status', String(status)); %>
-    <% if (date_from) qs.set('date_from', date_from); %>
-    <% if (date_to) qs.set('date_to', date_to); %>
-    <% if (page > 1) { %>
-      <% qs.set('page', String(page - 1)); %>
-      <a href="/admin/slips?<%= qs.toString() %>">Prev</a>
-    <% } %>
-    <% if (page < pageCount) { %>
-      <% qs.set('page', String(page + 1)); %>
-      <a href="/admin/slips?<%= qs.toString() %>">Next</a>
-    <% } %>
-  </div>
+  <% const qs = new URLSearchParams(); %>
+  <% if (q) qs.set('q', q); %>
+  <% if (status) qs.set('status', String(status)); %>
+  <% if (date_from) qs.set('date_from', date_from); %>
+  <% if (date_to) qs.set('date_to', date_to); %>
+  <%- include('../shared/pagination', { basePath: '/admin/slips', query: qs.toString(), page, pageCount }) %>
 </div>
 
 <%- include('../shared/bottom') %>

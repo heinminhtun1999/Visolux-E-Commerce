@@ -50,15 +50,7 @@
     </tbody>
   </table>
 
-  <div class="pager">
-    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
-    <% if (page > 1) { %>
-      <a href="/admin/notifications?page=<%= page - 1 %>">Prev</a>
-    <% } %>
-    <% if (page < pageCount) { %>
-      <a href="/admin/notifications?page=<%= page + 1 %>">Next</a>
-    <% } %>
-  </div>
+  <%- include('../shared/pagination', { basePath: '/admin/notifications', query: '', page, pageCount }) %>
 </div>
 
 <%- include('../shared/bottom') %>

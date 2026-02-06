@@ -106,16 +106,12 @@
     </table>
   </div>
 
-  <div class="pager">
-    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
-    <% const _qs = (extra) => new URLSearchParams({ q, actorUserId, pageSize: String(pageSize), scope: scopeSafe, ...extra }).toString(); %>
-    <% if (page > 1) { %>
-      <a href="/admin/activity?<%= _qs({ page: String(page - 1) }) %>">Prev</a>
-    <% } %>
-    <% if (page < pageCount) { %>
-      <a href="/admin/activity?<%= _qs({ page: String(page + 1) }) %>">Next</a>
-    <% } %>
-  </div>
+  <% const qs = new URLSearchParams(); %>
+  <% if (q) qs.set('q', q); %>
+  <% if (actorUserId) qs.set('actorUserId', actorUserId); %>
+  <% if (pageSize) qs.set('pageSize', String(pageSize)); %>
+  <% if (scopeSafe) qs.set('scope', scopeSafe); %>
+  <%- include('../shared/pagination', { basePath: '/admin/activity', query: qs.toString(), page, pageCount }) %>
 </div>
 
 <%- include('../shared/bottom') %>

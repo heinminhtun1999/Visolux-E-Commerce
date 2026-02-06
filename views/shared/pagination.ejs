@@ -1,0 +1,99 @@
+<%/*
+  Shared numbered pagination.
+
+  Params:
+    - basePath: string (e.g. '/admin/orders')
+    - page: number (1-indexed)
+    - pageCount: number
+    - query: optional string (URLSearchParams string WITHOUT leading '?', typically excluding page)
+    - pageParam: optional string (default 'page')
+    - metaText: optional string for the left label
+*/%>
+
+<%
+  const _basePath = String((typeof basePath !== 'undefined' && basePath != null) ? basePath : '').trim() || '/';
+  const _pageParam = String((typeof pageParam !== 'undefined' && pageParam != null) ? pageParam : 'page').trim() || 'page';
+  const _page = Math.max(1, Number((typeof page !== 'undefined' && page != null) ? page : 1) || 1);
+  const _pageCount = Math.max(1, Number((typeof pageCount !== 'undefined' && pageCount != null) ? pageCount : 1) || 1);
+  const _rawQuery = (typeof query !== 'undefined' && query != null) ? String(query) : '';
+
+  const buildHref = (p) => {
+    const qs = new URLSearchParams(_rawQuery);
+    qs.set(_pageParam, String(p));
+    const s = qs.toString();
+    return `${_basePath}?${s}`;
+  };
+
+  const buildPages = () => {
+    if (_pageCount <= 1) return [];
+
+    // Keep it compact.
+    const windowSize = 2;
+    const pages = [];
+
+    const pushNum = (n) => {
+      if (!Number.isFinite(n) || n < 1 || n > _pageCount) return;
+      pages.push(n);
+    };
+
+    if (_pageCount <= 7) {
+      for (let i = 1; i <= _pageCount; i += 1) pushNum(i);
+      return pages;
+    }
+
+    pushNum(1);
+
+    const start = Math.max(2, _page - windowSize);
+    const end = Math.min(_pageCount - 1, _page + windowSize);
+
+    if (start > 2) pages.push('…');
+    for (let i = start; i <= end; i += 1) pushNum(i);
+    if (end < _pageCount - 1) pages.push('…');
+
+    pushNum(_pageCount);
+
+    // De-dupe numbers while preserving ellipses.
+    const out = [];
+    const seen = new Set();
+    for (const item of pages) {
+      if (item === '…') {
+        if (out.length && out[out.length - 1] !== '…') out.push('…');
+        continue;
+      }
+      if (seen.has(item)) continue;
+      seen.add(item);
+      out.push(item);
+    }
+    return out;
+  };
+
+  const meta = (typeof metaText !== 'undefined' && metaText != null && String(metaText).trim())
+    ? String(metaText)
+    : `Page ${_page} / ${_pageCount}`;
+
+  const pages = buildPages();
+%>
+
+<% if (_pageCount > 1) { %>
+  <div class="pager">
+    <span class="muted small"><%= meta %></span>
+
+    <% if (_page > 1) { %>
+      <a href="<%= buildHref(_page - 1) %>" rel="prev">Prev</a>
+    <% } %>
+
+    <% pages.forEach((p) => { %>
+      <% if (p === '…') { %>
+        <span class="pager__ellipsis" aria-hidden="true">…</span>
+      <% } else if (p === _page) { %>
+        <span class="pager__current" aria-current="page"><%= p %></span>
+      <% } else { %>
+        <a href="<%= buildHref(p) %>"><%= p %></a>
+      <% } %>
+    <% }) %>
+
+    <% if (_page < _pageCount) { %>
+      <a href="<%= buildHref(_page + 1) %>" rel="next">Next</a>
+    <% } %>
+  </div>
+<% } %>

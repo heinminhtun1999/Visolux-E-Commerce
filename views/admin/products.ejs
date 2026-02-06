@@ -257,20 +257,10 @@
     </table>
   <% } %>
 
-  <div class="pager">
-    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
-    <% const pqs = new URLSearchParams(baseQs); %>
-    <% pqs.set('view', view || 'list'); %>
-    <% pqs.set('includeArchived', includeArchived ? '1' : '0'); %>
-    <% if (page > 1) { %>
-      <% pqs.set('page', String(page - 1)); %>
-      <a href="/admin/products?<%= pqs.toString() %>">Prev</a>
-    <% } %>
-    <% if (page < pageCount) { %>
-      <% pqs.set('page', String(page + 1)); %>
-      <a href="/admin/products?<%= pqs.toString() %>">Next</a>
-    <% } %>
-  </div>
+  <% const pqs = new URLSearchParams(baseQs); %>
+  <% pqs.set('view', view || 'list'); %>
+  <% pqs.set('includeArchived', includeArchived ? '1' : '0'); %>
+  <%- include('../shared/pagination', { basePath: '/admin/products', query: pqs.toString(), page, pageCount }) %>
 </div>
 
 <script src="/public/js/filters-toggle.js" defer></script>

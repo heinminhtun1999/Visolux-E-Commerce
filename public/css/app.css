@@ -1051,6 +1051,18 @@ html[data-theme="dark"] .receipt-sheet{
 .pager a{transition:transform var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-in-out), box-shadow var(--dur-2) var(--ease-out)}
 .pager a:hover{transform:translateY(-1px)}
 .pager a:focus-visible{outline:none; box-shadow:var(--ring)}
+.pager__current{
+  padding:8px 10px;
+  border:1px solid var(--accent);
+  border-radius:10px;
+  background:var(--card);
+  color:var(--text);
+  font-weight:900;
+}
+.pager__ellipsis{
+  padding:8px 6px;
+  color:var(--muted);
+}
 .actions{display:flex; gap:8px; flex-wrap:wrap;}
 .actions.actions_primary{height: 40px;}
 .row > .actions{

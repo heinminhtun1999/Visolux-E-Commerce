@@ -111,25 +111,15 @@
     </tbody>
   </table>
 
-  <div class="pager">
-    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
-    <% const qs = new URLSearchParams(); %>
-    <% if (q) qs.set('q', q); %>
-    <% if (payment_status) qs.set('payment_status', payment_status); %>
-    <% if (payment_method) qs.set('payment_method', payment_method); %>
-    <% if (fulfilment_status) qs.set('fulfilment_status', fulfilment_status); %>
-    <% if (refund_status) qs.set('refund_status', refund_status); %>
-    <% if (date_from) qs.set('date_from', date_from); %>
-    <% if (date_to) qs.set('date_to', date_to); %>
-    <% if (page > 1) { %>
-      <% qs.set('page', String(page - 1)); %>
-      <a href="/admin/orders?<%= qs.toString() %>">Prev</a>
-    <% } %>
-    <% if (page < pageCount) { %>
-      <% qs.set('page', String(page + 1)); %>
-      <a href="/admin/orders?<%= qs.toString() %>">Next</a>
-    <% } %>
-  </div>
+  <% const qs = new URLSearchParams(); %>
+  <% if (q) qs.set('q', q); %>
+  <% if (payment_status) qs.set('payment_status', payment_status); %>
+  <% if (payment_method) qs.set('payment_method', payment_method); %>
+  <% if (fulfilment_status) qs.set('fulfilment_status', fulfilment_status); %>
+  <% if (refund_status) qs.set('refund_status', refund_status); %>
+  <% if (date_from) qs.set('date_from', date_from); %>
+  <% if (date_to) qs.set('date_to', date_to); %>
+  <%- include('../shared/pagination', { basePath: '/admin/orders', query: qs.toString(), page, pageCount }) %>
 </div>
 
 <%- include('../shared/bottom') %>

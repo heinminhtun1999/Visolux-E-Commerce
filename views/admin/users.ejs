@@ -72,20 +72,10 @@
     </table>
   </div>
 
-  <div class="pager">
-    <span class="muted small">Page <%= page %> / <%= pageCount %></span>
-    <% const qs = new URLSearchParams(); %>
-    <% if (q) qs.set('q', q); %>
-    <% if (status) qs.set('status', status); %>
-    <% if (page > 1) { %>
-      <% qs.set('page', String(page - 1)); %>
-      <a href="/admin/users?<%= qs.toString() %>">Prev</a>
-    <% } %>
-    <% if (page < pageCount) { %>
-      <% qs.set('page', String(page + 1)); %>
-      <a href="/admin/users?<%= qs.toString() %>">Next</a>
-    <% } %>
-  </div>
+  <% const qs = new URLSearchParams(); %>
+  <% if (q) qs.set('q', q); %>
+  <% if (status) qs.set('status', status); %>
+  <%- include('../shared/pagination', { basePath: '/admin/users', query: qs.toString(), page, pageCount }) %>
 </div>
 
 <%- include('../shared/bottom') %>
