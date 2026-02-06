@@ -1,6 +1,7 @@
 const { formatMoney } = require('../utils/money');
 const { icon } = require('../utils/icons');
 const { formatDateTime } = require('../utils/datetime');
+const paymentDisplay = require('../utils/paymentDisplay');
 const adminNotificationRepo = require('../repositories/adminNotificationRepo');
 const settingsRepo = require('../repositories/settingsRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
@@ -134,6 +135,10 @@ function attachLocals(req, res, next) {
   res.locals.formatMoney = formatMoney;
   res.locals.formatDateTime = formatDateTime;
   res.locals.icon = icon;
+  res.locals.paymentMethodLabel = paymentDisplay.paymentMethodLabel;
+  res.locals.paymentChannelLabel = paymentDisplay.paymentChannelLabel;
+  res.locals.paymentSummaryLabel = paymentDisplay.paymentSummaryLabel;
+  res.locals.sanitizeStatusHistoryNote = paymentDisplay.sanitizeStatusHistoryNote;
   res.locals.currentUser = req.session.user || null;
   res.locals.isAdmin = Boolean(req.session.user?.isAdmin);
   res.locals.isSuperAdmin = Boolean(req.session.user?.isSuperAdmin);

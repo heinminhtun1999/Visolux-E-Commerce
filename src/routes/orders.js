@@ -27,6 +27,7 @@ const promoService = require('../services/promoService');
 const offlineTransferService = require('../services/offlineTransferService');
 const fiuuAccountsService = require('../services/fiuuAccountsService');
 const { logger } = require('../utils/logger');
+const paymentDisplay = require('../utils/paymentDisplay');
 
 const router = express.Router();
 
@@ -442,10 +443,10 @@ router.post(
         req.session.flash = { type: 'error', message: 'Online payment is not configured yet. Please use offline bank transfer.' };
         logger.error(
           { event: 'checkout_online_payment_not_configured', orderId: order.order_id },
-          'online payment attempted but FIUU is not configured'
+          'online payment attempted but is not configured'
         );
         const beforePayment = String(order.payment_status || '');
-        orderRepo.updatePaymentStatus(order.order_id, 'FAILED', 'Online payment attempted but Fiuu not configured');
+        orderRepo.updatePaymentStatus(order.order_id, 'FAILED', 'Online payment attempted but not configured');
         orderRepo.updateFulfilmentStatus(order.order_id, 'CANCELLED', 'Online payment not configured');
 
         // Staff email (best-effort)
@@ -458,7 +459,7 @@ router.post(
                 statusType: 'PAYMENT',
                 oldStatus: beforePayment,
                 newStatus: 'FAILED',
-                note: 'Checkout attempted ONLINE payment but FIUU is not configured; order cancelled.',
+                note: 'Checkout attempted online payment but it is not configured; order cancelled.',
                 source: 'CHECKOUT',
               })
             ).catch(() => {});
@@ -627,6 +628,8 @@ router.get('/orders/:id', (req, res) => {
     statusHistory: orderRepo.listStatusHistory(id),
     itemRefunds: orderRefundRepo.listByOrder(id),
     extraRefunds: orderRefundExtraRepo.listByOrder(id),
+    paymentSummaryLabel: paymentDisplay.paymentSummaryLabel,
+    sanitizeStatusHistoryNote: paymentDisplay.sanitizeStatusHistoryNote,
   });
 });
 
@@ -636,6 +639,12 @@ router.get('/orders/:id/receipt', (req, res) => {
   if (!order) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
   }
+
+  // Admins should view receipts via the admin area.
+  if (req.session.user?.isAdmin) {
+    return res.redirect(`/admin/orders/${order.order_id}/receipt`);
+  }
+
   const ok = requireCustomerOrderAccess(req, res, order);
   if (ok !== true) {
     if (ok) return ok;
@@ -644,6 +653,7 @@ router.get('/orders/:id/receipt', (req, res) => {
   return res.render('orders/receipt', {
     title: `Receipt ${order.order_code || `#${order.order_id}`}`,
     order,
+    paymentSummaryLabel: paymentDisplay.paymentSummaryLabel,
   });
 });
 

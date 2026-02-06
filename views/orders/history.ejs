@@ -31,8 +31,8 @@
       <label>Payment method</label>
       <select name="payment_method">
         <option value="" <%= payment_method ? '' : 'selected' %>>All</option>
-        <option value="ONLINE" <%= payment_method==='ONLINE' ? 'selected' : '' %>>ONLINE</option>
-        <option value="OFFLINE_TRANSFER" <%= payment_method==='OFFLINE_TRANSFER' ? 'selected' : '' %>>OFFLINE_TRANSFER</option>
+        <option value="ONLINE" <%= payment_method==='ONLINE' ? 'selected' : '' %>>Online payment</option>
+        <option value="OFFLINE_TRANSFER" <%= payment_method==='OFFLINE_TRANSFER' ? 'selected' : '' %>>Offline bank transfer</option>
       </select>
     </div>
 

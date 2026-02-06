@@ -249,6 +249,51 @@ function parsePriceToCentsMinRM1(input) {
   return cents;
 }
 
+function parseMoneyToCentsAllowZero(input, opts = {}) {
+  const label = String(opts.label || 'Amount');
+  const s = String(input || '').trim().replace(/,/g, '');
+
+  if (!s) {
+    const err = new Error(`${label} is required.`);
+    err.status = 400;
+    throw err;
+  }
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) {
+    const err = new Error(`Invalid ${label.toLowerCase()} format. Use for example 12.50`);
+    err.status = 400;
+    throw err;
+  }
+
+  const cents = Math.round(Number(s) * 100);
+  if (!Number.isFinite(cents) || cents < 0) {
+    const err = new Error(`Invalid ${label.toLowerCase()}.`);
+    err.status = 400;
+    throw err;
+  }
+  return cents;
+}
+
+function parseNonNegativeNumberOrNull(input, opts = {}) {
+  const label = String(opts.label || 'Value');
+  const s = String(input == null ? '' : input).trim().replace(/,/g, '');
+  if (!s) return null;
+
+  // Disallow scientific notation and other JS Number oddities.
+  if (!/^\d+(\.\d+)?$/.test(s)) {
+    const err = new Error(`Invalid ${label.toLowerCase()}.`);
+    err.status = 400;
+    throw err;
+  }
+
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 0) {
+    const err = new Error(`Invalid ${label.toLowerCase()}.`);
+    err.status = 400;
+    throw err;
+  }
+  return n;
+}
+
 function assertValidCategorySlug(slug) {
   const s = String(slug || '').trim();
   if (!s) {
@@ -826,7 +871,7 @@ router.post(
         if (allBlank) continue;
 
         if (!id) {
-          req.session.flash = { type: 'error', message: 'Each FIUU account row must have an internal id. Please re-add the row.' };
+          req.session.flash = { type: 'error', message: 'Each online payment account row must have an internal id. Please re-add the row.' };
           return res.redirect('/admin/settings/payment#payment-gateway');
         }
 
@@ -840,7 +885,7 @@ router.post(
       }
 
       if (accounts.length > 50) {
-        req.session.flash = { type: 'error', message: 'Too many FIUU accounts (max 50).' };
+        req.session.flash = { type: 'error', message: 'Too many online payment accounts (max 50).' };
         return res.redirect('/admin/settings/payment#payment-gateway');
       }
 
@@ -851,7 +896,7 @@ router.post(
         defaultId: defaultAccountId,
       });
 
-      // Audit: FIUU settings change (sanitized; no secrets).
+      // Audit: online payment settings change (sanitized; no secrets).
       try {
         const afterVm = fiuuAccountsService.getAdminSettingsViewModel();
         const afterFiuu = {
@@ -872,7 +917,7 @@ router.post(
         const changes = computeFieldChanges({
           before: { snapshot: beforeFiuu ? JSON.stringify(beforeFiuu) : '' },
           after: { snapshot: JSON.stringify(afterFiuu) },
-          fields: [{ key: 'snapshot', label: 'FIUU accounts' }],
+          fields: [{ key: 'snapshot', label: 'Online payment accounts' }],
         });
 
         if (changes.length) {
@@ -890,7 +935,7 @@ router.post(
         // ignore audit failures
       }
 
-      req.session.flash = { type: 'success', message: 'FIUU payment accounts saved.' };
+      req.session.flash = { type: 'success', message: 'Online payment accounts saved.' };
       return res.redirect('/admin/settings/payment#payment-gateway');
     } catch (e) {
       if (e && e.status === 400) {
@@ -3370,6 +3415,21 @@ router.get('/orders/:id', (req, res) => {
   });
 });
 
+router.get('/orders/:id/receipt', (req, res) => {
+  const raw = String(req.params.id || '').trim();
+  const numeric = Number(raw);
+  const resolvedId = Number.isFinite(numeric) && numeric > 0 ? numeric : (orderRepo.getByCode(raw)?.order_id || null);
+  const id = resolvedId;
+  const order = id ? orderRepo.getWithItems(id) : null;
+  if (!order) return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+
+  return res.render('orders/receipt', {
+    title: `Receipt ${order.order_code || `#${order.order_id}`}`,
+    order,
+    receiptBackHref: `/admin/orders/${order.order_id}`,
+  });
+});
+
 router.post(
   '/orders/:id/admin-note',
   csrfProtection(),
@@ -3433,7 +3493,7 @@ router.post(
 
       const order = orderRepo.getById(orderId);
       if (order && order.payment_method === 'ONLINE' && /^FPX/i.test(String(order.payment_channel || ''))) {
-        req.session.flash = { type: 'error', message: 'Refund via Fiuu is disabled for FPX payments. Refund must be processed manually.' };
+        req.session.flash = { type: 'error', message: 'Auto-refund is disabled for FPX payments. Refund must be processed manually.' };
         return res.redirect(`/admin/orders/${orderId}`);
       }
 
@@ -3470,7 +3530,7 @@ router.post(
         // ignore
       }
 
-      req.session.flash = { type: 'success', message: 'Refund request sent to Fiuu.' };
+      req.session.flash = { type: 'success', message: 'Refund request sent.' };
       return res.redirect(`/admin/orders/${orderId}`);
     } catch (e) {
       // Notify both customer service + customer on refund request failure.
@@ -3508,7 +3568,7 @@ router.post(
       const errMsg = String(e && e.message ? e.message : 'Refund request failed');
       req.session.flash = {
         type: 'error',
-        message: `Refund request to Fiuu failed: ${errMsg}. An email notification has been sent.`,
+        message: `Refund request failed: ${errMsg}. An email notification has been sent.`,
       };
       return res.redirect(`/admin/orders/${Number(req.params.id)}`);
     }
@@ -3540,7 +3600,7 @@ router.post(
 
       const order = orderRepo.getById(orderId);
       if (order && order.payment_method === 'ONLINE' && /^FPX/i.test(String(order.payment_channel || ''))) {
-        req.session.flash = { type: 'error', message: 'Refund via Fiuu is disabled for FPX payments. Refund must be processed manually.' };
+        req.session.flash = { type: 'error', message: 'Auto-refund is disabled for FPX payments. Refund must be processed manually.' };
         return res.redirect(`/admin/orders/${orderId}`);
       }
 
@@ -3559,11 +3619,11 @@ router.post(
         actor,
       });
 
-      req.session.flash = { type: 'success', message: 'Refund request sent to Fiuu.' };
+      req.session.flash = { type: 'success', message: 'Refund request sent.' };
       return res.redirect(`/admin/orders/${orderId}`);
     } catch (e) {
       const errMsg = String(e && e.message ? e.message : 'Refund request failed');
-      req.session.flash = { type: 'error', message: `Refund request to Fiuu failed: ${errMsg}.` };
+      req.session.flash = { type: 'error', message: `Refund request failed: ${errMsg}.` };
       return res.redirect(`/admin/orders/${Number(req.params.id)}`);
     }
   }
@@ -3715,7 +3775,7 @@ router.post(
       );
 
       if (!latestFiuuForItem || String(latestFiuuForItem.provider_status || '') !== 'FAILED') {
-        const err = new Error('Manual mark is only allowed when the latest FIUU refund request failed for this item.');
+        const err = new Error('Manual mark is only allowed when the latest online refund request failed for this item.');
         err.status = 400;
         throw err;
       }
@@ -3753,7 +3813,7 @@ router.post(
         productId: item.product_id,
         quantityRefunded: qty,
         amountRefunded: amountCents,
-        reason: note || 'Manually marked as refunded after FIUU failure',
+        reason: note || 'Manually marked as refunded after online refund failure',
         provider: 'MANUAL',
         providerRefId: null,
         providerTxnId: null,

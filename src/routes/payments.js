@@ -11,6 +11,7 @@ const orderRefundRepo = require('../repositories/orderRefundRepo');
 const orderRefundExtraRepo = require('../repositories/orderRefundExtraRepo');
 const refundService = require('../services/refundService');
 const { logger } = require('../utils/logger');
+const paymentDisplay = require('../utils/paymentDisplay');
 
 const router = express.Router();
 
@@ -66,7 +67,7 @@ function processPaymentPayload(payload, source) {
 
   const secretKey = String(snap?.online_payment_secret_key || '').trim();
   if (!secretKey) {
-    const err = new Error('Missing FIUU secret key for order');
+    const err = new Error('Missing online payment secret key for order');
     err.status = 500;
     throw err;
   }
@@ -103,7 +104,7 @@ function processPaymentPayload(payload, source) {
 
   const previousPaymentStatus = String(order.payment_status || '');
 
-  // Persist the channel used (Fiuu sends channel in callback/return payloads).
+  // Persist the channel used (provider sends channel in callback/return payloads).
   try {
     const channel = getField(payload, ['channel', 'Channel']);
     if (channel) orderRepo.updatePaymentChannel(orderId, channel);
@@ -150,7 +151,7 @@ function processPaymentPayload(payload, source) {
   if (statusCode === '00') {
     const result = orderService.markOrderPaidAndDeductStock({
       orderId,
-      note: `Fiuu ${source} confirmed tranID=${tranID}`,
+      note: 'Online payment confirmed',
     });
 
     if (result && result.stockDeducted === false) {
@@ -171,7 +172,7 @@ function processPaymentPayload(payload, source) {
         // Customer email (no staff notification)
         try {
           if (updated) {
-            const note = `Payment received${tranID ? ` • Fiuu tranID=${tranID}` : ''}`;
+            const note = 'Payment received';
             Promise.resolve(
               emailService.sendOrderStatusChangedEmailToCustomer({
                 order: updated,
@@ -184,10 +185,12 @@ function processPaymentPayload(payload, source) {
           // ignore
         }
 
+        const paymentLabel = updated ? paymentDisplay.paymentSummaryLabel(updated) : 'Online payment';
+        const channelLabel = updated ? paymentDisplay.paymentChannelLabel(updated) : '';
         adminNotificationRepo.create({
           type: 'PAYMENT_PAID',
           title: `Payment received for order ${label}`,
-          body: `Payment: ${updated?.payment_status || 'PAID'} • Fulfilment: ${updated?.fulfilment_status || '-'} • Fiuu tranID=${tranID || '-'}`,
+          body: `Payment: ${updated?.payment_status || 'PAID'} (${paymentLabel})${channelLabel ? ` • Channel: ${channelLabel}` : ''} • Fulfilment: ${updated?.fulfilment_status || '-'}`,
           link: `/admin/orders/${orderId}`,
         });
       }
@@ -199,7 +202,7 @@ function processPaymentPayload(payload, source) {
   }
 
   if (statusCode === '22') {
-    orderRepo.updatePaymentStatus(orderId, 'PENDING', `Fiuu ${source} pending tranID=${tranID}`);
+    orderRepo.updatePaymentStatus(orderId, 'PENDING', 'Online payment pending');
     logger.warn({ event: 'payment_pending', orderId, tranID, source }, 'payment pending');
 
     // Staff email (best-effort; skip duplicates)
@@ -213,8 +216,8 @@ function processPaymentPayload(payload, source) {
               statusType: 'PAYMENT',
               oldStatus: previousPaymentStatus,
               newStatus: 'PENDING',
-              note: `Fiuu ${source} pending${tranID ? ` tranID=${tranID}` : ''}`,
-              source: `FIUU:${source}`,
+              note: 'Online payment pending',
+              source: `ONLINE_PAYMENT:${source}`,
             })
           ).catch(() => {});
         }
@@ -228,7 +231,7 @@ function processPaymentPayload(payload, source) {
 
   // 11 or other codes treated as failed
   if (order.payment_status !== 'PAID') {
-    orderRepo.updatePaymentStatus(orderId, 'FAILED', `Fiuu ${source} failed tranID=${tranID} status=${statusCode}`);
+    orderRepo.updatePaymentStatus(orderId, 'FAILED', 'Online payment failed/cancelled');
     orderRepo.updateFulfilmentStatus(orderId, 'CANCELLED', 'Payment failed/cancelled');
 
     // Staff email (best-effort; skip duplicates)
@@ -242,8 +245,8 @@ function processPaymentPayload(payload, source) {
               statusType: 'PAYMENT',
               oldStatus: previousPaymentStatus,
               newStatus: 'FAILED',
-              note: `Fiuu ${source} failed${tranID ? ` tranID=${tranID}` : ''} status=${statusCode}`,
-              source: `FIUU:${source}`,
+              note: `Online payment failed/cancelled (status=${statusCode || '-'})`,
+              source: `ONLINE_PAYMENT:${source}`,
             })
           ).catch(() => {});
         }
@@ -415,15 +418,15 @@ router.all('/payment/refund/notify', (req, res) => {
 });
 
 router.get('/payment/cancel', (req, res) => {
-  // Cancelled before transaction creation is possible at gateway,
+  // Cancelled before transaction creation is possible,
   // but we still may have a pending order created.
   const orderRef = String(req.query.orderid || req.query.orderId || req.query.order || '').trim();
   if (orderRef) {
     const order = resolveOrderFromRef(orderRef);
     if (order && order.payment_status !== 'PAID') {
       const beforePayment = String(order.payment_status || '');
-      orderRepo.updatePaymentStatus(order.order_id, 'FAILED', 'Buyer cancelled at gateway');
-      orderRepo.updateFulfilmentStatus(order.order_id, 'CANCELLED', 'Buyer cancelled at gateway');
+      orderRepo.updatePaymentStatus(order.order_id, 'FAILED', 'Buyer cancelled payment');
+      orderRepo.updateFulfilmentStatus(order.order_id, 'CANCELLED', 'Buyer cancelled payment');
 
       // Staff email (best-effort)
       try {
@@ -436,8 +439,8 @@ router.get('/payment/cancel', (req, res) => {
                 statusType: 'PAYMENT',
                 oldStatus: beforePayment,
                 newStatus: 'FAILED',
-                note: 'Buyer cancelled at gateway',
-                source: 'FIUU:cancel',
+                note: 'Buyer cancelled payment',
+                source: 'ONLINE_PAYMENT:cancel',
               })
             ).catch(() => {});
           }

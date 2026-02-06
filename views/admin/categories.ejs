@@ -44,14 +44,14 @@
     </div>
 
     <div class="field is-sm">
-      <label>FIUU merchant account</label>
+      <label>Online payment account</label>
       <select name="fiuu_account_id">
         <option value="">Default</option>
         <% (fiuuSelectableAccounts || []).forEach(function(a){ %>
           <option value="<%= a.id %>"><%= a.label %></option>
         <% }) %>
       </select>
-      <div class="muted small" style="margin-top:6px">Optional. Leave as Default to use the global FIUU default account.</div>
+      <div class="muted small" style="margin-top:6px">Optional. Leave as Default to use the global default account.</div>
     </div>
 
     <div class="actions">
@@ -67,7 +67,7 @@
       <tr>
         <th>ID</th>
         <th>Name</th>
-        <th>Fiuu Merchant Account</th>
+        <th>Online payment account</th>
         <th>Image</th>
         <th>Visible</th>
         <th>Archived</th>

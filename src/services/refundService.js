@@ -144,7 +144,7 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
         { event: 'refund_blocked_fpx', orderId, paymentChannel: order.payment_channel || null },
         'refund blocked for FPX online order'
       );
-      const err = new Error('Refund via Fiuu is disabled for FPX payments. Please refund manually using the customer bank credentials.');
+      const err = new Error('Auto-refund is disabled for FPX payments. Please refund manually using the customer bank credentials.');
       err.status = 400;
       throw err;
     }
@@ -157,7 +157,7 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
 
     const fiuuConfig = buildFiuuConfigForOrder(order);
     if (!fiuu.isRefundConfigured(fiuuConfig)) {
-      const err = new Error('Fiuu refund is not configured for this order (missing merchant id / secret key).');
+      const err = new Error('Online refund is not configured for this order (missing credentials).');
       err.status = 500;
       throw err;
     }
@@ -213,7 +213,7 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
 
     const txnId = paymentEventRepo.getLatestProviderTxnIdByOrder({ orderId, provider: 'FIUU' });
     if (!txnId) {
-      const err = new Error('Cannot refund: missing FIUU transaction id (tranID) for this order.');
+      const err = new Error('Cannot refund: missing online payment transaction id for this order.');
       err.status = 400;
       throw err;
     }
@@ -221,7 +221,7 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
     const refId = `refund-${order.order_code || order.order_id}-${item.id}-${Date.now()}`.slice(0, 100);
     const baseUrl = String(env.appBaseUrl || '').replace(/\/$/, '');
     if (!baseUrl) {
-      const err = new Error('Missing appBaseUrl; cannot build FIUU refund notify URL.');
+      const err = new Error('Missing appBaseUrl; cannot build refund notify URL.');
       err.status = 500;
       throw err;
     }
@@ -337,7 +337,7 @@ async function refundOrderExtraAmount({ orderId, amountRefunded, reason, actor }
     }
 
     if (isFpxOnlineOrder(order)) {
-      const err = new Error('Refund via Fiuu is disabled for FPX payments. Please refund manually using the customer bank credentials.');
+      const err = new Error('Auto-refund is disabled for FPX payments. Please refund manually using the customer bank credentials.');
       err.status = 400;
       throw err;
     }
@@ -350,7 +350,7 @@ async function refundOrderExtraAmount({ orderId, amountRefunded, reason, actor }
 
     const fiuuConfig = buildFiuuConfigForOrder(order);
     if (!fiuu.isRefundConfigured(fiuuConfig)) {
-      const err = new Error('Fiuu refund is not configured for this order (missing merchant id / secret key).');
+      const err = new Error('Online refund is not configured for this order (missing credentials).');
       err.status = 500;
       throw err;
     }
@@ -377,7 +377,7 @@ async function refundOrderExtraAmount({ orderId, amountRefunded, reason, actor }
 
     const txnId = paymentEventRepo.getLatestProviderTxnIdByOrder({ orderId, provider: 'FIUU' });
     if (!txnId) {
-      const err = new Error('Cannot refund: missing FIUU transaction id (tranID) for this order.');
+      const err = new Error('Cannot refund: missing online payment transaction id for this order.');
       err.status = 400;
       throw err;
     }
@@ -385,7 +385,7 @@ async function refundOrderExtraAmount({ orderId, amountRefunded, reason, actor }
     const refId = `refund-extra-${order.order_code || order.order_id}-${Date.now()}`.slice(0, 100);
     const baseUrl = String(env.appBaseUrl || '').replace(/\/$/, '');
     if (!baseUrl) {
-      const err = new Error('Missing appBaseUrl; cannot build FIUU refund notify URL.');
+      const err = new Error('Missing appBaseUrl; cannot build refund notify URL.');
       err.status = 500;
       throw err;
     }

@@ -3,6 +3,7 @@ const { z } = require('zod');
 
 const inventoryRepo = require('../repositories/inventoryRepo');
 const cartService = require('../services/cartService');
+const fiuuAccountsService = require('../services/fiuuAccountsService');
 const { getPagination, getPageCount } = require('../utils/pagination');
 const { validate } = require('../middleware/validate');
 const categoryRepo = require('../repositories/categoryRepo');
@@ -14,6 +15,20 @@ const productImageRepo = require('../repositories/productImageRepo');
 const contactMessageRepo = require('../repositories/contactMessageRepo');
 
 const router = express.Router();
+
+function buildCartLinesForFiuuAccountCheck(session) {
+  const cart = cartService.getCart(session);
+  const lines = [];
+  for (const [productIdStr, qty] of Object.entries(cart.items || {})) {
+    const productId = Number(productIdStr);
+    if (!Number.isFinite(productId) || productId <= 0) continue;
+    const product = inventoryRepo.getById(productId);
+    if (!product || product.archived || !product.visibility) continue;
+    const q = Math.max(1, Math.floor(Number(qty || 0)));
+    lines.push({ product, quantity: q });
+  }
+  return lines;
+}
 
 router.get('/', (req, res) => {
   const categories = categoryRepo.listPublic();
@@ -419,6 +434,32 @@ router.post(
       return res.redirect('/');
     }
 
+    // Prevent mixing different FIUU merchant accounts in a single cart.
+    // Only blocks when the combined cart would require multiple accounts.
+    try {
+      cartService.sanitizeCart(req.session);
+      const cart = cartService.getCart(req.session);
+      const alreadyInCart = Boolean(cart.items && cart.items[String(productId)] != null);
+      if (!alreadyInCart) {
+        const lines = buildCartLinesForFiuuAccountCheck(req.session);
+        lines.push({ product, quantity: 1 });
+
+        const resolved = fiuuAccountsService.resolveAccountForCartItems(lines);
+        if (!resolved.ok && resolved.reason === 'multiple_accounts_required') {
+          req.session.flash = {
+            type: 'error',
+            message:
+              'This item uses a different payment merchant account from items already in your cart. Please checkout separately, or clear your cart first.',
+          };
+          const returnTo = safeReturnTo(req.validated.body.return_to, '');
+          if (returnTo) return res.redirect(returnTo);
+          return res.redirect(safeRedirectBack(req, '/cart'));
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+
     const availableStock = inventoryRepo.getEffectiveAvailableStock(productId);
     if (availableStock <= 0) {
       req.session.flash = { type: 'error', message: 'This product is out of stock.' };
@@ -478,6 +519,29 @@ router.post(
 
     const availableStock = inventoryRepo.getEffectiveAvailableStock(productId);
     const desiredQty = Math.max(0, Math.min(99, Math.floor(quantity)));
+
+    // Prevent adding a new product (via update) that would mix FIUU merchant accounts.
+    try {
+      cartService.sanitizeCart(req.session);
+      const cart = cartService.getCart(req.session);
+      const alreadyInCart = Boolean(cart.items && cart.items[String(productId)] != null);
+      if (desiredQty > 0 && !alreadyInCart) {
+        const lines = buildCartLinesForFiuuAccountCheck(req.session);
+        lines.push({ product, quantity: 1 });
+
+        const resolved = fiuuAccountsService.resolveAccountForCartItems(lines);
+        if (!resolved.ok && resolved.reason === 'multiple_accounts_required') {
+          req.session.flash = {
+            type: 'error',
+            message:
+              'This item uses a different payment merchant account from items already in your cart. Please checkout separately, or clear your cart first.',
+          };
+          return res.redirect('/cart');
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
 
     if (desiredQty > 0 && availableStock <= 0) {
       cartService.setQty(req.session, productId, 0);

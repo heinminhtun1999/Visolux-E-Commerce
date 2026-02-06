@@ -3,6 +3,7 @@ const nodemailer = require('nodemailer');
 const { env } = require('../config/env');
 const settingsRepo = require('../repositories/settingsRepo');
 const { formatDateTime } = require('../utils/datetime');
+const paymentDisplay = require('../utils/paymentDisplay');
 
 function isSmtpConfigured() {
   if (!env.email.enabled) return false;
@@ -75,7 +76,7 @@ function buildOrderEmail({ order, promo, orderLink }) {
   lines.push(`Phone: ${order.phone}`);
   lines.push(`Address: ${order.address}`);
   lines.push('');
-  lines.push(`Payment method: ${order.payment_method}`);
+  lines.push(`Payment method: ${paymentDisplay.paymentSummaryLabel(order)}`);
   lines.push(`Payment status: ${order.payment_status}`);
   lines.push(`Fulfilment status: ${order.fulfilment_status}`);
   lines.push(`Created: ${formatDateTime(order.created_at)}`);
@@ -125,7 +126,7 @@ function buildOrderEmail({ order, promo, orderLink }) {
       <div style="margin-top:6px">${escapeHtml(order.address)}</div>
 
       <h3 style="margin:16px 0 6px">Status</h3>
-      <div><strong>Payment:</strong> ${escapeHtml(order.payment_status)} (${escapeHtml(order.payment_method)})</div>
+      <div><strong>Payment:</strong> ${escapeHtml(order.payment_status)} (${escapeHtml(paymentDisplay.paymentSummaryLabel(order))})</div>
       <div><strong>Fulfilment:</strong> ${escapeHtml(order.fulfilment_status)}</div>
       <div><strong>Created:</strong> ${escapeHtml(formatDateTime(order.created_at))}</div>
 
@@ -176,7 +177,7 @@ function buildCustomerOrderEmail({ order, promo, orderLink }) {
   }
   lines.push(`Total: ${formatMoney(order.total_amount)}`);
   lines.push('');
-  lines.push(`Payment method: ${order.payment_method}`);
+  lines.push(`Payment method: ${paymentDisplay.paymentSummaryLabel(order)}`);
   lines.push(`Payment status: ${order.payment_status}`);
   lines.push('');
   lines.push('If you created an account, sign in to view your order.');
@@ -223,7 +224,7 @@ function buildCustomerOrderEmail({ order, promo, orderLink }) {
       ${promoHtml}
 
       <p style="margin-top:12px"><strong>Total:</strong> ${escapeHtml(formatMoney(order.total_amount))}</p>
-      <p style="margin-top:12px"><strong>Payment method:</strong> ${escapeHtml(order.payment_method)}<br/>
+      <p style="margin-top:12px"><strong>Payment method:</strong> ${escapeHtml(paymentDisplay.paymentSummaryLabel(order))}<br/>
          <strong>Payment status:</strong> ${escapeHtml(order.payment_status)}</p>
 
       <p style="margin-top:12px" class="muted">If you created an account, sign in to view your order.</p>
@@ -247,14 +248,14 @@ function buildCustomerOrderStatusEmail({ order, event, note, orderLink }) {
   if (ev === 'PARTIAL_REFUND') headline = 'Partial refund processed';
   if (ev === 'FULL_REFUND') headline = 'Full refund processed';
 
-  const safeNote = String(note || '').trim();
+  const safeNote = paymentDisplay.sanitizeStatusHistoryNote(note);
 
   const lines = [];
   lines.push(`${headline}: ${orderLabel}`);
   lines.push('');
   lines.push(`View your order: ${orderLink}`);
   lines.push('');
-  lines.push(`Payment method: ${order.payment_method}`);
+  lines.push(`Payment method: ${paymentDisplay.paymentSummaryLabel(order)}`);
   lines.push(`Payment status: ${order.payment_status}`);
   lines.push(`Fulfilment status: ${order.fulfilment_status}`);
   if (safeNote) {
@@ -271,7 +272,7 @@ function buildCustomerOrderStatusEmail({ order, event, note, orderLink }) {
       <p style="margin:0 0 12px"><a href="${escapeHtml(orderLink)}">View your order</a></p>
 
       <h3 style="margin:16px 0 6px">Current status</h3>
-      <div><strong>Payment method:</strong> ${escapeHtml(order.payment_method)}</div>
+      <div><strong>Payment method:</strong> ${escapeHtml(paymentDisplay.paymentSummaryLabel(order))}</div>
       <div><strong>Payment status:</strong> ${escapeHtml(order.payment_status)}</div>
       <div><strong>Fulfilment status:</strong> ${escapeHtml(order.fulfilment_status)}</div>
 
@@ -565,14 +566,14 @@ async function sendAdminOrderStatusChangedEmail({ order, statusType, oldStatus, 
   const label = type === 'FULFILMENT' ? 'Fulfilment status' : 'Payment status';
   const safeOld = String(oldStatus || '').trim() || '-';
   const safeNew = String(newStatus || '').trim() || '-';
-  const safeNote = String(note || '').trim();
+  const safeNote = paymentDisplay.sanitizeStatusHistoryNote(note);
   const safeSource = String(source || '').trim();
 
   const lines = [];
   lines.push(`Order: ${orderLabel}`);
   lines.push(`Customer: ${order.customer_name || '-'}`);
   lines.push(`${label}: ${safeOld} → ${safeNew}`);
-  lines.push(`Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`);
+  lines.push(`Payment: ${order.payment_status || '-'} (${paymentDisplay.paymentSummaryLabel(order)})`);
   lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
   if (safeNote) lines.push(`Note: ${safeNote}`);
   if (actor && actor.username) lines.push(`By: ${String(actor.username).trim()}`);
@@ -598,7 +599,7 @@ async function sendAdminRefundStatusChangedEmail({ order, oldRefundStatus, newRe
   lines.push(`Customer: ${order.customer_name || '-'}`);
   lines.push(`Refund status: ${safeOld} → ${safeNew}`);
   lines.push(`Refunded: ${rm}`);
-  lines.push(`Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`);
+  lines.push(`Payment: ${order.payment_status || '-'} (${paymentDisplay.paymentSummaryLabel(order)})`);
   lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
 
   return sendAdminOrderEventEmail({
@@ -626,9 +627,10 @@ async function sendAdminPaymentReceivedEmail({ order, note, stockDeducted, stock
   const lines = [];
   lines.push(`Order: ${orderLabel}`);
   lines.push(`Customer: ${order.customer_name || '-'}`);
-  lines.push(`Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`);
+  lines.push(`Payment: ${order.payment_status || '-'} (${paymentDisplay.paymentSummaryLabel(order)})`);
   lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
-  if (note) lines.push(`Note: ${String(note).trim()}`);
+  const safeNote = paymentDisplay.sanitizeStatusHistoryNote(note);
+  if (safeNote) lines.push(`Note: ${safeNote}`);
   if (stockDeducted === false) {
     lines.push(`Stock: NOT deducted${stockError ? ` (${String(stockError).trim()})` : ''}`);
   }
@@ -680,7 +682,7 @@ async function sendAdminOfflineSlipUploadedEmail({ order, bankName, referenceNum
   lines.push(`Customer: ${order.customer_name || '-'}`);
   if (bankName) lines.push(`Bank: ${String(bankName).trim()}`);
   if (referenceNumber) lines.push(`Reference: ${String(referenceNumber).trim()}`);
-  lines.push(`Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`);
+  lines.push(`Payment: ${order.payment_status || '-'} (${paymentDisplay.paymentSummaryLabel(order)})`);
   lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
   if (slipUrl) lines.push(`Slip: ${slipUrl}`);
 

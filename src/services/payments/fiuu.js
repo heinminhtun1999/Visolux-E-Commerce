@@ -65,7 +65,7 @@ function buildRefundResponseSignature({ refundType, merchantId, refId, refundId,
 async function refundPartial({ txnId, refId, amountCents, notifyUrl, mdrFlag, fiuuConfig }) {
   const c = buildConfig(fiuuConfig);
   if (!isRefundConfigured(c)) {
-    const err = new Error('Fiuu refund is not configured for this order.');
+     const err = new Error('Online refund is not configured for this order.');
     err.status = 500;
     throw err;
   }
@@ -108,14 +108,14 @@ async function refundPartial({ txnId, refId, amountCents, notifyUrl, mdrFlag, fi
   try {
     json = JSON.parse(rawText);
   } catch (_) {
-    const err = new Error('Unexpected refund API response from Fiuu');
+    const err = new Error('Unexpected refund API response');
     err.status = 502;
     err.details = { httpStatus: res.status, body: rawText.slice(0, 2000) };
     throw err;
   }
 
   if (json && (json.error_code || json.error_desc)) {
-    const err = new Error(`Fiuu refund rejected: ${json.error_code || 'ERR'} ${json.error_desc || ''}`.trim());
+    const err = new Error(`Refund rejected: ${json.error_code || 'ERR'} ${json.error_desc || ''}`.trim());
     err.status = 502;
     err.details = { ...json };
     throw err;
@@ -409,7 +409,7 @@ function statusToPaymentStatus(statCode) {
 function buildHostedPaymentRequest({ order, customer, channel, fiuuConfig }) {
   const c = buildConfig(fiuuConfig);
   if (!isConfigured(c)) {
-    const err = new Error('Fiuu is not configured.');
+     const err = new Error('Online payment is not configured.');
     err.status = 500;
     throw err;
   }

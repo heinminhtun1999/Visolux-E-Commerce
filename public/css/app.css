@@ -972,6 +972,16 @@ label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
   max-width:var(--max);
   margin:0 auto;
 }
+
+/* Receipt should stay readable/printable even when the site is in dark mode. */
+html[data-theme="dark"] .receipt-sheet{
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --border:#e2e8f0;
+  color:var(--text);
+  color-scheme: light;
+}
 .receipt-header{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap}
 .receipt-brand{display:flex; align-items:center; gap:12px}
 .receipt-logo{max-height:52px; max-width:240px; width:auto; height:auto; object-fit:contain; display:block}

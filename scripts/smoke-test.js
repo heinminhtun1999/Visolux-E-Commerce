@@ -46,6 +46,27 @@ function getBaseLocals(overrides = {}) {
       const safe = Number.isFinite(n) ? n : 0;
       return `RM ${safe.toFixed(2)}`;
     },
+    formatDateTime: (value) => {
+      const d = value ? new Date(value) : null;
+      if (!d || Number.isNaN(d.getTime())) return '';
+      return d.toISOString();
+    },
+
+    paymentMethodLabel: (method) => (
+      String(method || '').toUpperCase() === 'OFFLINE_TRANSFER' ? 'Offline bank transfer' : 'Online payment'
+    ),
+    paymentChannelLabel: (order) => {
+      if (!order || String(order.payment_method || '').toUpperCase() === 'OFFLINE_TRANSFER') return '';
+      return String(order.payment_channel || '').trim();
+    },
+    paymentSummaryLabel: (order) => {
+      if (!order) return '';
+      const method = String(order.payment_method || '').toUpperCase();
+      if (method === 'OFFLINE_TRANSFER') return 'Offline bank transfer';
+      const ch = String(order.payment_channel || '').trim();
+      return ch ? `Online payment (${ch})` : 'Online payment';
+    },
+    sanitizeStatusHistoryNote: (note) => String(note || ''),
 
     ...overrides,
   };
@@ -368,6 +389,59 @@ async function main() {
       prefillShippingFee: 0,
       prefillShippingLabel: 'West Malaysia',
       totalWeightKg: 0.5,
+    })
+  )) && ok;
+
+  ok = (await renderTemplate(
+    'views/orders/detail.ejs',
+    getBaseLocals({
+      title: 'Order ORD-1',
+      currentPath: '/orders/1',
+      currentUrl: '/orders/1',
+
+      order: {
+        order_id: 1,
+        order_code: 'ORD-1',
+        payment_method: 'ONLINE',
+        payment_channel: 'Visa',
+        payment_status: 'PAID',
+        fulfilment_status: 'PROCESSING',
+        total_amount: 12345,
+        created_at: new Date().toISOString(),
+        name: 'Smoke Customer',
+        email: 'customer@example.com',
+        phone: '0123456789',
+        address: 'Test address',
+        items: [],
+      },
+      promo: null,
+      offline: null,
+      statusHistory: [],
+      itemRefunds: [],
+      extraRefunds: [],
+    })
+  )) && ok;
+
+  ok = (await renderTemplate(
+    'views/orders/receipt.ejs',
+    getBaseLocals({
+      title: 'Receipt ORD-1',
+      currentPath: '/orders/1/receipt',
+      currentUrl: '/orders/1/receipt',
+
+      order: {
+        order_id: 1,
+        order_code: 'ORD-1',
+        payment_method: 'OFFLINE_TRANSFER',
+        payment_channel: null,
+        payment_status: 'PENDING',
+        fulfilment_status: 'NEW',
+        total_amount: 12345,
+        created_at: new Date().toISOString(),
+        name: 'Smoke Customer',
+        email: 'customer@example.com',
+        items: [],
+      },
     })
   )) && ok;
 

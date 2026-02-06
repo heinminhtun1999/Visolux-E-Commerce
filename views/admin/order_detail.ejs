@@ -2,7 +2,7 @@
 
 <div class="actions icon-row" style="margin-bottom:12px">
   <button class="btn btn-icon icon-only" type="button" data-href="/admin/orders" title="Back" aria-label="Back" data-label="Back"><%- icon('back') %></button>
-  <button class="btn btn-icon icon-only" type="button" data-href="/orders/<%= order.order_id %>/receipt" title="Receipt" aria-label="Receipt" data-label="Receipt"><%- icon('view') %></button>
+  <button class="btn btn-icon icon-only" type="button" data-href="/admin/orders/<%= order.order_id %>/receipt" title="Receipt" aria-label="Receipt" data-label="Receipt"><%- icon('view') %></button>
 </div>
 
 <div class="card" style="padding:16px">
@@ -17,7 +17,7 @@
     </div>
     <div style="min-width:240px">
       <div class="muted small">Payment method</div>
-      <div style="font-weight:800"><%= order.payment_method %></div>
+      <div style="font-weight:800"><%= paymentSummaryLabel(order) %></div>
       <div class="muted small" style="margin-top:8px">Payment status</div>
       <div style="font-weight:800"><%= order.payment_status %></div>
       <div class="muted small" style="margin-top:8px">Refund status</div>
@@ -106,8 +106,9 @@
                 </div>
                 <div class="timeline-time muted small"><%= formatDateTime(h.changed_at) %></div>
               </div>
-              <% if (h.note) { %>
-                <div class="muted small" style="margin-top:4px"><%= h.note %></div>
+              <% const safeNote = sanitizeStatusHistoryNote(h.note); %>
+              <% if (safeNote) { %>
+                <div class="muted small" style="margin-top:4px"><%= safeNote %></div>
               <% } %>
               <% const actorName = String(h.actor_username || '').trim(); %>
               <% if (actorName) { %>
@@ -133,12 +134,12 @@
   <h2 class="h2" style="margin-top:14px">Items</h2>
   <div class="muted small" style="margin-top:-6px; margin-bottom:10px">
     <% if (order.payment_method === 'ONLINE') { %>
-      Refunds here send a partial refund request to Fiuu and are recorded in-app.
+      Refunds here send a partial refund request to the online payment provider and are recorded in-app.
       <% if (/^FPX/i.test(String(order.payment_channel || ''))) { %>
         For <strong>FPX</strong>, auto-refund is disabled; record refunds manually after bank transfer.
       <% } %>
     <% } else { %>
-      Offline bank transfer refunds are recorded as manual refunds (no gateway call).
+      Offline bank transfer refunds are recorded as manual refunds (no online provider call).
     <% } %>
   </div>
   <table class="table">
@@ -193,7 +194,7 @@
                   <button class="btn btn-danger" type="submit">Refund (manual)</button>
                 </form>
                 <div class="muted small" style="margin-top:6px; text-align:right">
-                  Refund via Fiuu is disabled for <strong>FPX</strong>. Refund must be done manually, then recorded here.
+                  Refund via the online payment provider is disabled for <strong>FPX</strong>. Refund must be done manually, then recorded here.
                 </div>
               <% } else if (!canOnlineRefund) { %>
                 <span class="muted small">Payment must be PAID to refund</span>
@@ -206,13 +207,13 @@
                 action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund"
                 class="actions icon-row"
                 style="gap:8px; justify-content:flex-end"
-                onsubmit="return confirm('Send a refund request to Fiuu for this item?');"
+                onsubmit="return confirm('Send a refund request for this item?');"
               >
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                 <input class="input" name="quantity" type="number" min="1" max="<%= remainingQty %>" value="1" style="width:70px" title="Qty" />
                 <input class="input" name="amount" placeholder="RM (optional)" style="width:140px" title="Refund amount (optional)" />
                 <input class="input" name="reason" placeholder="Reason (optional)" style="width:220px" title="Reason (optional)" />
-                <button class="btn btn-danger" type="submit">Refund via Fiuu</button>
+                <button class="btn btn-danger" type="submit">Refund (online payment)</button>
               </form>
 
               <% if (latestFiuuFailed) { %>
@@ -221,7 +222,7 @@
                   action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund/mark"
                   class="actions icon-row"
                   style="gap:8px; justify-content:flex-end; margin-top:8px"
-                  onsubmit="return confirm('Mark this item as refunded manually? Only do this after you have refunded the customer outside Fiuu.');"
+                  onsubmit="return confirm('Mark this item as refunded manually? Only do this after you have refunded the customer outside the online payment provider.');"
                 >
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                   <input type="hidden" name="quantity" value="<%= latest.quantity_refunded %>" />
@@ -230,7 +231,7 @@
                   <button class="btn" type="submit">Mark refunded (manual)</button>
                 </form>
                 <div class="muted small" style="margin-top:6px; text-align:right">
-                  Last FIUU refund request failed. You can manually mark after external refund.
+                  The last online refund request failed. You can manually mark after external refund.
                 </div>
               <% } %>
             <% } else if (canOfflineManualRefund && remainingQty > 0) { %>
@@ -298,7 +299,7 @@
             <button class="btn btn-danger" type="submit">Refund (manual)</button>
           </form>
           <div class="muted small" style="margin-top:6px; text-align:right">
-            Refund via Fiuu is disabled for <strong>FPX</strong>. Refund must be done manually, then recorded here.
+            Refund via the online payment provider is disabled for <strong>FPX</strong>. Refund must be done manually, then recorded here.
           </div>
         <% } else if (!canOnlineRefund) { %>
           <div class="muted small">Payment must be PAID to refund</div>
@@ -311,12 +312,12 @@
           action="/admin/orders/<%= order.order_id %>/refund"
           class="actions icon-row"
           style="gap:8px; justify-content:flex-end"
-          onsubmit="return confirm('Send a refund request to Fiuu for this amount?');"
+          onsubmit="return confirm('Send a refund request for this amount?');"
         >
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
           <input class="input" name="amount" placeholder="RM" style="width:140px" title="Refund amount" required />
           <input class="input" name="reason" placeholder="Reason (optional)" style="width:220px" title="Reason (optional)" />
-          <button class="btn btn-danger" type="submit">Refund via Fiuu</button>
+          <button class="btn btn-danger" type="submit">Refund (online payment)</button>
         </form>
       <% } else if (canOfflineManualRefund && Number(refundableRemainingCents || 0) > 0) { %>
         <form
@@ -352,7 +353,7 @@
               <td><%= it ? it.product_name_snapshot : ('Item #' + r.order_item_id) %></td>
               <td><%= r.quantity_refunded %></td>
               <td><%= formatMoney(r.amount_refunded) %></td>
-              <td class="muted"><%= r.provider || '-' %></td>
+              <td class="muted"><%= (String(r.provider || '').toUpperCase() === 'FIUU') ? 'Online payment' : (r.provider || '-') %></td>
               <td class="muted"><%= r.provider_status || '-' %></td>
               <td class="muted"><%= r.reason || '' %></td>
             </tr>
@@ -372,7 +373,7 @@
             <tr>
               <td class="muted"><%= formatDateTime(r.created_at) %></td>
               <td>RM <%= formatMoney(r.amount_refunded) %></td>
-              <td class="muted"><%= r.provider || '-' %></td>
+              <td class="muted"><%= (String(r.provider || '').toUpperCase() === 'FIUU') ? 'Online payment' : (r.provider || '-') %></td>
               <td class="muted"><%= r.provider_status || '-' %></td>
               <td class="muted"><%= r.reason || '' %></td>
             </tr>
