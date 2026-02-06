@@ -121,9 +121,9 @@ Return/callback endpoints:
 
 Flow diagram: see [docs/flow.md](docs/flow.md)
 
-## OAuth login (Google/Facebook)
+## OAuth login (Google)
 
-OAuth login is optional. When enabled, users can sign in with Google or Facebook without pre-registering (a user record is auto-created on first sign-in).
+OAuth login is optional. When enabled, users can sign in with Google without pre-registering (a user record is auto-created on first sign-in).
 
 Required:
 
@@ -134,12 +134,6 @@ Google:
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
 - Callback URL: `${APP_BASE_URL}/auth/google/callback`
-
-Facebook:
-
-- `FACEBOOK_OAUTH_APP_ID`
-- `FACEBOOK_OAUTH_APP_SECRET`
-- Callback URL: `${APP_BASE_URL}/auth/facebook/callback`
 
 Note: The login page uses `target="_top"` for OAuth links so the provider flow opens in the top window (important when embedded in an iframe).
 

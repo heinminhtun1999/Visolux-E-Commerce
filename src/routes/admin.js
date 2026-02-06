@@ -3599,8 +3599,10 @@ router.post(
         throw err;
       }
 
-      if (order.payment_method !== 'OFFLINE_TRANSFER') {
-        const err = new Error('Manual refund is only available for OFFLINE_TRANSFER orders.');
+      const isFpxOnline = order.payment_method === 'ONLINE' && /^FPX/i.test(String(order.payment_channel || ''));
+      const canManualRefund = order.payment_method === 'OFFLINE_TRANSFER' || isFpxOnline;
+      if (!canManualRefund) {
+        const err = new Error('Manual refund is only available for OFFLINE_TRANSFER orders or ONLINE FPX orders.');
         err.status = 400;
         throw err;
       }
@@ -3631,11 +3633,12 @@ router.post(
       }
 
       const reason = req.validated.body.reason ? String(req.validated.body.reason).trim() : '';
+      const defaultReason = isFpxOnline ? 'Manual refund (FPX online)' : 'Manual refund (offline transfer)';
 
       orderRefundExtraRepo.create({
         orderId,
         amountRefunded: amountCents,
-        reason: reason || 'Manual refund (offline transfer)',
+        reason: reason || defaultReason,
         provider: 'MANUAL',
         providerRefId: null,
         providerTxnId: null,
@@ -3841,8 +3844,10 @@ router.post(
         throw err;
       }
 
-      if (order.payment_method !== 'OFFLINE_TRANSFER') {
-        const err = new Error('Manual refund is only available for OFFLINE_TRANSFER orders.');
+      const isFpxOnline = order.payment_method === 'ONLINE' && /^FPX/i.test(String(order.payment_channel || ''));
+      const canManualRefund = order.payment_method === 'OFFLINE_TRANSFER' || isFpxOnline;
+      if (!canManualRefund) {
+        const err = new Error('Manual refund is only available for OFFLINE_TRANSFER orders or ONLINE FPX orders.');
         err.status = 400;
         throw err;
       }
@@ -3908,6 +3913,7 @@ router.post(
       }
 
       const note = req.validated.body.note ? String(req.validated.body.note).trim() : '';
+      const defaultReason = isFpxOnline ? 'Manual refund (FPX online)' : 'Manual refund (offline transfer)';
 
       orderRefundRepo.create({
         orderId,
@@ -3915,7 +3921,7 @@ router.post(
         productId: item.product_id,
         quantityRefunded: qty,
         amountRefunded: amountCents,
-        reason: note || 'Manual refund (offline transfer)',
+        reason: note || defaultReason,
         provider: 'MANUAL',
         providerRefId: null,
         providerTxnId: null,
@@ -3989,6 +3995,28 @@ router.post(
         // ignore
       }
 
+      // Staff email (best-effort)
+      try {
+        if (String(oldStatus || '') !== String(newStatus || '')) {
+          const updated = orderRepo.getById(orderId);
+          if (updated) {
+            Promise.resolve(
+              emailService.sendAdminOrderStatusChangedEmail({
+                order: updated,
+                statusType: 'FULFILMENT',
+                oldStatus,
+                newStatus,
+                note: note || `Admin updated fulfilment to ${newStatus}`,
+                actor,
+                source: 'ADMIN',
+              })
+            ).catch(() => {});
+          }
+        }
+      } catch (_) {
+        // ignore
+      }
+
       req.session.flash = { type: 'success', message: 'Fulfilment status updated.' };
       return res.redirect(`/admin/orders/${orderId}`);
     } catch (e) {
@@ -4043,6 +4071,28 @@ router.post(
             event: 'PAYMENT_STATUS',
             note: note || `Payment updated to ${newStatus}`,
           });
+        }
+      } catch (_) {
+        // ignore
+      }
+
+      // Staff email (best-effort). Skip PAID here because markOrderPaidAndDeductStock already emails.
+      try {
+        if (newStatus !== 'PAID' && String(oldStatus || '') !== String(newStatus || '')) {
+          const updated = orderRepo.getById(orderId);
+          if (updated) {
+            Promise.resolve(
+              emailService.sendAdminOrderStatusChangedEmail({
+                order: updated,
+                statusType: 'PAYMENT',
+                oldStatus,
+                newStatus,
+                note: note || `Admin updated payment to ${newStatus}`,
+                actor,
+                source: 'ADMIN',
+              })
+            ).catch(() => {});
+          }
         }
       } catch (_) {
         // ignore
@@ -4158,6 +4208,28 @@ router.post('/orders/:id/offline/reject', (req, res, next) => {
 
     const note = rejectionReason ? `Slip rejected by admin: ${rejectionReason}` : 'Slip rejected by admin';
   orderRepo.insertStatusHistory(orderId, 'PAYMENT', 'AWAITING_VERIFICATION', 'AWAITING_VERIFICATION', note, actor);
+
+    // Staff email (best-effort)
+    try {
+      Promise.resolve(
+        emailService.sendAdminOrderEventEmail({
+          order,
+          subject: `Offline slip rejected – ${order.order_code || `#${order.order_id}`}`,
+          heading: `Offline slip rejected for ${order.order_code || `#${order.order_id}`}`,
+          lines: [
+            `Order: ${order.order_code || `#${order.order_id}`}`,
+            `Customer: ${order.customer_name || '-'}`,
+            `Reason: ${rejectionReason || '-'}`,
+            `Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`,
+            `Fulfilment: ${order.fulfilment_status || '-'}`,
+            actor && actor.username ? `By: ${String(actor.username).trim()}` : null,
+          ].filter(Boolean),
+          linkLabel: 'Review order',
+        })
+      ).catch(() => {});
+    } catch (_) {
+      // ignore
+    }
 
     // Best-effort customer email
     try {
@@ -4471,11 +4543,37 @@ router.post('/slips/:orderId/reject', (req, res, next) => {
       throw err;
     }
 
+    const order = orderRepo.getById(orderId);
+
     const rejectionReason = String(req.body?.rejection_reason || '').trim();
     orderRepo.rejectOfflineTransfer({ orderId, reason: rejectionReason });
 
     const note = rejectionReason ? `Slip rejected by admin: ${rejectionReason}` : 'Slip rejected by admin';
   orderRepo.insertStatusHistory(orderId, 'PAYMENT', 'AWAITING_VERIFICATION', 'AWAITING_VERIFICATION', note, actor);
+
+    // Staff email (best-effort)
+    try {
+      if (order) {
+        Promise.resolve(
+          emailService.sendAdminOrderEventEmail({
+            order,
+            subject: `Offline slip rejected – ${order.order_code || `#${order.order_id}`}`,
+            heading: `Offline slip rejected for ${order.order_code || `#${order.order_id}`}`,
+            lines: [
+              `Order: ${order.order_code || `#${order.order_id}`}`,
+              `Customer: ${order.customer_name || '-'}`,
+              `Reason: ${rejectionReason || '-'}`,
+              `Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`,
+              `Fulfilment: ${order.fulfilment_status || '-'}`,
+              actor && actor.username ? `By: ${String(actor.username).trim()}` : null,
+            ].filter(Boolean),
+            linkLabel: 'Review order',
+          })
+        ).catch(() => {});
+      }
+    } catch (_) {
+      // ignore
+    }
 
     req.session.flash = { type: 'success', message: 'Slip rejected (customer may re-upload).' };
     return res.redirect(`/admin/orders/${orderId}`);

@@ -36,7 +36,6 @@
     "nanoid": "^5.1.6",
     "nodemailer": "^6.10.1",
     "passport": "^0.7.0",
-    "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
     "pdf-parse": "^2.4.5",
     "pino": "^9.14.0",

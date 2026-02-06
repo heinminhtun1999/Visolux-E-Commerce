@@ -134,6 +134,9 @@
   <div class="muted small" style="margin-top:-6px; margin-bottom:10px">
     <% if (order.payment_method === 'ONLINE') { %>
       Refunds here send a partial refund request to Fiuu and are recorded in-app.
+      <% if (/^FPX/i.test(String(order.payment_channel || ''))) { %>
+        For <strong>FPX</strong>, auto-refund is disabled; record refunds manually after bank transfer.
+      <% } %>
     <% } else { %>
       Offline bank transfer refunds are recorded as manual refunds (no gateway call).
     <% } %>
@@ -175,9 +178,28 @@
           </td>
           <td>
             <% if (isFpxOnline) { %>
-              <div class="muted small" style="text-align:right">
-                Refund via Fiuu is disabled for <strong>FPX</strong> payments. Refund must be done manually using customer bank credentials.
-              </div>
+              <% if (canOnlineRefund && remainingQty > 0) { %>
+                <form
+                  method="post"
+                  action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund/manual"
+                  class="actions icon-row"
+                  style="gap:8px; justify-content:flex-end"
+                  onsubmit="return confirm('Record a manual refund for this FPX item? Only do this after you have refunded the customer via bank transfer.');"
+                >
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <input class="input" name="quantity" type="number" min="1" max="<%= remainingQty %>" value="1" style="width:70px" title="Qty" />
+                  <input class="input" name="amount" placeholder="RM (optional)" style="width:140px" title="Refund amount (optional)" />
+                  <input class="input" name="note" placeholder="Note (optional)" style="width:220px" title="Note (optional)" />
+                  <button class="btn btn-danger" type="submit">Refund (manual)</button>
+                </form>
+                <div class="muted small" style="margin-top:6px; text-align:right">
+                  Refund via Fiuu is disabled for <strong>FPX</strong>. Refund must be done manually, then recorded here.
+                </div>
+              <% } else if (!canOnlineRefund) { %>
+                <span class="muted small">Payment must be PAID to refund</span>
+              <% } else { %>
+                <span class="muted small">Fully refunded</span>
+              <% } %>
             <% } else if (canOnlineRefundViaGateway && remainingQty > 0) { %>
               <form
                 method="post"
@@ -262,9 +284,27 @@
       <div style="font-weight:800; margin-bottom:6px">Extra refund (shipping / manual)</div>
       <div class="muted small" style="margin-bottom:10px">Use this to refund shipping or any remaining amount up to the grand total.</div>
       <% if (isFpxOnline) { %>
-        <div class="muted small" style="text-align:right">
-          Refund via Fiuu is disabled for <strong>FPX</strong> payments. Refund must be done manually using customer bank credentials.
-        </div>
+        <% if (canOnlineRefund && Number(refundableRemainingCents || 0) > 0) { %>
+          <form
+            method="post"
+            action="/admin/orders/<%= order.order_id %>/refund/manual"
+            class="actions icon-row"
+            style="gap:8px; justify-content:flex-end"
+            onsubmit="return confirm('Record a manual refund for this FPX order amount? Only do this after you have refunded the customer via bank transfer.');"
+          >
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <input class="input" name="amount" placeholder="RM" style="width:140px" title="Refund amount" required />
+            <input class="input" name="reason" placeholder="Reason (optional)" style="width:220px" title="Reason (optional)" />
+            <button class="btn btn-danger" type="submit">Refund (manual)</button>
+          </form>
+          <div class="muted small" style="margin-top:6px; text-align:right">
+            Refund via Fiuu is disabled for <strong>FPX</strong>. Refund must be done manually, then recorded here.
+          </div>
+        <% } else if (!canOnlineRefund) { %>
+          <div class="muted small">Payment must be PAID to refund</div>
+        <% } else { %>
+          <div class="muted small">No remaining refundable amount</div>
+        <% } %>
       <% } else if (canOnlineRefundViaGateway && Number(refundableRemainingCents || 0) > 0) { %>
         <form
           method="post"

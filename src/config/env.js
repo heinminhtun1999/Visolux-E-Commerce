@@ -77,10 +77,6 @@ const env = {
       clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '',
     },
-    facebook: {
-      appId: process.env.FACEBOOK_OAUTH_APP_ID || '',
-      appSecret: process.env.FACEBOOK_OAUTH_APP_SECRET || '',
-    },
   },
 
   rateLimit: {

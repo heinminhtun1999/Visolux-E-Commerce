@@ -2,6 +2,7 @@ const { getDb } = require('../db/db');
 const inventoryRepo = require('../repositories/inventoryRepo');
 const orderRepo = require('../repositories/orderRepo');
 const adminNotificationRepo = require('../repositories/adminNotificationRepo');
+const emailService = require('./emailService');
 const { getMalaysiaRegionForState } = require('../utils/malaysia');
 const shippingService = require('./shippingService');
 const promoService = require('./promoService');
@@ -232,7 +233,25 @@ function markOrderPaidAndDeductStock({ orderId, note, actor }) {
     }
   });
 
-  return tx();
+  const result = tx();
+
+  // Staff email (best-effort) when payment becomes PAID.
+  try {
+    if (result && result.alreadyPaid === false && result.order) {
+      Promise.resolve(
+        emailService.sendAdminPaymentReceivedEmail({
+          order: result.order,
+          note,
+          stockDeducted: result.stockDeducted,
+          stockError: result.stockError,
+        })
+      ).catch(() => {});
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  return result;
 }
 
 module.exports = {

@@ -484,6 +484,234 @@ function buildRefundRequestFailedEmail({ order, itemLabel, qty, amountCents, rea
   return { subject: `Refund failed – ${orderLabel}`, text, html };
 }
 
+function buildAdminEventEmail({ subject, heading, lines, linkUrl, linkLabel }) {
+  const safeSubject = String(subject || '').trim() || 'Admin notification';
+  const safeHeading = String(heading || '').trim() || 'Admin notification';
+  const safeLines = Array.isArray(lines) ? lines.map((s) => String(s || '').trim()).filter(Boolean) : [];
+  const safeLinkUrl = linkUrl ? String(linkUrl).trim() : '';
+  const safeLinkLabel = String(linkLabel || '').trim() || 'Open in admin';
+
+  const textLines = [];
+  textLines.push(safeHeading);
+  if (safeLines.length) {
+    textLines.push('');
+    for (const l of safeLines) textLines.push(l);
+  }
+  if (safeLinkUrl) {
+    textLines.push('');
+    textLines.push(`${safeLinkLabel}: ${safeLinkUrl}`);
+  }
+
+  const htmlLines = safeLines.length
+    ? `<ul style="margin:10px 0 0; padding-left:18px">${safeLines
+        .map((l) => `<li>${escapeHtml(l)}</li>`)
+        .join('')}</ul>`
+    : '';
+
+  const html = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; line-height:1.4">
+      <h2 style="margin:0 0 8px">${escapeHtml(safeHeading)}</h2>
+      ${htmlLines}
+      ${safeLinkUrl ? `<p style="margin-top:12px"><a href="${escapeHtml(safeLinkUrl)}">${escapeHtml(safeLinkLabel)}</a></p>` : ''}
+    </div>
+  `;
+
+  return { subject: safeSubject, text: textLines.join('\n'), html };
+}
+
+async function sendAdminOrderEventEmail({ order, subject, heading, lines, linkLabel }) {
+  if (!isStaffNotifyConfigured()) {
+    // eslint-disable-next-line no-console
+    console.warn('[email] not configured; skipping admin order event email');
+    return { sent: false, reason: 'not_configured' };
+  }
+
+  if (!order || !order.order_id) return { sent: false, reason: 'missing_order' };
+
+  const notify = getAdminNotifyConfig();
+  const adminLink = `${getPublicBaseUrl()}/admin/orders/${order.order_id}`;
+
+  const msg = buildAdminEventEmail({
+    subject,
+    heading,
+    lines,
+    linkUrl: adminLink,
+    linkLabel: linkLabel || 'View order',
+  });
+
+  const transport = createTransport();
+  try {
+    await transport.sendMail({
+      from: env.email.from,
+      to: notify.to,
+      cc: notify.cc || undefined,
+      subject: msg.subject,
+      text: msg.text,
+      html: msg.html,
+    });
+    return { sent: true };
+  } finally {
+    try {
+      transport.close();
+    } catch (_) {
+      // ignore
+    }
+  }
+}
+
+async function sendAdminOrderStatusChangedEmail({ order, statusType, oldStatus, newStatus, note, actor, source }) {
+  const orderLabel = order && (order.order_code || order.order_id) ? (order.order_code || `#${order.order_id}`) : 'Order';
+  const type = String(statusType || '').trim().toUpperCase();
+  const label = type === 'FULFILMENT' ? 'Fulfilment status' : 'Payment status';
+  const safeOld = String(oldStatus || '').trim() || '-';
+  const safeNew = String(newStatus || '').trim() || '-';
+  const safeNote = String(note || '').trim();
+  const safeSource = String(source || '').trim();
+
+  const lines = [];
+  lines.push(`Order: ${orderLabel}`);
+  lines.push(`Customer: ${order.customer_name || '-'}`);
+  lines.push(`${label}: ${safeOld} → ${safeNew}`);
+  lines.push(`Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`);
+  lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
+  if (safeNote) lines.push(`Note: ${safeNote}`);
+  if (actor && actor.username) lines.push(`By: ${String(actor.username).trim()}`);
+  if (safeSource) lines.push(`Source: ${safeSource}`);
+
+  return sendAdminOrderEventEmail({
+    order,
+    subject: `${label} updated – ${orderLabel}`,
+    heading: `${label} updated for ${orderLabel}`,
+    lines,
+    linkLabel: 'Open order',
+  });
+}
+
+async function sendAdminRefundStatusChangedEmail({ order, oldRefundStatus, newRefundStatus, refundedAmountCents }) {
+  const orderLabel = order && (order.order_code || order.order_id) ? (order.order_code || `#${order.order_id}`) : 'Order';
+  const safeOld = String(oldRefundStatus || 'NONE').trim() || 'NONE';
+  const safeNew = String(newRefundStatus || 'NONE').trim() || 'NONE';
+  const rm = formatMoney(refundedAmountCents || 0);
+
+  const lines = [];
+  lines.push(`Order: ${orderLabel}`);
+  lines.push(`Customer: ${order.customer_name || '-'}`);
+  lines.push(`Refund status: ${safeOld} → ${safeNew}`);
+  lines.push(`Refunded: ${rm}`);
+  lines.push(`Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`);
+  lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
+
+  return sendAdminOrderEventEmail({
+    order,
+    subject: `Refund update – ${orderLabel}`,
+    heading: `Refund update for ${orderLabel}`,
+    lines,
+    linkLabel: 'Review order',
+  });
+}
+
+async function sendAdminPaymentReceivedEmail({ order, note, stockDeducted, stockError }) {
+  if (!isStaffNotifyConfigured()) {
+    // eslint-disable-next-line no-console
+    console.warn('[email] not configured; skipping admin payment received email');
+    return { sent: false, reason: 'not_configured' };
+  }
+
+  if (!order || !order.order_id) return { sent: false, reason: 'missing_order' };
+
+  const notify = getAdminNotifyConfig();
+  const orderLabel = order.order_code || `#${order.order_id}`;
+  const adminLink = `${getPublicBaseUrl()}/admin/orders/${order.order_id}`;
+
+  const lines = [];
+  lines.push(`Order: ${orderLabel}`);
+  lines.push(`Customer: ${order.customer_name || '-'}`);
+  lines.push(`Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`);
+  lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
+  if (note) lines.push(`Note: ${String(note).trim()}`);
+  if (stockDeducted === false) {
+    lines.push(`Stock: NOT deducted${stockError ? ` (${String(stockError).trim()})` : ''}`);
+  }
+
+  const msg = buildAdminEventEmail({
+    subject: `Payment received – ${orderLabel}`,
+    heading: `Payment received for ${orderLabel}`,
+    lines,
+    linkUrl: adminLink,
+    linkLabel: 'View order',
+  });
+
+  const transport = createTransport();
+  try {
+    await transport.sendMail({
+      from: env.email.from,
+      to: notify.to,
+      cc: notify.cc || undefined,
+      subject: msg.subject,
+      text: msg.text,
+      html: msg.html,
+    });
+    return { sent: true };
+  } finally {
+    try {
+      transport.close();
+    } catch (_) {
+      // ignore
+    }
+  }
+}
+
+async function sendAdminOfflineSlipUploadedEmail({ order, bankName, referenceNumber, slipPath, isReplacement }) {
+  if (!isStaffNotifyConfigured()) {
+    // eslint-disable-next-line no-console
+    console.warn('[email] not configured; skipping admin slip uploaded email');
+    return { sent: false, reason: 'not_configured' };
+  }
+
+  if (!order || !order.order_id) return { sent: false, reason: 'missing_order' };
+
+  const notify = getAdminNotifyConfig();
+  const orderLabel = order.order_code || `#${order.order_id}`;
+  const adminLink = `${getPublicBaseUrl()}/admin/orders/${order.order_id}`;
+  const slipUrl = slipPath ? `${getPublicBaseUrl()}${String(slipPath).trim()}` : '';
+
+  const lines = [];
+  lines.push(`Order: ${orderLabel}`);
+  lines.push(`Customer: ${order.customer_name || '-'}`);
+  if (bankName) lines.push(`Bank: ${String(bankName).trim()}`);
+  if (referenceNumber) lines.push(`Reference: ${String(referenceNumber).trim()}`);
+  lines.push(`Payment: ${order.payment_status || '-'} (${order.payment_method || '-'})`);
+  lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
+  if (slipUrl) lines.push(`Slip: ${slipUrl}`);
+
+  const msg = buildAdminEventEmail({
+    subject: `${isReplacement ? 'Bank slip replaced' : 'Bank slip uploaded'} – ${orderLabel}`,
+    heading: `${isReplacement ? 'Bank slip replaced' : 'Bank slip uploaded'} for ${orderLabel}`,
+    lines,
+    linkUrl: adminLink,
+    linkLabel: 'Review order',
+  });
+
+  const transport = createTransport();
+  try {
+    await transport.sendMail({
+      from: env.email.from,
+      to: notify.to,
+      cc: notify.cc || undefined,
+      subject: msg.subject,
+      text: msg.text,
+      html: msg.html,
+    });
+    return { sent: true };
+  } finally {
+    try {
+      transport.close();
+    } catch (_) {
+      // ignore
+    }
+  }
+}
+
 async function sendRefundRequestFailedEmail({ order, toCustomerEmail, itemLabel, qty, amountCents, reason, errorMessage }) {
   if (!isSmtpConfigured()) {
     // eslint-disable-next-line no-console
@@ -526,6 +754,11 @@ async function sendRefundRequestFailedEmail({ order, toCustomerEmail, itemLabel,
 
 module.exports = {
   sendOrderReceivedEmail,
+  sendAdminOrderEventEmail,
+  sendAdminOrderStatusChangedEmail,
+  sendAdminRefundStatusChangedEmail,
+  sendAdminPaymentReceivedEmail,
+  sendAdminOfflineSlipUploadedEmail,
   sendOrderPlacedEmailToCustomer,
   sendOrderStatusChangedEmailToCustomer,
   sendPasswordResetEmail,

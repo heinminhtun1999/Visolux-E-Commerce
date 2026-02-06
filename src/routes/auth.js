@@ -5,7 +5,6 @@ const { z } = require('zod');
 const rateLimit = require('express-rate-limit');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const FacebookStrategy = require('passport-facebook').Strategy;
 
 const userRepo = require('../repositories/userRepo');
 const { computeIsAdmin, computeIsSuperAdmin } = require('../middleware/auth');
@@ -21,59 +20,8 @@ function sha256Hex(value) {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');
 }
 
-function base64UrlToBuffer(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return Buffer.alloc(0);
-  const normalized = raw.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = normalized.length % 4;
-  const padded = pad ? normalized + '='.repeat(4 - pad) : normalized;
-  return Buffer.from(padded, 'base64');
-}
-
-function parseFacebookSignedRequest(signedRequest, appSecret) {
-  const raw = String(signedRequest || '').trim();
-  if (!raw || !raw.includes('.')) {
-    const err = new Error('Missing signed_request');
-    err.status = 400;
-    throw err;
-  }
-
-  const [encodedSig, encodedPayload] = raw.split('.', 2);
-  const sig = base64UrlToBuffer(encodedSig);
-  const payloadBuf = base64UrlToBuffer(encodedPayload);
-
-  const expected = crypto.createHmac('sha256', String(appSecret || '')).update(encodedPayload).digest();
-  if (sig.length !== expected.length || !crypto.timingSafeEqual(sig, expected)) {
-    const err = new Error('Invalid signed_request');
-    err.status = 400;
-    throw err;
-  }
-
-  let payload = null;
-  try {
-    payload = JSON.parse(payloadBuf.toString('utf8'));
-  } catch (_) {
-    const err = new Error('Invalid signed_request payload');
-    err.status = 400;
-    throw err;
-  }
-
-  const alg = String(payload?.algorithm || '').toUpperCase();
-  if (alg && alg !== 'HMAC-SHA256') {
-    const err = new Error('Unsupported signed_request algorithm');
-    err.status = 400;
-    throw err;
-  }
-
-  return payload;
-}
-
 function isGoogleOAuthConfigured() {
   return Boolean(env.oauth?.google?.clientId && env.oauth?.google?.clientSecret);
-}
-
-function isFacebookOAuthConfigured() {
-  return Boolean(env.oauth?.facebook?.appId && env.oauth?.facebook?.appSecret);
 }
 
 function getPublicBaseUrl() {
@@ -112,34 +60,6 @@ function configurePassportStrategiesOnce() {
       )
     );
   }
-
-  if (isFacebookOAuthConfigured()) {
-    passport.use(
-      new FacebookStrategy(
-        {
-          clientID: env.oauth.facebook.appId,
-          clientSecret: env.oauth.facebook.appSecret,
-          callbackURL: `${base}/auth/facebook/callback`,
-          profileFields: ['id', 'displayName', 'emails', 'name'],
-        },
-        (accessToken, refreshToken, profile, done) => {
-          try {
-            const facebookId = String(profile?.id || '').trim();
-            const email = String(profile?.emails?.[0]?.value || '').trim();
-            const displayName = String(profile?.displayName || '').trim();
-            return done(null, {
-              provider: 'facebook',
-              providerId: facebookId,
-              email,
-              displayName,
-            });
-          } catch (e) {
-            return done(e);
-          }
-        }
-      )
-    );
-  }
 }
 
 configurePassportStrategiesOnce();
@@ -155,6 +75,13 @@ function generateOAuthUsername({ email, displayName }) {
 }
 
 async function ensureOAuthUser({ provider, providerId, email, displayName }) {
+  const p = String(provider || '').trim().toLowerCase();
+  if (p !== 'google') {
+    const err = new Error('Unsupported OAuth provider');
+    err.status = 400;
+    throw err;
+  }
+
   if (!providerId) {
     const err = new Error('OAuth provider did not return an id');
     err.status = 400;
@@ -169,20 +96,15 @@ async function ensureOAuthUser({ provider, providerId, email, displayName }) {
   }
 
   // 1) Provider id already linked
-  if (provider === 'google') {
+  if (p === 'google') {
     const bySub = userRepo.findByGoogleSub(providerId);
     if (bySub) return bySub;
-  }
-  if (provider === 'facebook') {
-    const byFb = userRepo.findByFacebookId(providerId);
-    if (byFb) return byFb;
   }
 
   // 2) Existing local user with same email -> link provider
   const existing = userRepo.findByUsernameOrEmail(normalizedEmail);
   if (existing) {
-    if (provider === 'google' && !existing.google_sub) return userRepo.setGoogleSub(existing.user_id, providerId);
-    if (provider === 'facebook' && !existing.facebook_id) return userRepo.setFacebookId(existing.user_id, providerId);
+    if (p === 'google' && !existing.google_sub) return userRepo.setGoogleSub(existing.user_id, providerId);
     return existing;
   }
 
@@ -213,8 +135,7 @@ async function ensureOAuthUser({ provider, providerId, email, displayName }) {
   }
   if (!created) throw lastErr || new Error('Failed to create user');
 
-  if (provider === 'google') return userRepo.setGoogleSub(created.user_id, providerId);
-  if (provider === 'facebook') return userRepo.setFacebookId(created.user_id, providerId);
+  if (p === 'google') return userRepo.setGoogleSub(created.user_id, providerId);
   return created;
 }
 
@@ -284,7 +205,6 @@ router.get('/login', (req, res) => {
     returnTo,
     oauth: {
       google: isGoogleOAuthConfigured(),
-      facebook: isFacebookOAuthConfigured(),
     },
   });
 });
@@ -331,86 +251,6 @@ router.get('/auth/google/callback', (req, res, next) => {
       return res.redirect('/login');
     }
   })(req, res, next);
-});
-
-router.get('/auth/facebook', (req, res, next) => {
-  if (!isFacebookOAuthConfigured()) {
-    req.session.flash = { type: 'error', message: 'Facebook login is not configured.' };
-    return res.redirect('/login');
-  }
-  const returnTo = safeReturnTo(req.query.returnTo, '/');
-  req.session.oauthReturnTo = returnTo;
-  return passport.authenticate('facebook', {
-    session: false,
-    state: true,
-    scope: ['email', 'public_profile'],
-  })(req, res, next);
-});
-
-router.get('/auth/facebook/callback', (req, res, next) => {
-  passport.authenticate('facebook', { session: false }, async (err, payload) => {
-    try {
-      if (err) throw err;
-      if (!payload) {
-        req.session.flash = { type: 'error', message: 'Facebook login failed.' };
-        return res.redirect('/login');
-      }
-
-      const returnTo = safeReturnTo(req.session.oauthReturnTo, '/');
-      delete req.session.oauthReturnTo;
-
-      const user = await ensureOAuthUser(payload);
-      if (user.is_closed) {
-        req.session.flash = { type: 'error', message: 'This account has been closed.' };
-        return res.redirect('/login');
-      }
-
-      await completeLoginSession(req, user);
-      req.session.flash = { type: 'success', message: 'Signed in.' };
-      return res.redirect(returnTo || '/');
-    } catch (e) {
-      logger.warn({ event: 'oauth_facebook_failed', err: e, ip: req.ip }, 'facebook oauth failed');
-      req.session.flash = { type: 'error', message: String(e?.message || 'Facebook login failed.') };
-      return res.redirect('/login');
-    }
-  })(req, res, next);
-});
-
-// Meta requirement: Deauthorize Callback URL
-// Called by Facebook when a user removes the app (disconnects Facebook Login).
-router.post('/facebook/deauthorize', (req, res, next) => {
-  try {
-    if (!isFacebookOAuthConfigured()) return res.status(200).send('OK');
-    const signedRequest = req.body?.signed_request;
-    const fbPayload = parseFacebookSignedRequest(signedRequest, env.oauth.facebook.appSecret);
-    const facebookUserId = String(fbPayload?.user_id || '').trim();
-    if (facebookUserId) userRepo.clearFacebookIdByFacebookId(facebookUserId);
-    return res.status(200).send('OK');
-  } catch (e) {
-    return next(e);
-  }
-});
-
-// Meta requirement: User Data Deletion Callback URL
-// Called when a user initiates a data-deletion request from Facebook.
-router.post('/facebook/data-deletion', (req, res, next) => {
-  try {
-    if (!isFacebookOAuthConfigured()) {
-      return res.status(400).json({ error: { message: 'Facebook app not configured' } });
-    }
-
-    const signedRequest = req.body?.signed_request;
-    const fbPayload = parseFacebookSignedRequest(signedRequest, env.oauth.facebook.appSecret);
-    const facebookUserId = String(fbPayload?.user_id || '').trim();
-    if (facebookUserId) userRepo.clearFacebookIdByFacebookId(facebookUserId);
-
-    const confirmationCode = crypto.randomBytes(16).toString('hex');
-    const base = getPublicBaseUrl();
-    const url = `${base}/data-deletion/status?code=${encodeURIComponent(confirmationCode)}`;
-    return res.json({ url, confirmation_code: confirmationCode });
-  } catch (e) {
-    return next(e);
-  }
 });
 router.get('/register', (req, res) =>
   res.render('auth/register', { title: 'Create account', malaysiaStates: MALAYSIA_STATES })

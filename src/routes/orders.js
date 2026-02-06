@@ -444,8 +444,29 @@ router.post(
           { event: 'checkout_online_payment_not_configured', orderId: order.order_id },
           'online payment attempted but FIUU is not configured'
         );
+        const beforePayment = String(order.payment_status || '');
         orderRepo.updatePaymentStatus(order.order_id, 'FAILED', 'Online payment attempted but Fiuu not configured');
         orderRepo.updateFulfilmentStatus(order.order_id, 'CANCELLED', 'Online payment not configured');
+
+        // Staff email (best-effort)
+        try {
+          const updated = orderRepo.getById(order.order_id);
+          if (updated && beforePayment !== 'FAILED') {
+            Promise.resolve(
+              emailService.sendAdminOrderStatusChangedEmail({
+                order: updated,
+                statusType: 'PAYMENT',
+                oldStatus: beforePayment,
+                newStatus: 'FAILED',
+                note: 'Checkout attempted ONLINE payment but FIUU is not configured; order cancelled.',
+                source: 'CHECKOUT',
+              })
+            ).catch(() => {});
+          }
+        } catch (_) {
+          // ignore
+        }
+
         return res.redirect(`/orders/${order.order_id}`);
       }
 
@@ -748,6 +769,21 @@ router.post(
           body: `${req.validated.body.bank_name} • Ref: ${req.validated.body.reference_number} • Payment: ${order.payment_status} • Fulfilment: ${order.fulfilment_status}`,
           link: `/admin/orders/${order.order_id}`,
         });
+      } catch (_) {
+        // ignore
+      }
+
+      // Staff email notification (best-effort)
+      try {
+        Promise.resolve(
+          emailService.sendAdminOfflineSlipUploadedEmail({
+            order,
+            bankName: req.validated.body.bank_name,
+            referenceNumber: req.validated.body.reference_number,
+            slipPath: optimizedPath,
+            isReplacement: Boolean(existing),
+          })
+        ).catch(() => {});
       } catch (_) {
         // ignore
       }

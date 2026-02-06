@@ -201,6 +201,28 @@ function processPaymentPayload(payload, source) {
   if (statusCode === '22') {
     orderRepo.updatePaymentStatus(orderId, 'PENDING', `Fiuu ${source} pending tranID=${tranID}`);
     logger.warn({ event: 'payment_pending', orderId, tranID, source }, 'payment pending');
+
+    // Staff email (best-effort; skip duplicates)
+    try {
+      if (!isDuplicate && previousPaymentStatus !== 'PENDING') {
+        const updated = orderRepo.getById(orderId);
+        if (updated) {
+          Promise.resolve(
+            emailService.sendAdminOrderStatusChangedEmail({
+              order: updated,
+              statusType: 'PAYMENT',
+              oldStatus: previousPaymentStatus,
+              newStatus: 'PENDING',
+              note: `Fiuu ${source} pending${tranID ? ` tranID=${tranID}` : ''}`,
+              source: `FIUU:${source}`,
+            })
+          ).catch(() => {});
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+
     return { orderId, statusCode, isDuplicate, outcome: 'PENDING' };
   }
 
@@ -208,6 +230,27 @@ function processPaymentPayload(payload, source) {
   if (order.payment_status !== 'PAID') {
     orderRepo.updatePaymentStatus(orderId, 'FAILED', `Fiuu ${source} failed tranID=${tranID} status=${statusCode}`);
     orderRepo.updateFulfilmentStatus(orderId, 'CANCELLED', 'Payment failed/cancelled');
+
+    // Staff email (best-effort; skip duplicates)
+    try {
+      if (!isDuplicate && previousPaymentStatus !== 'FAILED') {
+        const updated = orderRepo.getById(orderId);
+        if (updated) {
+          Promise.resolve(
+            emailService.sendAdminOrderStatusChangedEmail({
+              order: updated,
+              statusType: 'PAYMENT',
+              oldStatus: previousPaymentStatus,
+              newStatus: 'FAILED',
+              note: `Fiuu ${source} failed${tranID ? ` tranID=${tranID}` : ''} status=${statusCode}`,
+              source: `FIUU:${source}`,
+            })
+          ).catch(() => {});
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
   }
 
   logger.warn({ event: 'payment_failed', orderId, tranID, source, statusCode }, 'payment failed');
@@ -378,8 +421,30 @@ router.get('/payment/cancel', (req, res) => {
   if (orderRef) {
     const order = resolveOrderFromRef(orderRef);
     if (order && order.payment_status !== 'PAID') {
+      const beforePayment = String(order.payment_status || '');
       orderRepo.updatePaymentStatus(order.order_id, 'FAILED', 'Buyer cancelled at gateway');
       orderRepo.updateFulfilmentStatus(order.order_id, 'CANCELLED', 'Buyer cancelled at gateway');
+
+      // Staff email (best-effort)
+      try {
+        if (beforePayment !== 'FAILED') {
+          const updated = orderRepo.getById(order.order_id);
+          if (updated) {
+            Promise.resolve(
+              emailService.sendAdminOrderStatusChangedEmail({
+                order: updated,
+                statusType: 'PAYMENT',
+                oldStatus: beforePayment,
+                newStatus: 'FAILED',
+                note: 'Buyer cancelled at gateway',
+                source: 'FIUU:cancel',
+              })
+            ).catch(() => {});
+          }
+        }
+      } catch (_) {
+        // ignore
+      }
     }
   }
 

@@ -6,6 +6,7 @@ const paymentEventRepo = require('../repositories/paymentEventRepo');
 const fiuu = require('./payments/fiuu');
 const { logger } = require('../utils/logger');
 const { env } = require('../config/env');
+const emailService = require('./emailService');
 
 function buildFiuuConfigForOrder(order) {
   if (!order) return null;
@@ -60,6 +61,8 @@ function refreshOrderRefundStatus({ orderId, actor }) {
   const order = orderRepo.getWithItems(orderId);
   if (!order) return null;
 
+  const beforeRefundStatus = String(order.refund_status || 'NONE');
+
   const summaryItems = orderRefundRepo.summaryConfirmedByOrder(orderId);
   const summaryExtra = orderRefundExtraRepo.summaryConfirmedByOrder(orderId);
   const refundedAmount =
@@ -85,6 +88,27 @@ function refreshOrderRefundStatus({ orderId, actor }) {
         orderRepo.updatePaymentStatus(orderId, 'PARTIALLY_REFUNDED', 'Order partially refunded', actor);
       }
     }
+  }
+
+  // Staff email notification (best-effort) when refund status changes.
+  try {
+    if (String(beforeRefundStatus || 'NONE') !== String(refundStatus || 'NONE')) {
+      if (refundStatus === 'PARTIAL_REFUND' || refundStatus === 'FULL_REFUND') {
+        const updatedOrder = orderRepo.getById(orderId);
+        if (updatedOrder) {
+          Promise.resolve(
+            emailService.sendAdminRefundStatusChangedEmail({
+              order: updatedOrder,
+              oldRefundStatus: beforeRefundStatus,
+              newRefundStatus: refundStatus,
+              refundedAmountCents: refundedAmount,
+            })
+          ).catch(() => {});
+        }
+      }
+    }
+  } catch (_) {
+    // ignore
   }
 
   return { refund_status: refundStatus, refunded_amount: refundedAmount };

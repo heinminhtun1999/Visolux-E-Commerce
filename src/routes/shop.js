@@ -92,7 +92,7 @@ router.get('/data-deletion', (req, res) => {
     `If you want us to delete your personal data from **Visolux Store**, please contact us with the email address used on your account and include the subject **Data Deletion Request**.\n\n` +
     (supportEmail ? `Contact email: **${supportEmail}**\n\n` : '') +
     `## What we may store\n\n` +
-    `Depending on how you use the site, we may store your account profile (username/email), order history, and OAuth identifiers (e.g. a Facebook user ID) used to sign in.\n\n` +
+    `Depending on how you use the site, we may store your account profile (username/email), order history, and OAuth identifiers used to sign in.\n\n` +
     `## What to include\n\n` +
     `- Your name\n` +
     `- Your account email\n` +

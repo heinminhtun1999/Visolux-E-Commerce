@@ -308,9 +308,6 @@ function createApp() {
       '/payment/callback',
       '/payment/return',
       '/payment/refund/notify',
-      // Meta/Facebook compliance webhooks (server-to-server POSTs)
-      '/facebook/deauthorize',
-      '/facebook/data-deletion',
     ],
   }));
 

@@ -8,7 +8,6 @@ function mapUser(row) {
     email: row.email,
     password_hash: row.password_hash,
     google_sub: row.google_sub || null,
-    facebook_id: row.facebook_id || null,
     phone: row.phone,
     address: row.address,
     address_line1: row.address_line1,
@@ -49,39 +48,11 @@ function findByGoogleSub(googleSub) {
   return mapUser(db.prepare('SELECT * FROM users WHERE google_sub=?').get(sub));
 }
 
-function findByFacebookId(facebookId) {
-  const db = getDb();
-  const id = String(facebookId || '').trim();
-  if (!id) return null;
-  return mapUser(db.prepare('SELECT * FROM users WHERE facebook_id=?').get(id));
-}
-
 function setGoogleSub(userId, googleSub) {
   const db = getDb();
   const sub = String(googleSub || '').trim();
   db.prepare('UPDATE users SET google_sub=? WHERE user_id=?').run(sub || null, userId);
   return getById(userId);
-}
-
-function setFacebookId(userId, facebookId) {
-  const db = getDb();
-  const id = String(facebookId || '').trim();
-  db.prepare('UPDATE users SET facebook_id=? WHERE user_id=?').run(id || null, userId);
-  return getById(userId);
-}
-
-function clearFacebookId(userId) {
-  const db = getDb();
-  db.prepare('UPDATE users SET facebook_id=NULL WHERE user_id=?').run(userId);
-  return getById(userId);
-}
-
-function clearFacebookIdByFacebookId(facebookId) {
-  const id = String(facebookId || '').trim();
-  if (!id) return null;
-  const user = findByFacebookId(id);
-  if (!user) return null;
-  return clearFacebookId(user.user_id);
 }
 
 function create({
@@ -305,12 +276,8 @@ module.exports = {
   getById,
   findByUsernameOrEmail,
   findByGoogleSub,
-  findByFacebookId,
   create,
   setGoogleSub,
-  setFacebookId,
-  clearFacebookId,
-  clearFacebookIdByFacebookId,
   updateProfile,
   updatePassword,
   setPasswordResetToken,

@@ -81,13 +81,16 @@ function ensureUsersOAuthIdentities(database) {
     if (!has('google_sub')) {
       database.exec('ALTER TABLE users ADD COLUMN google_sub TEXT');
     }
-    if (!has('facebook_id')) {
-      database.exec('ALTER TABLE users ADD COLUMN facebook_id TEXT');
-    }
 
     // Enforce uniqueness when values are present.
     database.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL');
-    database.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_facebook_id ON users(facebook_id) WHERE facebook_id IS NOT NULL');
+
+    // Facebook OAuth was removed; clean up the old index if it exists (best-effort).
+    try {
+      database.exec('DROP INDEX IF EXISTS idx_users_facebook_id');
+    } catch (_) {
+      // ignore
+    }
   } catch (_) {
     // ignore
   }
