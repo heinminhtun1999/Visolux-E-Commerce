@@ -20,6 +20,7 @@
           <th>Product</th>
           <th>Price</th>
           <th class="table-col-qty">Qty</th>
+          <th class="table-col-note">Note</th>
           <th>Subtotal</th>
         </tr>
       </thead>
@@ -32,9 +33,10 @@
             </td>
             <td><%= formatMoney(line.product.price) %></td>
             <td>
-              <form method="post" action="/cart/update" class="row row--tight">
+              <form method="post" action="/cart/update" class="row row--tight" id="cart-line-<%= line.product.product_id %>">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                 <input type="hidden" name="product_id" value="<%= line.product.product_id %>" />
+                <input type="hidden" name="note" value="<%= String(line.note || '').trim() %>" />
                 <input
                   class="input"
                   type="number"
@@ -45,7 +47,17 @@
                   inputmode="numeric"
                 />
               </form>
-              <div class="muted small u-mt-6">Auto-updates</div>
+            </td>
+            <td>
+              <textarea
+                class="input"
+                form="cart-line-<%= line.product.product_id %>"
+                data-cart-note
+                rows="2"
+                maxlength="500"
+                placeholder="Note (optional)"
+                aria-label="Note for <%= line.product.name %>"
+              ><%= String(line.note || '').trim() %></textarea>
             </td>
             <td><%= formatMoney(line.subtotal) %></td>
           </tr>

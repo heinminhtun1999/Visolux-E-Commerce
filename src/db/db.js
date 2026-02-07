@@ -47,9 +47,11 @@ function initializeSchema(database) {
   ensureOrdersPricingColumns(database);
   ensureOrdersPaymentChannel(database);
   ensureOrdersPaymentStatusEnum(database);
+  ensureOrdersCustomerNote(database);
   ensureOrdersAdminNote(database);
   ensureOrdersOfflineTransferRecipient(database);
   ensureOrdersOnlinePaymentSnapshot(database);
+  ensureOrderItemsNote(database);
   ensureOrderItemRefunds(database);
   ensureOrderItemRefundGatewayColumns(database);
   ensureOrderRefunds(database);
@@ -701,6 +703,14 @@ function ensureOrdersAdminNote(database) {
   }
 }
 
+function ensureOrdersCustomerNote(database) {
+  const cols = database.prepare("PRAGMA table_info('orders')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+  if (!has('customer_note')) {
+    database.exec("ALTER TABLE orders ADD COLUMN customer_note TEXT NOT NULL DEFAULT ''");
+  }
+}
+
 function ensureOrdersOrderCode(database) {
   const cols = database.prepare("PRAGMA table_info('orders')").all();
   const hasOrderCode = cols.some((c) => c.name === 'order_code');
@@ -842,6 +852,14 @@ function ensureOrderItemRefunds(database) {
   );
   database.exec('CREATE INDEX IF NOT EXISTS idx_order_item_refunds_order ON order_item_refunds(order_id, created_at)');
   database.exec('CREATE INDEX IF NOT EXISTS idx_order_item_refunds_item ON order_item_refunds(order_item_id)');
+}
+
+function ensureOrderItemsNote(database) {
+  const cols = database.prepare("PRAGMA table_info('order_items')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+  if (!has('item_note')) {
+    database.exec("ALTER TABLE order_items ADD COLUMN item_note TEXT NOT NULL DEFAULT ''");
+  }
 }
 
 function ensureOrderItemRefundGatewayColumns(database) {

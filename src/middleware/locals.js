@@ -145,7 +145,8 @@ function attachLocals(req, res, next) {
   res.locals.cart = req.session.cart || { items: {} };
   const items = (res.locals.cart && res.locals.cart.items) ? res.locals.cart.items : {};
   res.locals.cartItemCount = Object.values(items).reduce((sum, v) => {
-    const n = Number(v);
+    const rawQty = (v && typeof v === 'object') ? v.qty : v;
+    const n = Number(rawQty);
     return sum + (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
   }, 0);
   res.locals.flash = req.session.flash || null;

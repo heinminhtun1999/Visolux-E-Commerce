@@ -19,12 +19,13 @@ const router = express.Router();
 function buildCartLinesForFiuuAccountCheck(session) {
   const cart = cartService.getCart(session);
   const lines = [];
-  for (const [productIdStr, qty] of Object.entries(cart.items || {})) {
+  for (const [productIdStr, raw] of Object.entries(cart.items || {})) {
     const productId = Number(productIdStr);
     if (!Number.isFinite(productId) || productId <= 0) continue;
     const product = inventoryRepo.getById(productId);
     if (!product || product.archived || !product.visibility) continue;
-    const q = Math.max(1, Math.floor(Number(qty || 0)));
+    const rawQty = (raw && typeof raw === 'object') ? raw.qty : raw;
+    const q = Math.max(1, Math.floor(Number(rawQty || 0)));
     lines.push({ product, quantity: q });
   }
   return lines;
@@ -413,6 +414,7 @@ router.post(
       body: z.object({
         product_id: z.string(),
         quantity: z.string().optional(),
+        note: z.string().trim().max(500).optional().or(z.literal('')),
         return_to: z.string().max(500).optional(),
       }),
       query: z.any().optional(),
@@ -470,10 +472,14 @@ router.post(
 
     const q = Math.max(1, Math.min(99, Math.floor(quantity)));
 
-    const currentQty = Number(req.session.cart?.items?.[String(productId)] || 0);
+    const entry = req.session.cart?.items?.[String(productId)];
+    const currentQty = Number((entry && typeof entry === 'object') ? entry.qty : (entry || 0));
     const desiredQty = Math.max(0, Math.floor(currentQty) + q);
     const cappedQty = Math.min(desiredQty, availableStock);
     cartService.setQty(req.session, productId, cappedQty);
+
+    const note = String(req.validated.body.note || '').trim();
+    if (note) cartService.setNote(req.session, productId, note);
 
     if (cappedQty < desiredQty) {
       req.session.flash = {
@@ -496,6 +502,7 @@ router.post(
       body: z.object({
         product_id: z.string(),
         quantity: z.string(),
+        note: z.string().trim().max(500).optional().or(z.literal('')),
       }),
       query: z.any().optional(),
       params: z.any().optional(),
@@ -551,6 +558,13 @@ router.post(
 
     const cappedQty = Math.min(desiredQty, availableStock);
     cartService.setQty(req.session, productId, cappedQty);
+
+    if (cappedQty > 0) {
+      if (Object.prototype.hasOwnProperty.call(req.validated.body, 'note')) {
+        const note = String(req.validated.body.note || '').trim();
+        cartService.setNote(req.session, productId, note);
+      }
+    }
 
     if (desiredQty !== cappedQty) {
       req.session.flash = {

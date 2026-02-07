@@ -51,6 +51,15 @@
         </div>
         <div class="muted small u-mt-6" id="promoMessage"></div>
 
+        <label>Order remark (optional)</label>
+        <textarea
+          class="input"
+          name="customer_note"
+          rows="3"
+          maxlength="500"
+          placeholder="e.g. Leave at guardhouse / call before delivery"
+        ></textarea>
+
         <label>Payment method</label>
         <select name="payment_method" id="paymentMethodSelect" required>
           <% if (canOnlinePay) { %>
@@ -121,6 +130,9 @@
               <td>
                 <div class="text-strong"><%= line.product.name %></div>
                 <div class="muted small"><%= formatMoney(line.product.price) %> each</div>
+                <% if (line.note) { %>
+                  <div class="muted small">Note: <%= line.note %></div>
+                <% } %>
                 <% if (line.product && line.product.weight_kg != null) { %>
                   <div class="muted small">Weight: <%= Number(line.product.weight_kg || 0).toFixed(2) %> kg</div>
                 <% } %>

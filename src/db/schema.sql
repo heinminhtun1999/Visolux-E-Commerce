@@ -169,6 +169,7 @@ CREATE TABLE IF NOT EXISTS orders (
   discount_amount INTEGER NOT NULL DEFAULT 0 CHECK (discount_amount >= 0),
   shipping_fee INTEGER NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
   total_amount INTEGER NOT NULL CHECK (total_amount >= 0),
+  customer_note TEXT NOT NULL DEFAULT '',
   admin_note TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(user_id)
@@ -196,6 +197,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   order_id INTEGER NOT NULL,
   product_id INTEGER NOT NULL,
   product_name_snapshot TEXT NOT NULL,
+  item_note TEXT NOT NULL DEFAULT '',
   price_snapshot INTEGER NOT NULL,
   quantity INTEGER NOT NULL CHECK (quantity > 0),
   subtotal INTEGER NOT NULL CHECK (subtotal >= 0),

@@ -34,6 +34,7 @@ function mapOrder(row) {
     discount_amount: row.discount_amount,
     shipping_fee: row.shipping_fee,
     total_amount: row.total_amount,
+    customer_note: row.customer_note || '',
     admin_note: row.admin_note || '',
     created_at: row.created_at,
   };
@@ -64,6 +65,7 @@ function listItems(orderId) {
       order_id: r.order_id,
       product_id: r.product_id,
       product_name_snapshot: r.product_name_snapshot,
+      item_note: r.item_note || '',
       price_snapshot: r.price_snapshot,
       quantity: r.quantity,
       subtotal: r.subtotal,
@@ -411,6 +413,7 @@ function createOrder({
   discount_amount,
   shipping_fee,
   total_amount,
+  customer_note,
   items,
   promo,
 }) {
@@ -480,7 +483,8 @@ function createOrder({
               online_payment_provider, online_payment_account_id, online_payment_merchant_id, online_payment_verify_key, online_payment_secret_key, online_payment_gateway_url, online_payment_currency,
               offline_transfer_bank, offline_transfer_account_no, offline_transfer_account_name,
               items_subtotal, discount_amount, shipping_fee,
-              total_amount
+              total_amount,
+              customer_note
             )
              VALUES (
               @order_code, @user_id, @customer_name, @phone, @email, @address,
@@ -489,7 +493,8 @@ function createOrder({
               @online_payment_provider, @online_payment_account_id, @online_payment_merchant_id, @online_payment_verify_key, @online_payment_secret_key, @online_payment_gateway_url, @online_payment_currency,
               @offline_transfer_bank, @offline_transfer_account_no, @offline_transfer_account_name,
               @items_subtotal, @discount_amount, @shipping_fee,
-              @total_amount
+              @total_amount,
+              @customer_note
             )`
           )
           .run({
@@ -522,6 +527,7 @@ function createOrder({
             discount_amount: Number(discount_amount || 0),
             shipping_fee: Number(shipping_fee || 0),
             total_amount,
+            customer_note: String(customer_note || '').trim(),
           });
         break;
       } catch (e) {
@@ -537,8 +543,8 @@ function createOrder({
     const orderId = inserted.lastInsertRowid;
 
     const insertItem = db.prepare(
-      `INSERT INTO order_items (order_id, product_id, product_name_snapshot, price_snapshot, quantity, subtotal)
-       VALUES (@order_id, @product_id, @product_name_snapshot, @price_snapshot, @quantity, @subtotal)`
+      `INSERT INTO order_items (order_id, product_id, product_name_snapshot, item_note, price_snapshot, quantity, subtotal)
+       VALUES (@order_id, @product_id, @product_name_snapshot, @item_note, @price_snapshot, @quantity, @subtotal)`
     );
 
     for (const it of items) {
@@ -546,6 +552,7 @@ function createOrder({
         order_id: orderId,
         product_id: it.product_id,
         product_name_snapshot: it.product_name_snapshot,
+        item_note: String(it.item_note || '').trim(),
         price_snapshot: it.price_snapshot,
         quantity: it.quantity,
         subtotal: it.subtotal,

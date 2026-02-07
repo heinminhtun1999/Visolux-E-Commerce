@@ -66,6 +66,10 @@
             <label>Qty</label>
             <input class="input" type="number" name="quantity" min="1" max="<%= Math.min(99, Math.max(1, effStock || 1)) %>" value="1" <%= effStock > 0 ? '' : 'disabled' %> />
           </div>
+          <div class="field is-md">
+            <label>Note (optional)</label>
+            <input class="input" type="text" name="note" maxlength="500" placeholder="e.g. color/variant, delivery instruction" <%= effStock > 0 ? '' : 'disabled' %> />
+          </div>
           <div class="field is-md" id="add-to-cart">
             <label>&nbsp;</label>
             <button class="btn btn-primary" type="submit" <%= effStock > 0 ? '' : 'disabled' %>>Add to cart</button>

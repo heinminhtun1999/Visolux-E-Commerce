@@ -6,6 +6,16 @@ function getCart(session) {
   return session.cart;
 }
 
+function normalizeCartItem(raw) {
+  if (raw && typeof raw === 'object') {
+    const qty = Math.floor(Number(raw.qty || 0));
+    const note = String(raw.note || '').trim();
+    return { qty, note };
+  }
+  const qty = Math.floor(Number(raw || 0));
+  return { qty, note: '' };
+}
+
 function setQty(session, productId, qty) {
   const cart = getCart(session);
   const id = String(productId);
@@ -13,8 +23,19 @@ function setQty(session, productId, qty) {
   if (!Number.isFinite(q) || q <= 0) {
     delete cart.items[id];
   } else {
-    cart.items[id] = Math.floor(q);
+    const existing = normalizeCartItem(cart.items[id]);
+    cart.items[id] = { qty: Math.floor(q), note: existing.note };
   }
+  return cart;
+}
+
+function setNote(session, productId, note) {
+  const cart = getCart(session);
+  const id = String(productId);
+  if (!cart.items[id]) return cart;
+  const existing = normalizeCartItem(cart.items[id]);
+  const nextNote = String(note || '').trim();
+  cart.items[id] = { qty: existing.qty, note: nextNote };
   return cart;
 }
 
@@ -27,7 +48,7 @@ function sanitizeCart(session) {
   const removed = [];
   const adjusted = [];
 
-  for (const [productIdStr, rawQty] of Object.entries(cart.items || {})) {
+  for (const [productIdStr, raw] of Object.entries(cart.items || {})) {
     const productId = Number(productIdStr);
     if (!Number.isFinite(productId) || productId <= 0) {
       delete cart.items[productIdStr];
@@ -35,7 +56,8 @@ function sanitizeCart(session) {
       continue;
     }
 
-    const qty = Math.floor(Number(rawQty || 0));
+    const parsed = normalizeCartItem(raw);
+    const qty = Math.floor(Number(parsed.qty || 0));
     if (!Number.isFinite(qty) || qty <= 0) {
       delete cart.items[productIdStr];
       continue;
@@ -61,8 +83,14 @@ function sanitizeCart(session) {
     }
 
     if (qty > availableStock) {
-      cart.items[productIdStr] = availableStock;
+      cart.items[productIdStr] = { qty: availableStock, note: parsed.note };
       adjusted.push({ product_id: productId, name: product.name || null, from: qty, to: availableStock });
+      continue;
+    }
+
+    // Normalize old cart shape (qty only) to new shape.
+    if (!raw || typeof raw !== 'object' || raw.qty == null) {
+      cart.items[productIdStr] = { qty, note: parsed.note };
     }
   }
 
@@ -73,7 +101,9 @@ async function hydrateCart(cart) {
   const items = [];
   let total = 0;
 
-  for (const [productIdStr, qty] of Object.entries(cart.items || {})) {
+  for (const [productIdStr, raw] of Object.entries(cart.items || {})) {
+    const parsed = normalizeCartItem(raw);
+    const qty = parsed.qty;
     const productId = Number(productIdStr);
     if (!Number.isFinite(productId)) continue;
     const product = inventoryRepo.getById(productId);
@@ -85,10 +115,10 @@ async function hydrateCart(cart) {
 
     const subtotal = product.price * lineQty;
     total += subtotal;
-    items.push({ product, quantity: lineQty, subtotal, available_stock: availableStock });
+    items.push({ product, quantity: lineQty, subtotal, available_stock: availableStock, note: parsed.note });
   }
 
   return { items, total };
 }
 
-module.exports = { getCart, setQty, clear, sanitizeCart, hydrateCart };
+module.exports = { getCart, setQty, setNote, clear, sanitizeCart, hydrateCart };

@@ -43,6 +43,7 @@ function buildOrderFromCart({ cartItems }) {
     items.push({
       product_id: p.product_id,
       product_name_snapshot: p.name,
+      item_note: String(line.note || '').trim(),
       price_snapshot: p.price,
       quantity: qty,
       subtotal: p.price * qty,
@@ -156,6 +157,7 @@ function placeOrder({
     discount_amount: discount,
     shipping_fee: shippingFeeCents,
     total_amount: grandTotal,
+    customer_note: customer?.customer_note || '',
     items: built.items,
     promo,
   });

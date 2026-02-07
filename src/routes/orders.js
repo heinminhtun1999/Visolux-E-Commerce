@@ -339,6 +339,7 @@ router.post(
         state: z.enum(MALAYSIA_STATES),
         postcode: z.string().trim().regex(/^\d{5}$/),
         promo_code: z.string().trim().max(32).optional().or(z.literal('')),
+        customer_note: z.string().trim().max(500).optional().or(z.literal('')),
         payment_method: z.enum(['ONLINE', 'OFFLINE_TRANSFER']),
         offline_transfer_bank_id: z.string().trim().max(128).optional().or(z.literal('')),
       }),
@@ -365,6 +366,7 @@ router.post(
         city: req.validated.body.city,
         state: req.validated.body.state,
         postcode: req.validated.body.postcode,
+        customer_note: req.validated.body.customer_note,
       };
 
       let offline_transfer_recipient = null;

@@ -14,6 +14,10 @@
       <div style="font-weight:700"><%= order.customer_name %></div>
       <div class="muted small"><%= order.email %> • <%= order.phone %></div>
       <div class="muted small" style="margin-top:6px"><%= order.address %></div>
+      <% const customerNote = String(order.customer_note || '').trim(); %>
+      <% if (customerNote) { %>
+        <div class="muted small" style="margin-top:6px">Customer remark: <strong><%= customerNote %></strong></div>
+      <% } %>
     </div>
     <div style="min-width:240px">
       <div class="muted small">Payment method</div>
@@ -165,7 +169,13 @@
         <% const latest = latestRefundByItem[String(it.id)] || null; %>
         <% const latestFiuuFailed = latest && String(latest.provider || '') === 'FIUU' && String(latest.provider_status || '') === 'FAILED'; %>
         <tr>
-          <td><%= it.product_name_snapshot %></td>
+          <td>
+            <div><%= it.product_name_snapshot %></div>
+            <% const itemNote = String(it.item_note || '').trim(); %>
+            <% if (itemNote) { %>
+              <div class="muted small" style="margin-top:4px">Note: <%= itemNote %></div>
+            <% } %>
+          </td>
           <td><%= formatMoney(it.price_snapshot) %></td>
           <td><%= it.quantity %></td>
           <td><%= formatMoney(it.subtotal) %></td>
