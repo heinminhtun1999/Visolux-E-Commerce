@@ -43,6 +43,13 @@
           </strong></div>
       </div>
       <div class="col" style="min-width:220px">
+        <div class="muted small">Auth</div>
+        <div>
+          <%= user.google_sub ? 'Google OAuth' : 'Form (email/password)' %>
+          <div class="muted small">Password: <%= user.password_hash ? 'Set' : 'Not set' %></div>
+        </div>
+      </div>
+      <div class="col" style="min-width:220px">
         <div class="muted small">Phone</div>
         <div>
           <%= user.phone || '—' %>

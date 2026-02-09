@@ -56,14 +56,22 @@
 
   <div class="col" style="min-width:320px">
     <div class="card" style="padding:16px">
-      <h2 class="h2">Change password</h2>
+      <% const isGoogleUser = Boolean(user.google_sub); %>
+      <h2 class="h2"><%= isGoogleUser ? 'Set or change password' : 'Change password' %></h2>
+      <% if (isGoogleUser) { %>
+        <div class="muted small" style="margin-top:-6px; margin-bottom:10px">
+          You signed in with Google. You can set a password to also sign in with email/password.
+        </div>
+      <% } %>
       <form method="post" action="/account/password">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-        <label>Current password</label>
-        <div class="password-field" data-password-field>
-          <input class="input" type="password" name="current_password" required />
-          <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
-        </div>
+        <% if (!isGoogleUser) { %>
+          <label>Current password</label>
+          <div class="password-field" data-password-field>
+            <input class="input" type="password" name="current_password" required />
+            <button class="btn btn-secondary password-toggle-btn" type="button" data-password-toggle-btn aria-pressed="false">Show</button>
+          </div>
+        <% } %>
 
         <label>New password</label>
         <div class="password-field" data-password-field>

@@ -9,16 +9,21 @@
 
       // Some fields may sit outside the <form> (e.g. table columns) and use the
       // HTML "form" attribute to associate with this form.
-      var note = form.querySelector('textarea[data-cart-note], textarea[name="note"], input[name="note"]');
+      // Prefer the editable textarea note (often outside the form) over the hidden input.
+      var note = form.querySelector('textarea[data-cart-note], textarea[name="note"]');
       if (!note && form.id) {
         try {
-          note = document.querySelector('[form="' + form.id + '"][data-cart-note], [form="' + form.id + '"][name="note"]');
+          note = document.querySelector('[form="' + form.id + '"][data-cart-note], textarea[form="' + form.id + '"][name="note"]');
         } catch (_) {
           // ignore
         }
       }
 
       var noteHidden = form.querySelector('input[type="hidden"][name="note"]');
+      if (!note) {
+        // Fallback: if there is no textarea, treat the hidden input as the note field.
+        note = noteHidden || null;
+      }
 
       var typeSelect = form.querySelector('select[data-cart-type], select[name="product_type"]');
       if (!typeSelect && form.id) {

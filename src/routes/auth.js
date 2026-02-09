@@ -498,7 +498,7 @@ router.post(
         return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
 
-      const ok = await bcrypt.compare(password, user.password_hash);
+      const ok = user.password_hash ? await bcrypt.compare(password, user.password_hash) : false;
       if (!ok) {
         logger.warn(
           { event: 'login_failed', reason: 'bad_password', userId: user.user_id, identifier, ip: req.ip },
@@ -617,7 +617,7 @@ router.post(
   validate(
     z.object({
       body: z.object({
-        current_password: z.string().min(1).max(200),
+        current_password: z.string().max(200).optional().or(z.literal('')),
         new_password: z.string().min(8).max(200),
       }),
       query: z.any().optional(),
@@ -630,13 +630,32 @@ router.post(
         const returnTo = safeReturnTo(req.originalUrl, '');
         return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
-      const { current_password, new_password } = req.validated.body;
+      const current_password = String(req.validated.body.current_password || '').trim();
+      const { new_password } = req.validated.body;
       const user = userRepo.getById(req.session.user.user_id);
 
-      const ok = await bcrypt.compare(current_password, user.password_hash);
-      if (!ok) {
-        req.session.flash = { type: 'error', message: 'Current password is incorrect.' };
-        return res.redirect('/account');
+      if (!user) {
+        req.session.flash = { type: 'error', message: 'Account not found.' };
+        return res.redirect('/login');
+      }
+
+      const isGoogleUser = Boolean(user.google_sub);
+      const canSkipCurrent = isGoogleUser && !current_password;
+
+      if (!canSkipCurrent) {
+        if (!current_password) {
+          req.session.flash = { type: 'error', message: 'Current password is required.' };
+          return res.redirect('/account');
+        }
+        if (!user.password_hash) {
+          req.session.flash = { type: 'error', message: 'No password is set for this account.' };
+          return res.redirect('/account');
+        }
+        const ok = await bcrypt.compare(current_password, user.password_hash);
+        if (!ok) {
+          req.session.flash = { type: 'error', message: 'Current password is incorrect.' };
+          return res.redirect('/account');
+        }
       }
 
       const password_hash = await bcrypt.hash(new_password, 12);

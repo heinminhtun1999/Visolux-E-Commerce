@@ -152,7 +152,7 @@
     <% } %>
   </div>
   <table class="table">
-    <thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Subtotal</th><th>Refunded</th><th></th></tr></thead>
+    <thead><tr><th>Item</th><th>Note</th><th>Price</th><th>Qty</th><th>Subtotal</th><th>Refunded</th><th></th></tr></thead>
     <tbody>
       <% const onlineRefundAgeBlockedFlag = (typeof onlineRefundAgeBlocked !== 'undefined') ? Boolean(onlineRefundAgeBlocked) : false; %>
       <% const canOnlineRefund = !onlineRefundAgeBlockedFlag && order.payment_method === 'ONLINE' && (order.payment_status === 'PAID' || order.payment_status === 'PARTIALLY_REFUNDED' || order.payment_status === 'REFUNDED'); %>
@@ -183,10 +183,10 @@
             <% if (typeLabel) { %>
               <div class="muted small" style="margin-top:4px">Type: <%= typeLabel %></div>
             <% } %>
+          </td>
+          <td class="muted">
             <% const itemNote = String(it.item_note || '').trim(); %>
-            <% if (itemNote) { %>
-              <div class="muted small" style="margin-top:4px">Note: <%= itemNote %></div>
-            <% } %>
+            <%= itemNote || '' %>
           </td>
           <td><%= formatMoney(it.price_snapshot) %></td>
           <td><%= it.quantity %></td>
