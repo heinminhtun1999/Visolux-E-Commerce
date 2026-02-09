@@ -225,6 +225,26 @@ Logs:
 - PM2 captures stdout/stderr to `storage/logs/pm2-out.log` and `storage/logs/pm2-error.log`.
 - You can also enable app-managed file logs with `LOG_TO_FILE=true` (writes to `storage/logs/app.log` and `storage/logs/error.log`).
 
+### Daily backups (database + uploads)
+
+This app includes a backup tool that creates a single compressed `.tgz` archive containing:
+
+- `storage/data/app.db` (all business data: products, categories, users, orders, promos, settings, reports data, etc.)
+- `storage/uploads/` (uploaded media like product images and bank slips)
+
+Backups are pruned automatically by retention days.
+
+One-time cron install on the VPS (recommended):
+
+- `cd /var/www/visolux/app`
+- `BACKUPS_DIR=/var/www/visolux_store/backups BACKUP_RETENTION_DAYS=7 npm run backup:cron:install`
+
+By default this schedules 23:59 daily. You can customize:
+
+- `CRON_HOUR` / `CRON_MIN`
+- `BACKUPS_DIR`
+- `BACKUP_RETENTION_DAYS`
+
 
 ## Scripts
 

@@ -22,6 +22,15 @@ function getDb() {
   return db;
 }
 
+function closeDb() {
+  if (!db) return;
+  try {
+    db.close();
+  } finally {
+    db = undefined;
+  }
+}
+
 function initializeSchema(database) {
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
@@ -52,6 +61,8 @@ function initializeSchema(database) {
   ensureOrdersOfflineTransferRecipient(database);
   ensureOrdersOnlinePaymentSnapshot(database);
   ensureOrderItemsNote(database);
+  ensureOrderItemsType(database);
+  ensureOrderItemsVariantId(database);
   ensureOrderItemRefunds(database);
   ensureOrderItemRefundGatewayColumns(database);
   ensureOrderRefunds(database);
@@ -69,10 +80,184 @@ function initializeSchema(database) {
   ensureInventoryDescriptionHtml(database);
   ensureInventoryCostAndDimensions(database);
   ensureProductImages(database);
+  ensureProductVariants(database);
+  ensureDefaultVariantsFromInventory(database);
+  ensureInventoryAggregatesFromVariants(database);
   ensureContactMessages(database);
   seedCategoriesFromInventory(database);
   // Backfill is best-effort; existing orders fall back to order_id in UI if needed.
   backfillOrderCodes(database);
+}
+
+function ensureInventoryAggregatesFromVariants(database) {
+  // Ensure browse/catalog price reflects lowest active variant price.
+  // Also keep inventory.stock aligned with sum of active variant stocks.
+  try {
+    const rows = database
+      .prepare(
+        `SELECT product_id, SUM(stock) as total_stock, MIN(price) as min_price
+         FROM product_variants
+         WHERE active=1
+         GROUP BY product_id`
+      )
+      .all();
+
+    if (!rows || !rows.length) return;
+
+    const updateStmt = database.prepare('UPDATE inventory SET stock=?, price=? WHERE product_id=?');
+
+    const tx = database.transaction((rs) => {
+      for (const r of rs) {
+        const productId = Number(r.product_id);
+        if (!Number.isFinite(productId) || productId <= 0) continue;
+        const stock = Math.max(0, Math.floor(Number(r.total_stock || 0)));
+        const minPrice = Math.max(100, Math.floor(Number(r.min_price || 0)));
+        updateStmt.run(stock, minPrice, productId);
+      }
+    });
+
+    tx(rows);
+  } catch (_) {
+    // ignore
+  }
+}
+
+function ensureDefaultVariantsFromInventory(database) {
+  // Backward compatibility:
+  // Older production data may have products with no variants, but new UX expects
+  // weight/dimensions/cost to live on variants. Create a default variant per product.
+  try {
+    const inventoryRows = database
+      .prepare(
+        `SELECT
+           product_id,
+           price,
+           stock,
+           cost_price,
+           weight_kg,
+           height_cm,
+           length_cm,
+           width_cm
+         FROM inventory`
+      )
+      .all();
+
+    if (!inventoryRows || !inventoryRows.length) return;
+
+    const countStmt = database.prepare('SELECT COUNT(*) as c FROM product_variants WHERE product_id=?');
+    const insertStmt = database.prepare(
+      `INSERT INTO product_variants (
+         product_id,
+         type_key,
+         label,
+         price,
+         cost_price,
+         weight_kg,
+         height_cm,
+         length_cm,
+         width_cm,
+         stock,
+         image_url,
+         active,
+         sort_order
+       ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    );
+
+    const tx = database.transaction((rows) => {
+      for (const r of rows) {
+        const productId = Number(r.product_id);
+        if (!Number.isFinite(productId) || productId <= 0) continue;
+        const existingCount = Number(countStmt.get(productId)?.c || 0);
+        if (existingCount > 0) continue;
+
+        const price = Math.floor(Number(r.price || 0));
+        const stock = Math.max(0, Math.floor(Number(r.stock || 0)));
+        const costPrice = r.cost_price == null ? null : Math.floor(Number(r.cost_price));
+        const weightKg = r.weight_kg == null ? null : Number(r.weight_kg);
+        const heightCm = r.height_cm == null ? null : Number(r.height_cm);
+        const lengthCm = r.length_cm == null ? null : Number(r.length_cm);
+        const widthCm = r.width_cm == null ? null : Number(r.width_cm);
+
+        insertStmt.run(
+          productId,
+          'DEFAULT',
+          'Default',
+          price,
+          costPrice,
+          weightKg,
+          heightCm,
+          lengthCm,
+          widthCm,
+          stock,
+          null,
+          1,
+          0
+        );
+      }
+    });
+
+    tx(inventoryRows);
+  } catch (_) {
+    // ignore
+  }
+}
+
+function ensureProductVariants(database) {
+  database.exec(
+    `CREATE TABLE IF NOT EXISTS product_variants (
+      variant_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL,
+      type_key TEXT NOT NULL,
+      label TEXT NOT NULL,
+      price INTEGER NOT NULL CHECK (price >= 100),
+      cost_price INTEGER,
+      weight_kg REAL,
+      height_cm REAL,
+      length_cm REAL,
+      width_cm REAL,
+      stock INTEGER NOT NULL CHECK (stock >= 0),
+      image_url TEXT,
+      active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (product_id) REFERENCES inventory(product_id) ON DELETE CASCADE
+    )`
+  );
+
+  // Lightweight migration for older DBs.
+  try {
+    const cols = database.prepare("PRAGMA table_info('product_variants')").all();
+    const has = (name) => cols.some((c) => c.name === name);
+
+    if (!has('cost_price')) {
+      database.exec('ALTER TABLE product_variants ADD COLUMN cost_price INTEGER');
+    }
+    if (!has('weight_kg')) {
+      database.exec('ALTER TABLE product_variants ADD COLUMN weight_kg REAL');
+    }
+    if (!has('height_cm')) {
+      database.exec('ALTER TABLE product_variants ADD COLUMN height_cm REAL');
+    }
+    if (!has('length_cm')) {
+      database.exec('ALTER TABLE product_variants ADD COLUMN length_cm REAL');
+    }
+    if (!has('width_cm')) {
+      database.exec('ALTER TABLE product_variants ADD COLUMN width_cm REAL');
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  database.exec('CREATE INDEX IF NOT EXISTS idx_product_variants_product ON product_variants(product_id, active, sort_order, variant_id)');
+
+  database.exec(
+    `CREATE TRIGGER IF NOT EXISTS trg_product_variants_updated_at
+     AFTER UPDATE ON product_variants
+     BEGIN
+       UPDATE product_variants SET updated_at = datetime('now') WHERE variant_id = NEW.variant_id;
+     END;`
+  );
 }
 
 function ensureUsersOAuthIdentities(database) {
@@ -862,6 +1047,22 @@ function ensureOrderItemsNote(database) {
   }
 }
 
+function ensureOrderItemsType(database) {
+  const cols = database.prepare("PRAGMA table_info('order_items')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+  if (!has('item_type')) {
+    database.exec("ALTER TABLE order_items ADD COLUMN item_type TEXT NOT NULL DEFAULT ''");
+  }
+}
+
+function ensureOrderItemsVariantId(database) {
+  const cols = database.prepare("PRAGMA table_info('order_items')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+  if (!has('variant_id')) {
+    database.exec('ALTER TABLE order_items ADD COLUMN variant_id INTEGER');
+  }
+}
+
 function ensureOrderItemRefundGatewayColumns(database) {
   const cols = database.prepare("PRAGMA table_info('order_item_refunds')").all();
   const has = (name) => cols.some((c) => c.name === name);
@@ -968,4 +1169,4 @@ function ensureOfflineTransferRejection(database) {
   }
 }
 
-module.exports = { getDb };
+module.exports = { getDb, closeDb };

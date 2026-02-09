@@ -133,6 +133,16 @@ jobs:
               else
                 PORT="$PORT" node -e "const http=require('http');const port=Number(process.env.PORT||3000);http.get({host:'127.0.0.1',port,path:'/healthz'},(res)=>{let d='';res.setEncoding('utf8');res.on('data',c=>d+=c);res.on('end',()=>{process.stdout.write(d.slice(0,2000)+'\\n');process.exit(res.statusCode===200?0:1);});}).on('error',(e)=>{console.error(e.message);process.exit(1);});"
               fi
+
+              # Ensure a daily backup cron job exists (best-effort).
+              # Installs into the current user's crontab.
+              # If cron isn't available, it will warn but not fail the deploy.
+              PROJECT_DIR="${{ secrets.VPS_PATH }}/app" \
+              BACKUPS_DIR="/var/www/visolux_store/backups" \
+              BACKUP_RETENTION_DAYS="7" \
+              CRON_HOUR="23" CRON_MIN="59" \
+              SOFT_FAIL="1" \
+              npm run backup:cron:install || true
             else
               echo "pm2 not found on VPS. Install it once: npm i -g pm2"
               echo "Then run: pm2 startOrReload ecosystem.config.cjs --env production && pm2 save"

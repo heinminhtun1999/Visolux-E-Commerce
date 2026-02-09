@@ -129,7 +129,12 @@
             <tr>
               <td>
                 <div class="text-strong"><%= line.product.name %></div>
-                <div class="muted small"><%= formatMoney(line.product.price) %> each</div>
+                <div class="muted small"><%= formatMoney(line.variant ? line.variant.price : line.product.price) %> each</div>
+                <% if (line.variant) { %>
+                  <div class="muted small">Type: <%= line.variant.label %></div>
+                <% } else if (line.type) { %>
+                  <div class="muted small">Type: <%= (typeof productTypeLabel !== 'undefined') ? productTypeLabel(line.type) : line.type %></div>
+                <% } %>
                 <% if (line.note) { %>
                   <div class="muted small">Note: <%= line.note %></div>
                 <% } %>

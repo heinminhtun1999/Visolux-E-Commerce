@@ -36,6 +36,35 @@ CREATE TABLE IF NOT EXISTS product_images (
 
 CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id, sort_order, id);
 
+-- Product variants/types (e.g. Shopee vs E-commerce) with their own price/stock/image.
+CREATE TABLE IF NOT EXISTS product_variants (
+  variant_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id INTEGER NOT NULL,
+  type_key TEXT NOT NULL,
+  label TEXT NOT NULL,
+  price INTEGER NOT NULL CHECK (price >= 100),
+  cost_price INTEGER CHECK (cost_price IS NULL OR cost_price >= 0), -- stored in cents
+  weight_kg REAL CHECK (weight_kg IS NULL OR weight_kg >= 0),
+  height_cm REAL CHECK (height_cm IS NULL OR height_cm >= 0),
+  length_cm REAL CHECK (length_cm IS NULL OR length_cm >= 0),
+  width_cm REAL CHECK (width_cm IS NULL OR width_cm >= 0),
+  stock INTEGER NOT NULL CHECK (stock >= 0),
+  image_url TEXT,
+  active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (product_id) REFERENCES inventory(product_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_variants_product ON product_variants(product_id, active, sort_order, variant_id);
+
+CREATE TRIGGER IF NOT EXISTS trg_product_variants_updated_at
+AFTER UPDATE ON product_variants
+BEGIN
+  UPDATE product_variants SET updated_at = datetime('now') WHERE variant_id = NEW.variant_id;
+END;
+
 CREATE TABLE IF NOT EXISTS categories (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   slug TEXT NOT NULL UNIQUE,
@@ -196,8 +225,10 @@ CREATE TABLE IF NOT EXISTS order_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   order_id INTEGER NOT NULL,
   product_id INTEGER NOT NULL,
+  variant_id INTEGER,
   product_name_snapshot TEXT NOT NULL,
   item_note TEXT NOT NULL DEFAULT '',
+  item_type TEXT NOT NULL DEFAULT '',
   price_snapshot INTEGER NOT NULL,
   quantity INTEGER NOT NULL CHECK (quantity > 0),
   subtotal INTEGER NOT NULL CHECK (subtotal >= 0),

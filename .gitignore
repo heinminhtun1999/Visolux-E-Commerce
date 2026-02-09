@@ -54,3 +54,6 @@ fiuu-spec-*.txt
 
 # VS Code
 .vscode/
+
+# Local Backup Files
+backups/

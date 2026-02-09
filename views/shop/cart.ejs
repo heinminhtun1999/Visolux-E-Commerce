@@ -20,22 +20,27 @@
           <th>Product</th>
           <th>Price</th>
           <th class="table-col-qty">Qty</th>
+          <th class="table-col-type">Type</th>
           <th class="table-col-note">Note</th>
           <th>Subtotal</th>
         </tr>
       </thead>
       <tbody>
         <% cart.items.forEach(line => { %>
+          <% const formId = 'cart-line-' + String(line.key || '').replace(/[^a-z0-9_-]+/gi, '_'); %>
           <tr>
             <td>
               <div class="text-strong"><a href="/products/<%= line.product.product_id %>"><%= line.product.name %></a></div>
               <div class="muted small"><%= line.product.category_name || line.product.category %></div>
             </td>
-            <td><%= formatMoney(line.product.price) %></td>
+            <td><%= formatMoney(line.variant ? line.variant.price : line.product.price) %></td>
             <td>
-              <form method="post" action="/cart/update" class="row row--tight" id="cart-line-<%= line.product.product_id %>">
+              <form method="post" action="/cart/update" class="row row--tight" id="<%= formId %>">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input type="hidden" name="cart_key" value="<%= String(line.key || '') %>" />
                 <input type="hidden" name="product_id" value="<%= line.product.product_id %>" />
+                <input type="hidden" name="variant_id" value="<%= line.variant ? line.variant.variant_id : '' %>" />
+                <input type="hidden" name="product_type" value="<%= String(line.type || '') %>" />
                 <input type="hidden" name="note" value="<%= String(line.note || '').trim() %>" />
                 <input
                   class="input"
@@ -49,9 +54,16 @@
               </form>
             </td>
             <td>
+              <% if (line.variant) { %>
+                <div><%= line.variant.label %></div>
+              <% } else { %>
+                <div><%= ((typeof productTypeLabel !== 'undefined' && productTypeLabel) ? productTypeLabel(line.type) : String(line.type || '')) %></div>
+              <% } %>
+            </td>
+            <td>
               <textarea
                 class="input"
-                form="cart-line-<%= line.product.product_id %>"
+                form="<%= formId %>"
                 data-cart-note
                 rows="2"
                 maxlength="500"

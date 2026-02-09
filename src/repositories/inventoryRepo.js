@@ -16,6 +16,7 @@ function mapProduct(row) {
     length_cm: row.length_cm == null ? null : Number(row.length_cm),
     width_cm: row.width_cm == null ? null : Number(row.width_cm),
     stock: row.stock,
+    low_stock: row.low_stock == null ? false : Boolean(row.low_stock),
     availability: Boolean(row.availability),
     visibility: Boolean(row.visibility),
     archived: Boolean(row.archived),
@@ -139,7 +140,22 @@ function countAdmin({ q, includeArchived, archived, category, visibility, stock,
   if (stockMode === 'IN_STOCK') where.push('i.stock > 0');
   if (stockMode === 'OUT_OF_STOCK') where.push('i.stock <= 0');
   if (stockMode === 'LOW_STOCK') {
-    where.push('i.stock > 0 AND i.stock <= @lowStock');
+    // Variant-aware low-stock:
+    // - If product has active variants: low-stock when ANY active variant has 0 < stock <= threshold.
+    // - Else fall back to base product stock.
+    where.push(
+      `(
+        (
+          EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
+          AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
+        )
+        OR
+        (
+          NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
+          AND i.stock > 0 AND i.stock <= @lowStock
+        )
+      )`
+    );
     params.lowStock = lowStock;
   }
 
@@ -169,6 +185,7 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
   const params = { limit, offset };
 
   const lowStock = Number.isFinite(Number(lowStockThreshold)) && Number(lowStockThreshold) >= 0 ? Math.floor(Number(lowStockThreshold)) : 5;
+  params.lowStock = lowStock;
 
   const archivedMode = String(archived || (includeArchived ? 'ALL' : 'ACTIVE')).toUpperCase();
   if (archivedMode === 'ACTIVE') where.push('i.archived=0');
@@ -187,7 +204,19 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
   if (stockMode === 'IN_STOCK') where.push('i.stock > 0');
   if (stockMode === 'OUT_OF_STOCK') where.push('i.stock <= 0');
   if (stockMode === 'LOW_STOCK') {
-    where.push('i.stock > 0 AND i.stock <= @lowStock');
+    where.push(
+      `(
+        (
+          EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
+          AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
+        )
+        OR
+        (
+          NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
+          AND i.stock > 0 AND i.stock <= @lowStock
+        )
+      )`
+    );
     params.lowStock = lowStock;
   }
 
@@ -262,7 +291,20 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
       orderBy = 'i.created_at DESC';
   }
 
-  const sql = `SELECT i.*, c.name as category_name
+  const sql = `SELECT
+                 i.*,
+                 c.name as category_name,
+                 CASE WHEN (
+                   (
+                     EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
+                     AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
+                   )
+                   OR
+                   (
+                     NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
+                     AND i.stock > 0 AND i.stock <= @lowStock
+                   )
+                 ) THEN 1 ELSE 0 END as low_stock
                FROM inventory i
                LEFT JOIN categories c ON c.slug = i.category
                ${where.length ? ` WHERE ${where.join(' AND ')}` : ''}
@@ -273,7 +315,19 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
 function countLowStockAdmin({ includeArchived, lowStockThreshold }) {
   const db = getDb();
   const lowStock = Number.isFinite(Number(lowStockThreshold)) && Number(lowStockThreshold) >= 0 ? Math.floor(Number(lowStockThreshold)) : 5;
-  const where = ['stock > 0 AND stock <= @lowStock'];
+  const where = [
+    `(
+      (
+        EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = inventory.product_id AND pv.active=1)
+        AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = inventory.product_id AND pv.active=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
+      )
+      OR
+      (
+        NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = inventory.product_id AND pv.active=1)
+        AND inventory.stock > 0 AND inventory.stock <= @lowStock
+      )
+    )`,
+  ];
   const params = { lowStock };
   if (!includeArchived) where.push('archived = 0');
   const sql = `SELECT COUNT(*) as c FROM inventory WHERE ${where.join(' AND ')}`;

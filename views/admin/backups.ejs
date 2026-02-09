@@ -1,0 +1,115 @@
+<%- include('../shared/top', { title }) %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end">
+  <div>
+    <h1 class="h1">Admin – Backups</h1>
+    <div class="muted small">Checkpoint backups (database + uploads) and restore.</div>
+  </div>
+
+  <div class="actions" style="gap:8px">
+    <button class="btn" type="button" data-href="/admin/settings">Back to settings</button>
+  </div>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <div class="muted small">Backups folder</div>
+  <div style="font-weight:800; margin-top:4px"><%= (typeof backupsDir !== 'undefined' && backupsDir) ? backupsDir : '' %></div>
+  <div class="muted small" style="margin-top:6px">Tip: you can set <code>BACKUPS_DIR</code> in the server environment to change this location.</div>
+  <div class="muted small" style="margin-top:6px">Retention: backups older than <strong><%= (typeof backupsRetentionDays !== 'undefined' && backupsRetentionDays != null) ? backupsRetentionDays : 7 %></strong> days are deleted automatically (<code>BACKUP_RETENTION_DAYS</code>).</div>
+  <div class="muted small" style="margin-top:6px">Times shown in: <strong><%= (typeof appTimeZone !== 'undefined' && appTimeZone) ? appTimeZone : 'local time' %></strong></div>
+</div>
+
+<% if (typeof backupsError !== 'undefined' && backupsError) { %>
+  <div class="card" style="padding:12px; margin-top:12px; border:1px solid rgba(200,0,0,0.35)">
+    <div style="font-weight:800">Could not list backups</div>
+    <div class="muted small" style="margin-top:6px"><%= backupsError %></div>
+  </div>
+<% } %>
+
+<div class="row" style="justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-top:12px">
+  <div>
+    <div style="font-weight:800">Available backups</div>
+    <div class="muted small">To minimize storage inflation, new backups are created as a single <code>.tgz</code> archive that includes the database and uploads.</div>
+  </div>
+
+  <form method="post" action="/admin/backups/create" style="display:inline">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <button class="btn btn-primary" type="submit">Create backup now</button>
+  </form>
+</div>
+
+<div class="card" style="padding:14px; margin-top:12px">
+  <% const bs = (typeof backups !== 'undefined' && backups) ? backups : []; %>
+  <% if (!bs.length) { %>
+    <div class="muted small">No backups found yet.</div>
+  <% } else { %>
+    <div class="table-scroll">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Checkpoint</th>
+            <th>Size</th>
+            <th>Modified</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% bs.forEach(b => { %>
+            <tr>
+              <td style="min-width:320px">
+                <div style="font-weight:800"><%= (b.checkpointSqliteUtc && typeof formatDateTime === 'function') ? formatDateTime(b.checkpointSqliteUtc) : (b.checkpointLabel || b.name) %></div>
+                <div class="muted small" style="margin-top:4px"><%= b.kind || '' %></div>
+                <div class="muted small" style="margin-top:4px"><%= b.name %></div>
+              </td>
+              <td style="min-width:110px"><%= ((b.sizeBytes || 0) / 1024 / 1024).toFixed(1) %> MB</td>
+              <td style="min-width:210px"><%= (typeof formatDateTime === 'function') ? formatDateTime(new Date(b.mtimeMs || 0).toISOString()) : new Date(b.mtimeMs || 0).toISOString() %></td>
+              <td style="min-width:420px">
+                <a class="btn" href="/admin/backups/download?file=<%= encodeURIComponent(b.name) %>">Download</a>
+
+                <form method="post" action="/admin/backups/restore" style="display:inline; margin-left:6px">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <input type="hidden" name="file" value="<%= b.name %>" />
+
+                  <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px" class="muted small">
+                    <input type="checkbox" name="restore_uploads" value="1" />
+                    <span>Include uploads</span>
+                  </label>
+
+                  <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px" class="muted small">
+                    <input type="checkbox" name="restore_sessions" value="1" />
+                    <span>Include sessions</span>
+                  </label>
+
+                  <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px" class="muted small">
+                    <input type="checkbox" name="confirm" value="1" required />
+                    <span>I understand this will restart the server</span>
+                  </label>
+
+                  <button class="btn" type="submit" style="margin-left:8px">Restore</button>
+                </form>
+
+                <form method="post" action="/admin/backups/delete" style="display:inline; margin-left:10px">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <input type="hidden" name="file" value="<%= b.name %>" />
+
+                  <label style="display:inline-flex; gap:6px; align-items:center; margin-left:8px" class="muted small">
+                    <input type="checkbox" name="confirm" value="1" required />
+                    <span>Confirm delete</span>
+                  </label>
+
+                  <button class="btn" type="submit" style="margin-left:8px">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<div class="muted small" style="margin-top:10px">
+  Note: restoring creates a safety backup first (so you can roll back if needed), then restarts the server. With PM2 this restarts automatically; without PM2 you may need to start the server again manually.
+</div>
+
+<%- include('../shared/bottom') %>

@@ -3,21 +3,23 @@
 <div class="card card--pad-lg">
   <div class="row">
     <div class="col">
-      <% const galleryUrls = []; %>
-      <% if (product && product.product_image) galleryUrls.push(product.product_image); %>
-      <% (images || []).forEach(img => { if (img && img.image_url) galleryUrls.push(img.image_url); }); %>
-      <% const uniqGallery = [...new Set(galleryUrls.filter(Boolean))]; %>
-      <% const mainImg = (uniqGallery[0] || product.product_image || '/public/placeholder.svg'); %>
-      <% const encodedGallery = uniqGallery.map(u => encodeURIComponent(u)).join('|'); %>
+      <% const hasVariants = (typeof variants !== 'undefined' && variants && variants.length); %>
+      <% const defaultVariant = hasVariants
+        ? (variants || []).reduce((best, v) => (!best || Number(v.price || 0) < Number(best.price || 0)) ? v : best, null)
+        : null; %>
+      <% const mainProductImg = (product && product.product_image) ? product.product_image : '/public/placeholder.svg'; %>
+      <% const defaultVariantImg = (defaultVariant && defaultVariant.image_url) ? defaultVariant.image_url : null; %>
+      <% const items = [mainProductImg]; %>
+      <% if (defaultVariantImg && defaultVariantImg !== mainProductImg) items.push(defaultVariantImg); %>
+      <% const mainImg = mainProductImg; %>
+      <% const encodedGallery = items.map(u => encodeURIComponent(u)).join('|'); %>
 
-      <div data-image-carousel data-items="<%= encodedGallery %>">
+      <div data-image-carousel data-items="<%= encodedGallery %>" data-main-image="<%= mainProductImg %>">
         <div class="zoom-pane" data-zoom-pane>
           <div class="product-carousel">
             <img data-zoom-img data-carousel-img src="<%= mainImg %>" alt="<%= product.name %>" />
-            <% if (uniqGallery.length > 1) { %>
-              <button class="product-carousel__btn product-carousel__btn--prev" type="button" data-carousel-prev aria-label="Previous image">‹</button>
-              <button class="product-carousel__btn product-carousel__btn--next" type="button" data-carousel-next aria-label="Next image">›</button>
-            <% } %>
+            <button class="product-carousel__btn product-carousel__btn--prev" type="button" data-carousel-prev aria-label="Previous image">‹</button>
+            <button class="product-carousel__btn product-carousel__btn--next" type="button" data-carousel-next aria-label="Next image">›</button>
           </div>
           <% const effStock = (product.available_stock == null ? product.stock : product.available_stock); %>
           <% if (effStock <= 0) { %>
@@ -25,15 +27,13 @@
           <% } %>
         </div>
 
-        <% if (uniqGallery.length > 1) { %>
-          <div class="product-gallery">
-            <% uniqGallery.forEach((url, idx) => { %>
-              <button class="product-gallery__thumb <%= idx === 0 ? 'is-active' : '' %>" type="button" data-carousel-thumb data-idx="<%= idx %>" aria-label="View image <%= idx + 1 %>">
-                <img src="<%= url %>" alt="<%= product.name %> thumbnail <%= idx + 1 %>" loading="lazy" decoding="async" />
-              </button>
-            <% }) %>
-          </div>
-        <% } %>
+        <div class="product-gallery">
+          <% items.forEach((url, idx) => { %>
+            <button class="product-gallery__thumb <%= idx === 0 ? 'is-active' : '' %>" type="button" data-carousel-thumb data-idx="<%= idx %>" aria-label="View image <%= idx + 1 %>">
+              <img src="<%= url %>" alt="<%= product.name %> thumbnail <%= idx + 1 %>" loading="lazy" decoding="async" />
+            </button>
+          <% }) %>
+        </div>
       </div>
 
       <div class="muted small u-mt-8">Scroll/pinch to zoom, drag to pan, double-click to reset.</div>
@@ -41,12 +41,14 @@
     <div class="col">
       <h1 class="h1"><%= product.name %></h1>
       <div class="muted"><%= product.category_name || product.category %></div>
-      <div class="product-price u-mt-10"><%= formatMoney(product.price) %></div>
+      <div class="product-price u-mt-10" data-product-price><%= defaultVariant ? formatMoney(defaultVariant.price) : formatMoney(product.price) %></div>
       <div class="u-mt-10">
-        <% if (effStock > 0) { %>
-          <span class="badge ok">In stock: <%= effStock %></span>
+        <% if (hasVariants) { %>
+          <span class="badge ok" data-product-stock>In stock: <%= Math.max(0, Math.floor(Number(defaultVariant && defaultVariant.stock || 0))) %></span>
+        <% } else if (effStock > 0) { %>
+          <span class="badge ok" data-product-stock>In stock: <%= effStock %></span>
         <% } else { %>
-          <span class="badge no"><%= (Number(product.stock || 0) > 0) ? 'Temporarily out of stock' : 'Out of stock' %></span>
+          <span class="badge no" data-product-stock><%= (Number(product.stock || 0) > 0) ? 'Temporarily out of stock' : 'Out of stock' %></span>
         <% } %>
       </div>
       <div class="muted u-mt-12">
@@ -66,6 +68,31 @@
             <label>Qty</label>
             <input class="input" type="number" name="quantity" min="1" max="<%= Math.min(99, Math.max(1, effStock || 1)) %>" value="1" <%= effStock > 0 ? '' : 'disabled' %> />
           </div>
+          <% if (hasVariants) { %>
+            <div class="field is-sm">
+              <label>Type</label>
+              <select class="input" name="variant_id" data-variant-select <%= effStock > 0 ? '' : 'disabled' %>>
+                <% (variants || []).forEach(v => { %>
+                  <option
+                    value="<%= v.variant_id %>"
+                    <%= (defaultVariant && String(defaultVariant.variant_id) === String(v.variant_id)) ? 'selected' : '' %>
+                    data-price-label="<%= formatMoney(v.price) %>"
+                    data-stock="<%= Math.max(0, Math.floor(Number(v.stock || 0))) %>"
+                    data-image-url="<%= v.image_url || '' %>"
+                  ><%= v.label %></option>
+                <% }) %>
+              </select>
+            </div>
+          <% } else { %>
+            <div class="field is-sm">
+              <label>Type</label>
+              <select class="input" name="product_type" <%= effStock > 0 ? '' : 'disabled' %>>
+                <% ((typeof productTypeOptions !== 'undefined' && productTypeOptions) ? productTypeOptions() : []).forEach(opt => { %>
+                  <option value="<%= opt.key %>"><%= opt.label %></option>
+                <% }) %>
+              </select>
+            </div>
+          <% } %>
           <div class="field is-md">
             <label>Note (optional)</label>
             <input class="input" type="text" name="note" maxlength="500" placeholder="e.g. color/variant, delivery instruction" <%= effStock > 0 ? '' : 'disabled' %> />
@@ -82,5 +109,6 @@
 
 <script src="/public/js/zoom-pan.js" defer></script>
 <script src="/public/js/image-carousel.js" defer></script>
+<script src="/public/js/product-variants.js" defer></script>
 
 <%- include('../shared/bottom') %>

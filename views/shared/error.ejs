@@ -7,25 +7,27 @@
     <div class="card" style="padding:12px; margin-top:12px; background:#0b1220; border:1px solid rgba(255,255,255,0.08)">
       <div class="muted small" style="margin-bottom:6px">Debug details (development only)</div>
 
+      <% const extra = (details && details.details) ? details.details : details; %>
+
       <% if (details.stack) { %>
         <div class="small" style="white-space:pre-wrap"><%= details.stack %></div>
       <% } %>
 
-      <% if (!details.stack && details.issues && details.issues.length) { %>
+      <% if (extra && extra.issues && extra.issues.length) { %>
         <div class="small" style="white-space:pre-wrap">
-          <% details.issues.forEach((it) => { %>
+          <% extra.issues.forEach((it) => { %>
             <div><strong><%= it.path || '(root)' %></strong>: <%= it.message %></div>
           <% }) %>
         </div>
-      <% } else if (!details.stack && details.flattened) { %>
-        <% if (details.flattened.formErrors && details.flattened.formErrors.length) { %>
+      <% } else if (extra && extra.flattened) { %>
+        <% if (extra.flattened.formErrors && extra.flattened.formErrors.length) { %>
           <div class="small" style="margin-bottom:8px">
-            <strong>Form</strong>: <%= details.flattened.formErrors.join(' • ') %>
+            <strong>Form</strong>: <%= extra.flattened.formErrors.join(' • ') %>
           </div>
         <% } %>
-        <% if (details.flattened.fieldErrors) { %>
+        <% if (extra.flattened.fieldErrors) { %>
           <div class="small" style="white-space:pre-wrap">
-            <% Object.entries(details.flattened.fieldErrors).forEach(([k, v]) => { %>
+            <% Object.entries(extra.flattened.fieldErrors).forEach(([k, v]) => { %>
               <% if (v && v.length) { %>
                 <div><strong><%= k %></strong>: <%= v.join(' • ') %></div>
               <% } %>

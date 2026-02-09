@@ -13,7 +13,9 @@
     "factory-reset": "node scripts/factory-reset.js",
     "extract-fiuu": "node scripts/extract-fiuu-spec.js \".\\[official API] Fiuu API Spec for Merchant (v13.90)_2.pdf\"",
     "docs:pdf": "node scripts/build-docs-pdf.js",
-    "docs:docx": "node scripts/generate-docx-manuals.js"
+    "docs:docx": "node scripts/generate-docx-manuals.js",
+    "backup": "node scripts/backup.js",
+    "backup:cron:install": "sh scripts/install-backup-cron.sh"
   },
   "keywords": [],
   "author": "",

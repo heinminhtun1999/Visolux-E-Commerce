@@ -68,6 +68,12 @@ function getBaseLocals(overrides = {}) {
     },
     sanitizeStatusHistoryNote: (note) => String(note || ''),
 
+    // Backups
+    backupsDir: '',
+    backups: [],
+    backupsError: null,
+    backupsRetentionDays: 7,
+
     ...overrides,
   };
 }
@@ -141,6 +147,7 @@ async function main() {
       currentPath: '/admin/settings',
       currentUrl: '/admin/settings',
       isAdmin: true,
+      isSuperAdmin: true,
       currentUser: { id: 1, email: 'admin@example.com', is_admin: 1 },
 
       // Admin email notifications
@@ -152,10 +159,10 @@ async function main() {
       fiuuDefaultAccountId: '',
       fiuuCategories: [],
       fiuuCategoryAccountMap: {},
-      fiuuEnvFallbackEnabled: false,
-      fiuuEnvAccount: null,
+        fiuuEnvFallbackEnabled: false,
+        fiuuEnvAccount: null,
 
-      // Other settings sections (keep empty/non-crashing defaults)
+        // Other settings sections (keep empty/non-crashing defaults)
       shippingZones: [],
       bankRecipients: [],
       offlineTransferBanks: [],
@@ -173,6 +180,29 @@ async function main() {
       contactFacebookUrl: '',
 
       promosView: 'ACTIVE',
+
+      // Backups
+      backupsDir: '',
+      backups: [],
+      backupsError: null,
+      backupsRetentionDays: 7,
+    })
+  )) && ok;
+
+  ok = (await renderTemplate(
+    'views/admin/backups.ejs',
+    getBaseLocals({
+      title: 'Admin – Backups',
+      currentPath: '/admin/backups',
+      currentUrl: '/admin/backups',
+      isAdmin: true,
+      isSuperAdmin: true,
+      currentUser: { id: 1, email: 'admin@example.com', is_admin: 1 },
+
+      backupsDir: 'backups',
+      backups: [],
+      backupsError: null,
+      backupsRetentionDays: 7,
     })
   )) && ok;
 
@@ -247,6 +277,39 @@ async function main() {
       fiuuAccounts: [],
       fiuuSelectableAccounts: [],
       fiuuCategoryAccountMap: {},
+    })
+  )) && ok;
+
+  ok = (await renderTemplate(
+    'views/admin/product_form.ejs',
+    getBaseLocals({
+      title: 'Edit product',
+      currentPath: '/admin/products/1/edit',
+      currentUrl: '/admin/products/1/edit',
+      isAdmin: true,
+      currentUser: { id: 1, email: 'admin@example.com', is_admin: 1 },
+      product: {
+        product_id: 1,
+        name: 'Test product',
+        description: 'Test description',
+        description_html: '',
+        category: 'lighting',
+        price: 1234,
+        cost_price: null,
+        stock: 5,
+        weight_kg: null,
+        height_cm: null,
+        length_cm: null,
+        width_cm: null,
+        visibility: 1,
+        archived: 0,
+        product_image: '/public/placeholder.svg',
+      },
+      categories: [{ slug: 'lighting', name: 'Lighting' }],
+      images: [],
+      variants: [
+        { variant_id: 10, product_id: 1, type_key: 'SHOPEE', label: 'Shopee', price: 1500, stock: 3, image_url: '/public/placeholder.svg', active: true, sort_order: 0 },
+      ],
     })
   )) && ok;
 
@@ -336,6 +399,7 @@ async function main() {
             quantity: 1,
             subtotal: 12.34,
             available_stock: 5,
+            key: 'p:1',
             product: {
               product_id: 1,
               name: 'Test product',

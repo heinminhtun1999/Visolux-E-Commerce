@@ -8,6 +8,7 @@ const contactMessageRepo = require('../repositories/contactMessageRepo');
 const categoryRepo = require('../repositories/categoryRepo');
 const cartService = require('../services/cartService');
 const { env } = require('../config/env');
+const productTypes = require('../utils/productTypes');
 
 function titleCase(s) {
   return String(s || '')
@@ -139,6 +140,9 @@ function attachLocals(req, res, next) {
   res.locals.paymentChannelLabel = paymentDisplay.paymentChannelLabel;
   res.locals.paymentSummaryLabel = paymentDisplay.paymentSummaryLabel;
   res.locals.sanitizeStatusHistoryNote = paymentDisplay.sanitizeStatusHistoryNote;
+  res.locals.productTypeOptions = productTypes.getProductTypeOptions;
+  res.locals.normalizeProductType = productTypes.normalizeProductType;
+  res.locals.productTypeLabel = productTypes.productTypeLabel;
   res.locals.currentUser = req.session.user || null;
   res.locals.isAdmin = Boolean(req.session.user?.isAdmin);
   res.locals.isSuperAdmin = Boolean(req.session.user?.isSuperAdmin);

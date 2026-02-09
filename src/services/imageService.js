@@ -42,6 +42,23 @@ async function optimizeAndSaveProductGalleryImage(inputPath, productId) {
   return `/uploads/products/${fileName}`;
 }
 
+async function optimizeAndSaveVariantImage(inputPath, { productId, variantId }) {
+  const outDir = path.join(process.cwd(), 'storage', 'uploads', 'products');
+  ensureDir(outDir);
+
+  const nonce = crypto.randomBytes(8).toString('hex');
+  const fileName = `variant_${productId}_${variantId}_${nonce}.webp`;
+  const outPath = path.join(outDir, fileName);
+
+  await sharp(inputPath)
+    .rotate()
+    .resize({ width: env.productImageMaxWidth, withoutEnlargement: true })
+    .webp({ quality: 82 })
+    .toFile(outPath);
+
+  return `/uploads/products/${fileName}`;
+}
+
 async function optimizeAndSaveSlipImage(inputPath, orderId) {
   const outDir = path.join(process.cwd(), 'storage', 'uploads', 'slips');
   ensureDir(outDir);
@@ -98,6 +115,7 @@ async function optimizeAndSaveSiteContentImage(inputPath, key) {
 module.exports = {
   optimizeAndSaveProductImage,
   optimizeAndSaveProductGalleryImage,
+  optimizeAndSaveVariantImage,
   optimizeAndSaveSlipImage,
   optimizeAndSaveSiteImage,
   optimizeAndSaveSiteContentImage,

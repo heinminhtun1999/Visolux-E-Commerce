@@ -20,10 +20,29 @@
 
       var noteHidden = form.querySelector('input[type="hidden"][name="note"]');
 
+      var typeSelect = form.querySelector('select[data-cart-type], select[name="product_type"]');
+      if (!typeSelect && form.id) {
+        try {
+          typeSelect = document.querySelector('[form="' + form.id + '"][data-cart-type], [form="' + form.id + '"][name="product_type"]');
+        } catch (_) {
+          // ignore
+        }
+      }
+      var typeHidden = form.querySelector('input[type="hidden"][name="product_type"]');
+
       function syncNoteToHidden() {
         if (!note || !noteHidden) return;
         try {
           noteHidden.value = String(note.value || '');
+        } catch (_) {
+          // ignore
+        }
+      }
+
+      function syncTypeToHidden() {
+        if (!typeSelect || !typeHidden) return;
+        try {
+          typeHidden.value = String(typeSelect.value || '');
         } catch (_) {
           // ignore
         }
@@ -36,6 +55,9 @@
           clearTimeout(timer);
           timer = null;
         }
+
+        syncNoteToHidden();
+        syncTypeToHidden();
 
         // Avoid submitting if the form/input is disabled.
         if (qty.disabled) return;
@@ -73,6 +95,10 @@
         // and feels like text is disappearing). Save when the user finishes editing.
         note.addEventListener('change', function () { syncNoteToHidden(); submitNow(); });
         note.addEventListener('blur', function () { syncNoteToHidden(); submitNow(); });
+      }
+
+      if (typeSelect) {
+        typeSelect.addEventListener('change', function () { syncTypeToHidden(); submitNow(); });
       }
     });
   }

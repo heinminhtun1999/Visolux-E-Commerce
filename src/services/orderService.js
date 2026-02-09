@@ -6,6 +6,7 @@ const emailService = require('./emailService');
 const { getMalaysiaRegionForState } = require('../utils/malaysia');
 const shippingService = require('./shippingService');
 const promoService = require('./promoService');
+const { normalizeProductType } = require('../utils/productTypes');
 
 class StockInsufficientError extends Error {
   constructor(message) {
@@ -21,6 +22,7 @@ function buildOrderFromCart({ cartItems }) {
 
   for (const line of cartItems) {
     const p = line.product;
+    const v = line.variant || null;
 
     if (!p || p.archived) continue;
     if (!p.visibility) {
@@ -32,7 +34,7 @@ function buildOrderFromCart({ cartItems }) {
     const qty = Number(line.quantity);
     if (!Number.isFinite(qty) || qty <= 0) continue;
 
-    const availableStock = inventoryRepo.getEffectiveAvailableStock(p.product_id);
+    const availableStock = v ? Math.max(0, Math.floor(Number(v.stock || 0))) : inventoryRepo.getEffectiveAvailableStock(p.product_id);
     if (availableStock <= 0) {
       throw new StockInsufficientError(`"${p.name}" is out of stock.`);
     }
@@ -40,15 +42,20 @@ function buildOrderFromCart({ cartItems }) {
       throw new StockInsufficientError(`Only ${availableStock} of "${p.name}" is available.`);
     }
 
+    const unitPriceCents = v ? Number(v.price) : Number(p.price);
+    const typeLabel = v ? String(v.label || '').trim() : normalizeProductType(line.type);
+
     items.push({
       product_id: p.product_id,
+      variant_id: v ? v.variant_id : null,
       product_name_snapshot: p.name,
+      item_type: typeLabel,
       item_note: String(line.note || '').trim(),
-      price_snapshot: p.price,
+      price_snapshot: unitPriceCents,
       quantity: qty,
-      subtotal: p.price * qty,
+      subtotal: unitPriceCents * qty,
     });
-    subtotal += p.price * qty;
+    subtotal += unitPriceCents * qty;
   }
 
   if (items.length === 0) {
@@ -63,7 +70,7 @@ function buildOrderFromCart({ cartItems }) {
 function computeTotalWeightKgFromCartItems(cartItems) {
   let total = 0;
   for (const line of cartItems || []) {
-    const w = Number(line?.product?.weight_kg || 0);
+    const w = Number((line?.variant && line.variant.weight_kg != null) ? line.variant.weight_kg : (line?.product?.weight_kg || 0));
     const q = Number(line?.quantity || 0);
     if (!Number.isFinite(w) || !Number.isFinite(q) || q <= 0) continue;
     total += w * q;
@@ -183,9 +190,15 @@ function deductStockAtomicallyForOrder(order) {
 
   const tx = db.transaction(() => {
     for (const it of order.items) {
-      const res = db
-        .prepare('UPDATE inventory SET stock = stock - ? WHERE product_id=? AND stock >= ? AND archived=0')
-        .run(it.quantity, it.product_id, it.quantity);
+      const useVariant = it.variant_id != null && Number.isFinite(Number(it.variant_id)) && Number(it.variant_id) > 0;
+
+      const res = useVariant
+        ? db
+          .prepare('UPDATE product_variants SET stock = stock - ? WHERE variant_id=? AND stock >= ? AND active=1')
+          .run(it.quantity, it.variant_id, it.quantity)
+        : db
+          .prepare('UPDATE inventory SET stock = stock - ? WHERE product_id=? AND stock >= ? AND archived=0')
+          .run(it.quantity, it.product_id, it.quantity);
 
       if (res.changes !== 1) {
         const product = inventoryRepo.getById(it.product_id);

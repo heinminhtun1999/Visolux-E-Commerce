@@ -64,17 +64,18 @@ function getSalesReport({ dateFrom, dateTo } = {}) {
     )
     .get(paidParams);
 
-  // Estimated gross profit uses current inventory cost_price (when available).
+  // Estimated gross profit uses current variant cost_price when available (fallback to inventory cost_price).
   // If cost_price is NULL (unknown) or the product row is missing, we treat it as unknown cost.
   const profitSummary = db
     .prepare(
       `SELECT
-        COALESCE(SUM(CASE WHEN i.cost_price IS NOT NULL THEN oi.subtotal ELSE 0 END), 0) as known_sales_cents,
-        COALESCE(SUM(CASE WHEN i.cost_price IS NOT NULL THEN (oi.quantity * i.cost_price) ELSE 0 END), 0) as known_cogs_cents,
-        COALESCE(SUM(CASE WHEN i.cost_price IS NULL THEN oi.quantity ELSE 0 END), 0) as unknown_cost_units
+        COALESCE(SUM(CASE WHEN COALESCE(pv.cost_price, i.cost_price) IS NOT NULL THEN oi.subtotal ELSE 0 END), 0) as known_sales_cents,
+        COALESCE(SUM(CASE WHEN COALESCE(pv.cost_price, i.cost_price) IS NOT NULL THEN (oi.quantity * COALESCE(pv.cost_price, i.cost_price)) ELSE 0 END), 0) as known_cogs_cents,
+        COALESCE(SUM(CASE WHEN COALESCE(pv.cost_price, i.cost_price) IS NULL THEN oi.quantity ELSE 0 END), 0) as unknown_cost_units
        FROM order_items oi
        JOIN orders o ON o.order_id = oi.order_id
        LEFT JOIN inventory i ON i.product_id = oi.product_id
+       LEFT JOIN product_variants pv ON pv.variant_id = oi.variant_id
        WHERE o.${paidWhere.join(' AND o.')}`
     )
     .get(paidParams);
@@ -127,12 +128,13 @@ function getSalesReport({ dateFrom, dateTo } = {}) {
     .prepare(
       `SELECT
         date(o.created_at) as day,
-        COALESCE(SUM(CASE WHEN i.cost_price IS NOT NULL THEN oi.subtotal ELSE 0 END), 0) as known_sales_cents,
-        COALESCE(SUM(CASE WHEN i.cost_price IS NOT NULL THEN (oi.quantity * i.cost_price) ELSE 0 END), 0) as known_cogs_cents,
-        COALESCE(SUM(CASE WHEN i.cost_price IS NULL THEN oi.quantity ELSE 0 END), 0) as unknown_cost_units
+        COALESCE(SUM(CASE WHEN COALESCE(pv.cost_price, i.cost_price) IS NOT NULL THEN oi.subtotal ELSE 0 END), 0) as known_sales_cents,
+        COALESCE(SUM(CASE WHEN COALESCE(pv.cost_price, i.cost_price) IS NOT NULL THEN (oi.quantity * COALESCE(pv.cost_price, i.cost_price)) ELSE 0 END), 0) as known_cogs_cents,
+        COALESCE(SUM(CASE WHEN COALESCE(pv.cost_price, i.cost_price) IS NULL THEN oi.quantity ELSE 0 END), 0) as unknown_cost_units
        FROM order_items oi
        JOIN orders o ON o.order_id = oi.order_id
        LEFT JOIN inventory i ON i.product_id = oi.product_id
+       LEFT JOIN product_variants pv ON pv.variant_id = oi.variant_id
        WHERE o.${paidWhere.join(' AND o.')}
        GROUP BY date(o.created_at)
        ORDER BY day ASC`
@@ -203,12 +205,13 @@ function getSalesReport({ dateFrom, dateTo } = {}) {
         oi.product_name_snapshot as product_name,
         COALESCE(SUM(oi.quantity), 0) as quantity,
         COALESCE(SUM(oi.subtotal), 0) as subtotal_cents,
-        COALESCE(SUM(CASE WHEN i.cost_price IS NOT NULL THEN (oi.quantity * i.cost_price) ELSE 0 END), 0) as known_cogs_cents,
-        COALESCE(SUM(CASE WHEN i.cost_price IS NOT NULL THEN oi.subtotal ELSE 0 END), 0) as known_sales_cents,
-        COALESCE(SUM(CASE WHEN i.cost_price IS NULL THEN oi.quantity ELSE 0 END), 0) as unknown_cost_units
+        COALESCE(SUM(CASE WHEN COALESCE(pv.cost_price, i.cost_price) IS NOT NULL THEN (oi.quantity * COALESCE(pv.cost_price, i.cost_price)) ELSE 0 END), 0) as known_cogs_cents,
+        COALESCE(SUM(CASE WHEN COALESCE(pv.cost_price, i.cost_price) IS NOT NULL THEN oi.subtotal ELSE 0 END), 0) as known_sales_cents,
+        COALESCE(SUM(CASE WHEN COALESCE(pv.cost_price, i.cost_price) IS NULL THEN oi.quantity ELSE 0 END), 0) as unknown_cost_units
        FROM order_items oi
        JOIN orders o ON o.order_id = oi.order_id
        LEFT JOIN inventory i ON i.product_id = oi.product_id
+       LEFT JOIN product_variants pv ON pv.variant_id = oi.variant_id
        WHERE o.${paidWhere.join(' AND o.')}
        GROUP BY oi.product_id, oi.product_name_snapshot
        ORDER BY subtotal_cents DESC

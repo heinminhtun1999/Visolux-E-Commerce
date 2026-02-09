@@ -53,9 +53,13 @@ function listItems(orderId) {
   return db
     .prepare(
       `SELECT
-        oi.*, i.weight_kg
+        oi.*,
+        COALESCE(pv.weight_kg, i.weight_kg) as weight_kg,
+        pv.type_key as variant_type_key,
+        pv.label as variant_label
        FROM order_items oi
        LEFT JOIN inventory i ON i.product_id = oi.product_id
+       LEFT JOIN product_variants pv ON pv.variant_id = oi.variant_id
        WHERE oi.order_id=?
        ORDER BY oi.id ASC`
     )
@@ -64,8 +68,12 @@ function listItems(orderId) {
       id: r.id,
       order_id: r.order_id,
       product_id: r.product_id,
+      variant_id: r.variant_id == null ? null : Number(r.variant_id),
+      variant_type_key: r.variant_type_key == null ? null : String(r.variant_type_key || '').trim() || null,
+      variant_label: r.variant_label == null ? null : String(r.variant_label || '').trim() || null,
       product_name_snapshot: r.product_name_snapshot,
       item_note: r.item_note || '',
+      item_type: r.item_type || '',
       price_snapshot: r.price_snapshot,
       quantity: r.quantity,
       subtotal: r.subtotal,
@@ -440,12 +448,67 @@ function createOrder({
     return Math.max(0, Math.floor(Number(row?.q || 0)));
   }
 
+  function getReservedOpenQtyForVariant(variantId, { pendingOnlineMinutes = 30 } = {}) {
+    const vid = Number(variantId);
+    if (!Number.isFinite(vid) || vid <= 0) return 0;
+    const mins = Math.max(1, Math.floor(Number(pendingOnlineMinutes || 30)));
+    const pendingWindow = `-${mins} minutes`;
+    const row = db
+      .prepare(
+        `SELECT COALESCE(SUM(oi.quantity), 0) as q
+         FROM order_items oi
+         JOIN orders o ON o.order_id = oi.order_id
+         WHERE oi.variant_id = @vid
+           AND o.fulfilment_status <> 'CANCELLED'
+           AND (
+             (o.payment_method = 'ONLINE' AND o.payment_status = 'PENDING' AND datetime(o.created_at) >= datetime('now', @pendingWindow))
+             OR (o.payment_method = 'OFFLINE_TRANSFER' AND o.payment_status = 'AWAITING_VERIFICATION')
+           )`
+      )
+      .get({ vid, pendingWindow });
+    return Math.max(0, Math.floor(Number(row?.q || 0)));
+  }
+
   const tx = db.transaction(() => {
     // Atomic stock reservation check: treat open/unpaid orders as reserving stock.
     // This prevents two concurrent checkouts from both placing an order for the last unit.
     for (const it of items || []) {
       const pid = Number(it.product_id);
       if (!Number.isFinite(pid) || pid <= 0) continue;
+
+      const desiredQty = Math.max(0, Math.floor(Number(it.quantity || 0)));
+      if (desiredQty <= 0) continue;
+
+      const variantId = it.variant_id == null ? null : Number(it.variant_id);
+      const hasVariant = Number.isFinite(variantId) && variantId > 0;
+
+      if (hasVariant) {
+        const inv = db.prepare('SELECT archived, visibility FROM inventory WHERE product_id=?').get(pid);
+        if (!inv || Number(inv.archived) === 1 || Number(inv.visibility) === 0) {
+          const err = new Error(`Product "${it.product_name_snapshot || `#${pid}`}" is not available.`);
+          err.status = 400;
+          throw err;
+        }
+
+        const v = db
+          .prepare('SELECT variant_id, product_id, stock, active FROM product_variants WHERE variant_id=?')
+          .get(variantId);
+        const vStock = Math.max(0, Math.floor(Number(v?.stock || 0)));
+        if (!v || Number(v.active) !== 1 || Number(v.product_id) !== pid) {
+          const err = new Error(`Variant for "${it.product_name_snapshot || `#${pid}`}" is not available.`);
+          err.status = 400;
+          throw err;
+        }
+
+        const reserved = getReservedOpenQtyForVariant(variantId, { pendingOnlineMinutes: 30 });
+        const effectiveAvailable = Math.max(0, vStock - reserved);
+        if (desiredQty > effectiveAvailable) {
+          const err = new Error(`Only ${effectiveAvailable} of "${it.product_name_snapshot || `#${pid}`}" is available.`);
+          err.status = 409;
+          throw err;
+        }
+        continue;
+      }
 
       const inv = db.prepare('SELECT stock, archived, visibility FROM inventory WHERE product_id=?').get(pid);
       const stock = Math.max(0, Math.floor(Number(inv?.stock || 0)));
@@ -458,9 +521,6 @@ function createOrder({
 
       const reserved = getReservedOpenQtyForProduct(pid, { pendingOnlineMinutes: 30 });
       const effectiveAvailable = Math.max(0, stock - reserved);
-      const desiredQty = Math.max(0, Math.floor(Number(it.quantity || 0)));
-
-      if (desiredQty <= 0) continue;
       if (desiredQty > effectiveAvailable) {
         const err = new Error(`Only ${effectiveAvailable} of "${it.product_name_snapshot || `#${pid}`}" is available.`);
         err.status = 409;
@@ -543,16 +603,18 @@ function createOrder({
     const orderId = inserted.lastInsertRowid;
 
     const insertItem = db.prepare(
-      `INSERT INTO order_items (order_id, product_id, product_name_snapshot, item_note, price_snapshot, quantity, subtotal)
-       VALUES (@order_id, @product_id, @product_name_snapshot, @item_note, @price_snapshot, @quantity, @subtotal)`
+      `INSERT INTO order_items (order_id, product_id, variant_id, product_name_snapshot, item_note, item_type, price_snapshot, quantity, subtotal)
+       VALUES (@order_id, @product_id, @variant_id, @product_name_snapshot, @item_note, @item_type, @price_snapshot, @quantity, @subtotal)`
     );
 
     for (const it of items) {
       insertItem.run({
         order_id: orderId,
         product_id: it.product_id,
+        variant_id: it.variant_id == null ? null : it.variant_id,
         product_name_snapshot: it.product_name_snapshot,
         item_note: String(it.item_note || '').trim(),
+        item_type: String(it.item_type || '').trim(),
         price_snapshot: it.price_snapshot,
         quantity: it.quantity,
         subtotal: it.subtotal,

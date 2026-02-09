@@ -111,7 +111,7 @@ router.get('/checkout', requireUser, async (req, res) => {
   }
 
   const totalWeightKg = hydrated.items.reduce((acc, line) => {
-    const w = Number(line?.product?.weight_kg || 0);
+    const w = Number((line?.variant && line.variant.weight_kg != null) ? line.variant.weight_kg : (line?.product?.weight_kg || 0));
     const q = Number(line?.quantity || 0);
     if (!Number.isFinite(w) || !Number.isFinite(q) || q <= 0) return acc;
     return acc + w * q;
@@ -167,7 +167,7 @@ router.post(
     const itemsTotal = Math.max(0, Number(hydrated.total || 0));
 
     const totalWeightKg = hydrated.items.reduce((acc, line) => {
-      const w = Number(line?.product?.weight_kg || 0);
+      const w = Number((line?.variant && line.variant.weight_kg != null) ? line.variant.weight_kg : (line?.product?.weight_kg || 0));
       const q = Number(line?.quantity || 0);
       if (!Number.isFinite(w) || !Number.isFinite(q) || q <= 0) return acc;
       return acc + w * q;
@@ -261,7 +261,7 @@ router.post(
     const itemsTotal = Math.max(0, Number(hydrated.total || 0));
 
     const totalWeightKg = hydrated.items.reduce((acc, line) => {
-      const w = Number(line?.product?.weight_kg || 0);
+      const w = Number((line?.variant && line.variant.weight_kg != null) ? line.variant.weight_kg : (line?.product?.weight_kg || 0));
       const q = Number(line?.quantity || 0);
       if (!Number.isFinite(w) || !Number.isFinite(q) || q <= 0) return acc;
       return acc + w * q;

@@ -5,7 +5,7 @@ const path = require('path');
 const { z } = require('zod');
 
 const { requireAdmin, requireSuperAdmin, computeIsAdmin } = require('../middleware/auth');
-const { getDb } = require('../db/db');
+const { getDb, closeDb } = require('../db/db');
 const { validate } = require('../middleware/validate');
 const { upload } = require('../middleware/uploads');
 const { csrfProtection } = require('../middleware/csrf');
@@ -13,6 +13,7 @@ const { csrfProtection } = require('../middleware/csrf');
 const inventoryRepo = require('../repositories/inventoryRepo');
 const categoryRepo = require('../repositories/categoryRepo');
 const productImageRepo = require('../repositories/productImageRepo');
+const productVariantRepo = require('../repositories/productVariantRepo');
 const orderRepo = require('../repositories/orderRepo');
 const userRepo = require('../repositories/userRepo');
 const imageService = require('../services/imageService');
@@ -33,6 +34,8 @@ const adminActivityRepo = require('../repositories/adminActivityRepo');
 const shippingService = require('../services/shippingService');
 const offlineTransferService = require('../services/offlineTransferService');
 const fiuuAccountsService = require('../services/fiuuAccountsService');
+const backupService = require('../services/backupService');
+const { env } = require('../config/env');
 const { MALAYSIA_STATES } = require('../utils/malaysia');
 const { renderMarkdown, sanitizeHtmlFragment, sanitizeHtmlFragmentNoImages } = require('../utils/markdown');
 const crypto = require('crypto');
@@ -789,6 +792,174 @@ router.get('/settings', (req, res) => {
     promosView: promosView === 'ALL' || promosView === 'ARCHIVED' || promosView === 'ACTIVE' ? promosView : 'ACTIVE',
   });
 });
+
+router.get('/backups', requireSuperAdmin, (req, res) => {
+  const backupsVm = (() => {
+    try {
+      const retentionDays = (() => {
+        const raw = String(process.env.BACKUP_RETENTION_DAYS || '').trim();
+        if (!raw) return 7;
+        const n = Number(raw);
+        return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 7;
+      })();
+      return {
+        dir: backupService.getBackupsDir(),
+        files: backupService.listBackups().slice(0, 200),
+        error: null,
+        retentionDays,
+      };
+    } catch (e) {
+      return {
+        dir: backupService.getBackupsDir(),
+        files: [],
+        error: e && e.message ? e.message : 'Failed to list backups.',
+        retentionDays: 7,
+      };
+    }
+  })();
+
+  return res.render('admin/backups', {
+    title: 'Admin – Backups',
+    backupsDir: backupsVm.dir,
+    backups: backupsVm.files,
+    backupsError: backupsVm.error,
+    backupsRetentionDays: backupsVm.retentionDays,
+    appTimeZone: env.appTimeZone || 'Asia/Kuala_Lumpur',
+  });
+});
+
+router.post(
+  '/backups/create',
+  requireSuperAdmin,
+  csrfProtection({ ignoreMultipart: true }),
+  (req, res, next) => {
+    try {
+      backupService.createBackup({ includeUploads: true, mode: 'tgz-only', prune: true });
+      req.session.flash = { type: 'success', message: 'Backup created (uploads included). Old backups are pruned automatically.' };
+      return res.redirect('/admin/backups');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.get('/backups/download', requireSuperAdmin, (req, res, next) => {
+  try {
+    const file = String(req.query.file || '').trim();
+    if (!file) {
+      const err = new Error('Missing backup file.');
+      err.status = 400;
+      throw err;
+    }
+
+    const match = (backupService.listBackups() || []).find((b) => b && b.name === file);
+    if (!match) {
+      const err = new Error('Backup not found.');
+      err.status = 404;
+      throw err;
+    }
+
+    return res.download(match.fullPath, match.name);
+  } catch (e) {
+    return next(e);
+  }
+});
+
+router.post(
+  '/backups/delete',
+  requireSuperAdmin,
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({
+        file: z.string().min(1),
+        confirm: z.string().optional(),
+      }),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const body = req.validated.body || {};
+      const confirm = String(body.confirm || '').trim();
+      if (confirm !== '1') {
+        req.session.flash = { type: 'error', message: 'Please confirm delete.' };
+        return res.redirect('/admin/backups');
+      }
+
+      backupService.deleteBackupFile(String(body.file || ''));
+      req.session.flash = { type: 'success', message: 'Backup deleted.' };
+      return res.redirect('/admin/backups');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/backups/restore',
+  requireSuperAdmin,
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({
+        file: z.string().min(1),
+        restore_uploads: z.any().optional(),
+        restore_sessions: z.any().optional(),
+        confirm: z.string().optional(),
+      }),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const body = req.validated.body || {};
+      const confirm = String(body.confirm || '').trim();
+      if (confirm !== '1') {
+        req.session.flash = { type: 'error', message: 'Please confirm the restore action.' };
+        return res.redirect('/admin/backups');
+      }
+
+      const restoreUploads = String(body.restore_uploads || '').trim() === '1';
+      const restoreSessions = String(body.restore_sessions || '').trim() === '1';
+
+      if (restoreSessions && process.platform === 'win32') {
+        req.session.flash = {
+          type: 'error',
+          message: 'On Windows, sessions.db is locked while the server is running. Uncheck “Include sessions” and restore again (sessions are not business data).',
+        };
+        return res.redirect('/admin/backups');
+      }
+
+      // Close SQLite handle (better-sqlite3) before replacing DB file.
+      closeDb();
+
+      backupService.restoreFromBackupFile(String(body.file || ''), {
+        restoreUploads,
+        restoreSessions,
+        preBackup: true,
+      });
+
+      req.session.flash = {
+        type: 'success',
+        message: 'Restore applied. Restarting server to complete the process…',
+      };
+
+      res.redirect('/admin/backups');
+
+      // For PM2 deployments, exiting triggers an automatic restart.
+      res.on('finish', () => {
+        setTimeout(() => process.exit(0), 400);
+      });
+
+      return;
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
 
 router.get('/settings/payment', (req, res) => {
   const offlineTransferBanks = offlineTransferService.getBanks();
@@ -2970,13 +3141,13 @@ router.get('/products', (req, res) => {
 
 router.get('/products/new', (req, res) => {
   const categories = categoryRepo.listAdmin({ includeArchived: false });
-  res.render('admin/product_form', { title: 'New Product', product: null, categories, images: [] });
+  res.render('admin/product_form', { title: 'New Product', product: null, categories, images: [], variants: [] });
 });
 
 router.post(
   '/products/new',
   upload.fields([
-    { name: 'product_images', maxCount: 12 },
+    { name: 'product_images', maxCount: 1 },
   ]),
   csrfProtection({ ignoreMultipart: false }),
   validate(
@@ -3008,7 +3179,8 @@ router.post(
       const heightCm = parseNonNegativeNumberOrNull(req.validated.body.height_cm, { label: 'Height (cm)' });
       const lengthCm = parseNonNegativeNumberOrNull(req.validated.body.length_cm, { label: 'Length (cm)' });
       const widthCm = parseNonNegativeNumberOrNull(req.validated.body.width_cm, { label: 'Width (cm)' });
-      const stock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
+      const requestedStock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
+      const stock = requestedStock;
 
       const cat = categoryRepo.getBySlug(req.validated.body.category);
       if (!cat || cat.archived) {
@@ -3050,17 +3222,6 @@ router.post(
           fs.unlinkSync(primary.path);
         } catch (_) {
           // ignore
-        }
-
-        for (let i = 1; i < galleryFiles.length; i++) {
-          const f = galleryFiles[i];
-          const url = await imageService.optimizeAndSaveProductGalleryImage(f.path, created.product_id);
-          productImageRepo.create({ productId: created.product_id, imageUrl: url, sortOrder: (i - 1) * 10 });
-          try {
-            fs.unlinkSync(f.path);
-          } catch (_) {
-            // ignore
-          }
         }
       }
 
@@ -3108,8 +3269,256 @@ router.get('/products/:id/edit', (req, res) => {
   if (!product) return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
   const categories = categoryRepo.listAdmin({ includeArchived: false });
   const images = productImageRepo.listByProductId(id);
-  return res.render('admin/product_form', { title: 'Edit Product', product, categories, images });
+  const variants = productVariantRepo.listByProductId(id, { includeInactive: true });
+  return res.render('admin/product_form', { title: 'Edit Product', product, categories, images, variants });
 });
+
+async function refreshProductAggregatesFromVariants(productId) {
+  const agg = productVariantRepo.computeAggregateForProduct(productId);
+  if (!agg || !agg.hasVariants) return;
+
+  const patch = { stock: agg.stock };
+  if (agg.minPrice != null && Number.isFinite(Number(agg.minPrice)) && Number(agg.minPrice) > 0) patch.price = Number(agg.minPrice);
+  inventoryRepo.update(productId, patch);
+}
+
+router.post(
+  '/products/:id/variants/new',
+  upload.single('variant_image'),
+  csrfProtection({ ignoreMultipart: false }),
+  validate(
+    z.object({
+      body: z.object({
+        type_key: z.string().trim().min(1).max(80),
+        label: z.string().trim().min(1).max(80),
+        price: z.string(),
+        cost_price: z.string().optional().or(z.literal('')),
+        weight_kg: z.string().optional().or(z.literal('')),
+        height_cm: z.string().optional().or(z.literal('')),
+        length_cm: z.string().optional().or(z.literal('')),
+        width_cm: z.string().optional().or(z.literal('')),
+        stock: z.string(),
+        active: z.string().optional(),
+        sort_order: z.string().optional().or(z.literal('')),
+      }),
+      params: z.object({ id: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      const productId = Number(req.params.id);
+      if (!Number.isFinite(productId)) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid product id.' });
+      }
+
+      const product = inventoryRepo.getById(productId);
+      if (!product) {
+        return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
+      }
+
+      const priceCents = parsePriceToCentsMinRM1(req.validated.body.price);
+      const costPriceCents = req.validated.body.cost_price ? parseMoneyToCentsAllowZero(req.validated.body.cost_price, { label: 'Cost (RM)' }) : null;
+      const weightKg = parseNonNegativeNumberOrNull(req.validated.body.weight_kg, { label: 'Weight (kg)' });
+      const heightCm = parseNonNegativeNumberOrNull(req.validated.body.height_cm, { label: 'Height (cm)' });
+      const lengthCm = parseNonNegativeNumberOrNull(req.validated.body.length_cm, { label: 'Length (cm)' });
+      const widthCm = parseNonNegativeNumberOrNull(req.validated.body.width_cm, { label: 'Width (cm)' });
+      const stock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
+      const active = String(req.validated.body.active || '') === '1';
+      const sortOrderRaw = String(req.validated.body.sort_order || '').trim();
+      const sortOrder = sortOrderRaw ? Math.floor(Number(sortOrderRaw)) : 0;
+
+      const typeKey = productVariantRepo.normalizeTypeKey(req.validated.body.type_key);
+      if (!typeKey) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Type key is required.' });
+      }
+
+      const created = productVariantRepo.create({
+        product_id: productId,
+        type_key: typeKey,
+        label: req.validated.body.label,
+        price: priceCents,
+        cost_price: costPriceCents,
+        weight_kg: weightKg,
+        height_cm: heightCm,
+        length_cm: lengthCm,
+        width_cm: widthCm,
+        stock,
+        image_url: null,
+        active,
+        sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+      });
+
+      const file = req.file;
+      if (file && file.path) {
+        try {
+          const url = await imageService.optimizeAndSaveVariantImage(file.path, { productId, variantId: created.variant_id });
+          productVariantRepo.update(created.variant_id, { image_url: url });
+        } finally {
+          try {
+            fs.unlinkSync(file.path);
+          } catch (_) {
+            // ignore
+          }
+        }
+      }
+
+      await refreshProductAggregatesFromVariants(productId);
+
+      req.session.flash = { type: 'success', message: 'Variant added.' };
+      return res.redirect(`/admin/products/${productId}/edit`);
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/products/:id/variants/:variantId/edit',
+  upload.single('variant_image'),
+  csrfProtection({ ignoreMultipart: false }),
+  validate(
+    z.object({
+      body: z.object({
+        type_key: z.string().trim().min(1).max(80),
+        label: z.string().trim().min(1).max(80),
+        price: z.string(),
+        cost_price: z.string().optional().or(z.literal('')),
+        weight_kg: z.string().optional().or(z.literal('')),
+        height_cm: z.string().optional().or(z.literal('')),
+        length_cm: z.string().optional().or(z.literal('')),
+        width_cm: z.string().optional().or(z.literal('')),
+        stock: z.string(),
+        active: z.string().optional(),
+        sort_order: z.string().optional().or(z.literal('')),
+      }),
+      params: z.object({ id: z.string(), variantId: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      const productId = Number(req.params.id);
+      const variantId = Number(req.params.variantId);
+      if (!Number.isFinite(productId) || !Number.isFinite(variantId)) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid request.' });
+      }
+
+      const product = inventoryRepo.getById(productId);
+      if (!product) {
+        return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
+      }
+
+      const existing = productVariantRepo.getById(variantId);
+      if (!existing || existing.product_id !== productId) {
+        return res.status(404).render('shared/error', { title: 'Not Found', message: 'Variant not found.' });
+      }
+
+      const priceCents = parsePriceToCentsMinRM1(req.validated.body.price);
+      const costPriceCents = req.validated.body.cost_price ? parseMoneyToCentsAllowZero(req.validated.body.cost_price, { label: 'Cost (RM)' }) : null;
+      const weightKg = parseNonNegativeNumberOrNull(req.validated.body.weight_kg, { label: 'Weight (kg)' });
+      const heightCm = parseNonNegativeNumberOrNull(req.validated.body.height_cm, { label: 'Height (cm)' });
+      const lengthCm = parseNonNegativeNumberOrNull(req.validated.body.length_cm, { label: 'Length (cm)' });
+      const widthCm = parseNonNegativeNumberOrNull(req.validated.body.width_cm, { label: 'Width (cm)' });
+      const stock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
+      const active = String(req.validated.body.active || '') === '1';
+      const sortOrderRaw = String(req.validated.body.sort_order || '').trim();
+      const sortOrder = sortOrderRaw ? Math.floor(Number(sortOrderRaw)) : 0;
+
+      const typeKey = productVariantRepo.normalizeTypeKey(req.validated.body.type_key);
+      if (!typeKey) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Type key is required.' });
+      }
+
+      const patch = {
+        type_key: typeKey,
+        label: req.validated.body.label,
+        price: priceCents,
+        cost_price: costPriceCents,
+        weight_kg: weightKg,
+        height_cm: heightCm,
+        length_cm: lengthCm,
+        width_cm: widthCm,
+        stock,
+        active,
+        sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
+      };
+
+      const file = req.file;
+      if (file && file.path) {
+        try {
+          const url = await imageService.optimizeAndSaveVariantImage(file.path, { productId, variantId });
+          patch.image_url = url;
+        } finally {
+          try {
+            fs.unlinkSync(file.path);
+          } catch (_) {
+            // ignore
+          }
+        }
+      }
+
+      productVariantRepo.update(variantId, patch);
+
+      await refreshProductAggregatesFromVariants(productId);
+
+      req.session.flash = { type: 'success', message: 'Variant updated.' };
+      return res.redirect(`/admin/products/${productId}/edit`);
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/products/:id/variants/:variantId/delete',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      params: z.object({ id: z.string(), variantId: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      const productId = Number(req.params.id);
+      const variantId = Number(req.params.variantId);
+      if (!Number.isFinite(productId) || !Number.isFinite(variantId)) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid request.' });
+      }
+
+      const existing = productVariantRepo.getById(variantId);
+      if (!existing || existing.product_id !== productId) {
+        return res.status(404).render('shared/error', { title: 'Not Found', message: 'Variant not found.' });
+      }
+
+      const removed = productVariantRepo.deleteById(variantId);
+
+      if (removed && removed.image_url) {
+        const url = String(removed.image_url || '');
+        if (url.startsWith('/uploads/products/')) {
+          const fileName = path.posix.basename(url);
+          if (/^variant_\d+_\d+_[0-9a-f]{16}\.webp$/i.test(fileName)) {
+            const fullPath = path.join(process.cwd(), 'storage', 'uploads', 'products', fileName);
+            try {
+              fs.unlinkSync(fullPath);
+            } catch (_) {
+              // ignore
+            }
+          }
+        }
+      }
+
+      await refreshProductAggregatesFromVariants(productId);
+
+      req.session.flash = { type: 'success', message: 'Variant deleted.' };
+      return res.redirect(`/admin/products/${productId}/edit`);
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
 
 // Convenience alias for breadcrumb navigation: /admin/products/:id -> /admin/products/:id/edit
 router.get('/products/:id', (req, res) => {
@@ -3123,7 +3532,7 @@ router.get('/products/:id', (req, res) => {
 router.post(
   '/products/:id/edit',
   upload.fields([
-    { name: 'product_images', maxCount: 12 },
+    { name: 'product_images', maxCount: 1 },
   ]),
   csrfProtection({ ignoreMultipart: false }),
   validate(
@@ -3161,7 +3570,14 @@ router.post(
       const heightCm = parseNonNegativeNumberOrNull(req.validated.body.height_cm, { label: 'Height (cm)' });
       const lengthCm = parseNonNegativeNumberOrNull(req.validated.body.length_cm, { label: 'Length (cm)' });
       const widthCm = parseNonNegativeNumberOrNull(req.validated.body.width_cm, { label: 'Width (cm)' });
-      const stock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
+      const requestedStock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
+
+      const agg = productVariantRepo.computeAggregateForProduct(id);
+      const hasActiveVariants = Boolean(agg && agg.hasVariants);
+      const stock = hasActiveVariants ? Math.max(0, Math.floor(Number(agg.stock || 0))) : requestedStock;
+      const effectivePriceCents = hasActiveVariants && agg.minPrice != null
+        ? Math.max(100, Math.floor(Number(agg.minPrice || priceCents)))
+        : priceCents;
 
       const cat = categoryRepo.getBySlug(req.validated.body.category);
       if (!cat || cat.archived) {
@@ -3186,17 +3602,6 @@ router.post(
         } catch (_) {
           // ignore
         }
-
-        for (let i = 1; i < galleryFiles.length; i++) {
-          const f = galleryFiles[i];
-          const url = await imageService.optimizeAndSaveProductGalleryImage(f.path, id);
-          productImageRepo.create({ productId: id, imageUrl: url, sortOrder: (i - 1) * 10 });
-          try {
-            fs.unlinkSync(f.path);
-          } catch (_) {
-            // ignore
-          }
-        }
       }
 
       inventoryRepo.update(id, {
@@ -3204,7 +3609,7 @@ router.post(
         description: descText,
         description_html: cleanHtml,
         category: cat.slug,
-        price: priceCents,
+        price: effectivePriceCents,
         cost_price: costPriceCents,
         weight_kg: weightKg,
         height_cm: heightCm,

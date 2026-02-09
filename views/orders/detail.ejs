@@ -78,6 +78,12 @@
         <tr>
           <td>
             <div><%= it.product_name_snapshot %></div>
+            <% const variantLabel = String(it.variant_label || '').trim(); %>
+            <% const itemType = String(it.item_type || '').trim(); %>
+            <% const typeLabel = variantLabel || ((typeof productTypeLabel !== 'undefined') ? productTypeLabel(itemType) : itemType); %>
+            <% if (typeLabel) { %>
+              <div class="muted small" style="margin-top:4px">Type: <%= typeLabel %></div>
+            <% } %>
             <% const itemNote = String(it.item_note || '').trim(); %>
             <% if (itemNote) { %>
               <div class="muted small" style="margin-top:4px">Note: <%= itemNote %></div>

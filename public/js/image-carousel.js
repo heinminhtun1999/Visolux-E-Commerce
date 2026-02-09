@@ -27,6 +27,7 @@
     var thumbs = Array.prototype.slice.call(root.querySelectorAll('[data-carousel-thumb]'));
     var prevBtn = root.querySelector('[data-carousel-prev]');
     var nextBtn = root.querySelector('[data-carousel-next]');
+    var galleryEl = root.querySelector('.product-gallery');
 
     var current = 0;
 
@@ -48,6 +49,34 @@
       }
     }
 
+    function bindThumbClicks() {
+      if (!thumbs.length) return;
+      thumbs.forEach(function (t) {
+        if (t.getAttribute('data-carousel-bound') === '1') return;
+        t.setAttribute('data-carousel-bound', '1');
+        t.addEventListener('click', function () {
+          var ti = Number(t.getAttribute('data-idx'));
+          if (!Number.isFinite(ti)) return;
+          setActive(ti);
+        });
+      });
+    }
+
+    function setNavVisibility() {
+      var showNav = items.length > 1;
+      if (prevBtn) {
+        prevBtn.style.display = showNav ? '' : 'none';
+        prevBtn.disabled = !showNav;
+      }
+      if (nextBtn) {
+        nextBtn.style.display = showNav ? '' : 'none';
+        nextBtn.disabled = !showNav;
+      }
+      if (galleryEl) {
+        galleryEl.style.display = showNav ? '' : 'none';
+      }
+    }
+
     if (prevBtn) {
       prevBtn.addEventListener('click', function () {
         setActive(current - 1);
@@ -60,15 +89,7 @@
       });
     }
 
-    if (thumbs.length) {
-      thumbs.forEach(function (t) {
-        t.addEventListener('click', function () {
-          var ti = Number(t.getAttribute('data-idx'));
-          if (!Number.isFinite(ti)) return;
-          setActive(ti);
-        });
-      });
-    }
+    bindThumbClicks();
 
     // Optional keyboard support when the carousel is focused.
     root.addEventListener('keydown', function (e) {
@@ -86,7 +107,35 @@
     // Initialize to the image currently shown (best effort).
     var initialSrc = String(img.getAttribute('src') || '').trim();
     var initialIndex = initialSrc ? items.indexOf(initialSrc) : -1;
+    setNavVisibility();
     setActive(initialIndex >= 0 ? initialIndex : 0);
+
+    // Allow dynamic updates (e.g. variant image changes).
+    root.addEventListener('carousel:updateItems', function (e) {
+      try {
+        var detail = e && e.detail ? e.detail : null;
+        var nextItems = detail && detail.items ? detail.items : null;
+        if (!Array.isArray(nextItems) || nextItems.length === 0) return;
+
+        items = nextItems
+          .map(function (v) { return String(v || '').trim(); })
+          .filter(Boolean);
+        if (!items.length) return;
+
+        // Refresh thumbs list in case DOM changed.
+        thumbs = Array.prototype.slice.call(root.querySelectorAll('[data-carousel-thumb]'));
+        galleryEl = root.querySelector('.product-gallery');
+
+        setNavVisibility();
+
+        bindThumbClicks();
+
+        var idx = Number(detail && detail.activeIndex);
+        setActive(Number.isFinite(idx) ? idx : 0);
+      } catch (_) {
+        // ignore
+      }
+    });
   }
 
   function init() {

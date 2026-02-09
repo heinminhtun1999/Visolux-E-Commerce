@@ -2,6 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 
 const inventoryRepo = require('../repositories/inventoryRepo');
+const productVariantRepo = require('../repositories/productVariantRepo');
 const cartService = require('../services/cartService');
 const fiuuAccountsService = require('../services/fiuuAccountsService');
 const { getPagination, getPageCount } = require('../utils/pagination');
@@ -19,8 +20,14 @@ const router = express.Router();
 function buildCartLinesForFiuuAccountCheck(session) {
   const cart = cartService.getCart(session);
   const lines = [];
-  for (const [productIdStr, raw] of Object.entries(cart.items || {})) {
-    const productId = Number(productIdStr);
+  for (const [key, raw] of Object.entries(cart.items || {})) {
+    const productId = (raw && typeof raw === 'object' && raw.product_id != null)
+      ? Number(raw.product_id)
+      : (() => {
+        const s = String(key || '').trim();
+        const m = /^(?:p:)?(\d+)$/.exec(s);
+        return m ? Number(m[1]) : NaN;
+      })();
     if (!Number.isFinite(productId) || productId <= 0) continue;
     const product = inventoryRepo.getById(productId);
     if (!product || product.archived || !product.visibility) continue;
@@ -352,6 +359,11 @@ router.get('/products/:id', (req, res, next) => {
   }
 
   const images = productImageRepo.listByProductId(id);
+  const variants = productVariantRepo.listByProductId(id, { includeInactive: false });
+
+  const cheapestVariant = (variants && variants.length)
+    ? variants.reduce((best, v) => (!best || Number(v.price || 0) < Number(best.price || 0)) ? v : best, null)
+    : null;
 
   // Product SEO
   const galleryUrls = [];
@@ -363,7 +375,8 @@ router.get('/products/:id', (req, res, next) => {
   const descText = String(product.description || '').trim();
   const shortDesc = (descText.length > 180) ? `${descText.slice(0, 177)}...` : descText;
   const currency = 'MYR';
-  const price = (Number(product.price || 0) / 100).toFixed(2);
+  const offerPriceCents = cheapestVariant ? Number(cheapestVariant.price || 0) : Number(product.price || 0);
+  const price = (offerPriceCents / 100).toFixed(2);
   const base = String(res.locals.siteUrl || '').replace(/\/+$/, '');
   const url = base ? `${base}/products/${product.product_id}` : `/products/${product.product_id}`;
 
@@ -392,6 +405,7 @@ router.get('/products/:id', (req, res, next) => {
     ogTypeOverride: 'product',
     product,
     images,
+    variants,
   });
 });
 
@@ -413,7 +427,9 @@ router.post(
     z.object({
       body: z.object({
         product_id: z.string(),
+        variant_id: z.string().optional().or(z.literal('')),
         quantity: z.string().optional(),
+        product_type: z.string().trim().max(32).optional().or(z.literal('')),
         note: z.string().trim().max(500).optional().or(z.literal('')),
         return_to: z.string().max(500).optional(),
       }),
@@ -429,6 +445,8 @@ router.post(
 
     const productId = Number(req.validated.body.product_id);
     const quantity = Number(req.validated.body.quantity || 1);
+    const variantIdRaw = String(req.validated.body.variant_id || '').trim();
+    const variantId = variantIdRaw ? Number(variantIdRaw) : null;
 
     const product = inventoryRepo.getById(productId);
     if (!product || product.archived || !product.visibility) {
@@ -436,13 +454,29 @@ router.post(
       return res.redirect('/');
     }
 
+    let variant = null;
+    if (variantId != null && Number.isFinite(variantId) && variantId > 0) {
+      const v = productVariantRepo.getById(variantId);
+      if (!v || !v.active || v.product_id !== productId) {
+        req.session.flash = { type: 'error', message: 'Selected type is not available.' };
+        const returnTo = safeReturnTo(req.validated.body.return_to, '');
+        if (returnTo) return res.redirect(returnTo);
+        return res.redirect(safeRedirectBack(req, `/products/${productId}`));
+      }
+      variant = v;
+    }
+
     // Prevent mixing different FIUU merchant accounts in a single cart.
     // Only blocks when the combined cart would require multiple accounts.
     try {
       cartService.sanitizeCart(req.session);
       const cart = cartService.getCart(req.session);
-      const alreadyInCart = Boolean(cart.items && cart.items[String(productId)] != null);
-      if (!alreadyInCart) {
+      const alreadyHasProduct = Object.entries(cart.items || {}).some(([k, v]) => {
+        if (v && typeof v === 'object' && Number(v.product_id) === productId) return true;
+        const s = String(k || '').trim();
+        return s === String(productId) || s === `p:${productId}`;
+      });
+      if (!alreadyHasProduct) {
         const lines = buildCartLinesForFiuuAccountCheck(req.session);
         lines.push({ product, quantity: 1 });
 
@@ -462,7 +496,7 @@ router.post(
       // ignore
     }
 
-    const availableStock = inventoryRepo.getEffectiveAvailableStock(productId);
+    const availableStock = variant ? Math.max(0, Math.floor(Number(variant.stock || 0))) : inventoryRepo.getEffectiveAvailableStock(productId);
     if (availableStock <= 0) {
       req.session.flash = { type: 'error', message: 'This product is out of stock.' };
       const returnTo = safeReturnTo(req.validated.body.return_to, '');
@@ -472,14 +506,19 @@ router.post(
 
     const q = Math.max(1, Math.min(99, Math.floor(quantity)));
 
-    const entry = req.session.cart?.items?.[String(productId)];
+    const key = (variant ? `v:${variant.variant_id}` : `p:${productId}`);
+    const entry = req.session.cart?.items?.[key];
     const currentQty = Number((entry && typeof entry === 'object') ? entry.qty : (entry || 0));
     const desiredQty = Math.max(0, Math.floor(currentQty) + q);
     const cappedQty = Math.min(desiredQty, availableStock);
-    cartService.setQty(req.session, productId, cappedQty);
+    cartService.setQty(req.session, { productId, variantId: variant ? variant.variant_id : null, variantLabel: variant ? variant.label : '' }, cappedQty);
+
+    if (!variant && Object.prototype.hasOwnProperty.call(req.validated.body, 'product_type')) {
+      cartService.setType(req.session, { productId }, req.validated.body.product_type);
+    }
 
     const note = String(req.validated.body.note || '').trim();
-    if (note) cartService.setNote(req.session, productId, note);
+    if (note) cartService.setNote(req.session, { productId, variantId: variant ? variant.variant_id : null }, note);
 
     if (cappedQty < desiredQty) {
       req.session.flash = {
@@ -500,8 +539,11 @@ router.post(
   validate(
     z.object({
       body: z.object({
+        cart_key: z.string().optional().or(z.literal('')),
         product_id: z.string(),
+        variant_id: z.string().optional().or(z.literal('')),
         quantity: z.string(),
+        product_type: z.string().trim().max(32).optional().or(z.literal('')),
         note: z.string().trim().max(500).optional().or(z.literal('')),
       }),
       query: z.any().optional(),
@@ -516,23 +558,42 @@ router.post(
 
     const productId = Number(req.validated.body.product_id);
     const quantity = Number(req.validated.body.quantity);
+    const cartKey = String(req.validated.body.cart_key || '').trim();
+    const variantIdRaw = String(req.validated.body.variant_id || '').trim();
+    const variantId = variantIdRaw ? Number(variantIdRaw) : null;
 
     const product = inventoryRepo.getById(productId);
     if (!product || product.archived || !product.visibility) {
-      cartService.setQty(req.session, productId, 0);
+      // Remove by key if provided; otherwise fallback to product-only key.
+      if (cartKey && req.session.cart?.items) delete req.session.cart.items[cartKey];
+      cartService.setQty(req.session, { productId }, 0);
       req.session.flash = { type: 'error', message: 'Product is no longer available and was removed from your cart.' };
       return res.redirect('/cart');
     }
 
-    const availableStock = inventoryRepo.getEffectiveAvailableStock(productId);
+    let variant = null;
+    if (variantId != null && Number.isFinite(variantId) && variantId > 0) {
+      const v = productVariantRepo.getById(variantId);
+      if (!v || !v.active || v.product_id !== productId) {
+        req.session.flash = { type: 'error', message: 'Selected type is not available.' };
+        return res.redirect('/cart');
+      }
+      variant = v;
+    }
+
+    const availableStock = variant ? Math.max(0, Math.floor(Number(variant.stock || 0))) : inventoryRepo.getEffectiveAvailableStock(productId);
     const desiredQty = Math.max(0, Math.min(99, Math.floor(quantity)));
 
     // Prevent adding a new product (via update) that would mix FIUU merchant accounts.
     try {
       cartService.sanitizeCart(req.session);
       const cart = cartService.getCart(req.session);
-      const alreadyInCart = Boolean(cart.items && cart.items[String(productId)] != null);
-      if (desiredQty > 0 && !alreadyInCart) {
+      const alreadyHasProduct = Object.entries(cart.items || {}).some(([k, v]) => {
+        if (v && typeof v === 'object' && Number(v.product_id) === productId) return true;
+        const s = String(k || '').trim();
+        return s === String(productId) || s === `p:${productId}`;
+      });
+      if (desiredQty > 0 && !alreadyHasProduct) {
         const lines = buildCartLinesForFiuuAccountCheck(req.session);
         lines.push({ product, quantity: 1 });
 
@@ -551,18 +612,33 @@ router.post(
     }
 
     if (desiredQty > 0 && availableStock <= 0) {
-      cartService.setQty(req.session, productId, 0);
+      if (cartKey && req.session.cart?.items) delete req.session.cart.items[cartKey];
+      cartService.setQty(req.session, { productId, variantId: variant ? variant.variant_id : null }, 0);
       req.session.flash = { type: 'error', message: 'This product is out of stock and was removed from your cart.' };
       return res.redirect('/cart');
     }
 
     const cappedQty = Math.min(desiredQty, availableStock);
-    cartService.setQty(req.session, productId, cappedQty);
+
+    const existingLine = (cartKey && req.session.cart?.items) ? req.session.cart.items[cartKey] : null;
+    const existingNote = (existingLine && typeof existingLine === 'object') ? String(existingLine.note || '').trim() : '';
+    const effectiveNote = Object.prototype.hasOwnProperty.call(req.validated.body, 'note') ? String(req.validated.body.note || '').trim() : existingNote;
+
+    const newKey = variant ? `v:${variant.variant_id}` : `p:${productId}`;
+    const changingKey = Boolean(cartKey) && cartKey !== newKey;
+    if (changingKey && req.session.cart?.items) {
+      delete req.session.cart.items[cartKey];
+    }
+
+    cartService.setQty(req.session, { productId, variantId: variant ? variant.variant_id : null, variantLabel: variant ? variant.label : '' }, cappedQty);
 
     if (cappedQty > 0) {
       if (Object.prototype.hasOwnProperty.call(req.validated.body, 'note')) {
-        const note = String(req.validated.body.note || '').trim();
-        cartService.setNote(req.session, productId, note);
+        cartService.setNote(req.session, { productId, variantId: variant ? variant.variant_id : null }, effectiveNote);
+      }
+
+      if (!variant && Object.prototype.hasOwnProperty.call(req.validated.body, 'product_type')) {
+        cartService.setType(req.session, { productId }, req.validated.body.product_type);
       }
     }
 

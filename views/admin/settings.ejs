@@ -15,6 +15,9 @@
     <button class="btn" type="button" data-href="#shipping">Shipping</button>
     <button class="btn" type="button" data-href="#email-notifications">Email notifications</button>
     <button class="btn" type="button" data-href="#inventory">Inventory</button>
+    <% if (isSuperAdmin) { %>
+      <button class="btn" type="button" data-href="/admin/backups">Backups</button>
+    <% } %>
     <button class="btn" type="button" data-href="#footer-pages">Footer & Pages</button>
     <button class="btn" type="button" data-href="#promos">Promos</button>
     <button class="btn" type="button" data-href="#security">Security</button>
