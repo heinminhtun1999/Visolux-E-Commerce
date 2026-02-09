@@ -173,6 +173,22 @@ router.get('/activity', requireAdmin, (req, res) => {
     offset,
   });
 
+  const fiuuAccountLabelMap = (() => {
+    try {
+      const accounts = fiuuAccountsService.getAccounts();
+      const out = {};
+      for (const a of accounts || []) {
+        const id = String(a?.id || '').trim();
+        if (!id) continue;
+        const label = String(a?.label || '').trim();
+        out[id] = label || id;
+      }
+      return out;
+    } catch (_) {
+      return {};
+    }
+  })();
+
   return res.render('admin/activity', {
     title: scope === 'all' ? 'Admin – Activity' : 'Admin – Settings history',
     q,
@@ -183,6 +199,7 @@ router.get('/activity', requireAdmin, (req, res) => {
     pageCount,
     total,
     events,
+    fiuuAccountLabelMap,
   });
 });
 
@@ -2952,6 +2969,18 @@ router.post(
       }
 
       try {
+        const formatFiuuAccountLabel = (v) => {
+          const id = String(v || '').trim();
+          if (!id) return '';
+          try {
+            const accounts = fiuuAccountsService.getAccounts();
+            const found = accounts.find((a) => String(a.id) === id);
+            return found ? (String(found.label || '').trim() || String(found.id || '').trim() || id) : id;
+          } catch (_) {
+            return id;
+          }
+        };
+
         const changes = computeFieldChanges({
           before: { name: '', slug: '', visible: '', fiuu_account_id: '' },
           after: {
@@ -2964,7 +2993,7 @@ router.post(
             { key: 'name', label: 'Name' },
             { key: 'slug', label: 'Slug' },
             { key: 'visible', label: 'Visible' },
-            { key: 'fiuu_account_id', label: 'Online payment account' },
+            { key: 'fiuu_account_id', label: 'Online payment account', format: formatFiuuAccountLabel },
           ],
         });
 
@@ -3036,6 +3065,18 @@ router.post(
       }
 
       try {
+        const formatFiuuAccountLabel = (v) => {
+          const id = String(v || '').trim();
+          if (!id) return '';
+          try {
+            const accounts = fiuuAccountsService.getAccounts();
+            const found = accounts.find((a) => String(a.id) === id);
+            return found ? (String(found.label || '').trim() || String(found.id || '').trim() || id) : id;
+          } catch (_) {
+            return id;
+          }
+        };
+
         const changes = computeFieldChanges({
           before: {
             name: current.name || '',
@@ -3047,7 +3088,7 @@ router.post(
           },
           fields: [
             { key: 'name', label: 'Name' },
-            { key: 'fiuu_account_id', label: 'Online payment account' },
+            { key: 'fiuu_account_id', label: 'Online payment account', format: formatFiuuAccountLabel },
           ],
         });
 

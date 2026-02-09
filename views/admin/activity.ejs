@@ -1,6 +1,8 @@
 <%- include('../shared/top', { title }) %>
 
 <% const scopeSafe = (typeof scope !== 'undefined' && scope) ? String(scope) : 'all'; %>
+<% const fiuuAccountLabelMapSafe = (typeof fiuuAccountLabelMap !== 'undefined' && fiuuAccountLabelMap && typeof fiuuAccountLabelMap === 'object') ? fiuuAccountLabelMap : {}; %>
+<% function resolveFiuuAccountLabel(v) { const id = String(v == null ? '' : v).trim(); if (!id) return ''; return (fiuuAccountLabelMapSafe && fiuuAccountLabelMapSafe[id]) ? String(fiuuAccountLabelMapSafe[id]) : id; } %>
 
 <div class="row" style="justify-content:space-between; align-items:flex-end; gap:12px">
   <div>
@@ -82,8 +84,11 @@
                 <% if (ch.length) { %>
                   <div class="muted small" style="margin-top:6px">
                     <% ch.slice(0, 8).forEach(c => { %>
+                      <% const isFiuuAccount = String(c.field || '').trim() === 'fiuu_account_id'; %>
+                      <% const beforeShown = isFiuuAccount ? resolveFiuuAccountLabel(c.before) : c.before; %>
+                      <% const afterShown = isFiuuAccount ? resolveFiuuAccountLabel(c.after) : c.after; %>
                       <div>
-                        <strong><%= c.label || c.field || 'Field' %></strong>: <%= (c.before == null || String(c.before) === '') ? '—' : c.before %> → <%= (c.after == null || String(c.after) === '') ? '—' : c.after %>
+                        <strong><%= c.label || c.field || 'Field' %></strong>: <%= (beforeShown == null || String(beforeShown) === '') ? '—' : beforeShown %> → <%= (afterShown == null || String(afterShown) === '') ? '—' : afterShown %>
                       </div>
                     <% }) %>
                     <% if (ch.length > 8) { %>
