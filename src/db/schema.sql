@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS product_variants (
   width_cm REAL CHECK (width_cm IS NULL OR width_cm >= 0),
   stock INTEGER NOT NULL CHECK (stock >= 0),
   image_url TEXT,
+  visibility INTEGER NOT NULL DEFAULT 1 CHECK (visibility IN (0,1)),
+  archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0,1)),
   active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

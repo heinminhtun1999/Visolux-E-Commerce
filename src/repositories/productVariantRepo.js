@@ -15,7 +15,7 @@ function mapVariant(row) {
     width_cm: row.width_cm == null ? null : Number(row.width_cm),
     stock: Number(row.stock),
     image_url: row.image_url || null,
-    active: Boolean(row.active),
+    active: row.active == null ? true : Boolean(row.active),
     sort_order: Number(row.sort_order || 0),
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -30,7 +30,10 @@ function listByProductId(productId, { includeInactive } = {}) {
   const db = getDb();
   const pid = Number(productId);
   if (!Number.isFinite(pid) || pid <= 0) return [];
-  const where = includeInactive ? 'product_id=?' : 'product_id=? AND active=1';
+
+  const clauses = ['product_id=?'];
+  if (!includeInactive) clauses.push('COALESCE(active, 1)=1');
+  const where = clauses.join(' AND ');
   return db
     .prepare(`SELECT * FROM product_variants WHERE ${where} ORDER BY sort_order ASC, variant_id ASC`)
     .all(pid)
@@ -72,15 +75,32 @@ function create({ product_id, type_key, label, price, cost_price, weight_kg, hei
 
   const s = Math.max(0, Math.floor(Number(stock || 0)));
 
+  // New model: only `active` controls sellability for variants.
   const isActive = active == null ? 1 : (active ? 1 : 0);
   const order = Number.isFinite(Number(sort_order)) ? Math.floor(Number(sort_order)) : 0;
 
   const info = db
     .prepare(
-      `INSERT INTO product_variants (product_id, type_key, label, price, cost_price, weight_kg, height_cm, length_cm, width_cm, stock, image_url, active, sort_order)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      `INSERT INTO product_variants (product_id, type_key, label, price, cost_price, weight_kg, height_cm, length_cm, width_cm, stock, image_url, visibility, archived, active, sort_order)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     )
-    .run(pid, key, lbl, Math.floor(priceCents), costCents == null ? null : Math.floor(costCents), wKg, hCm, lCm, wiCm, s, image_url || null, isActive, order);
+    .run(
+      pid,
+      key,
+      lbl,
+      Math.floor(priceCents),
+      costCents == null ? null : Math.floor(costCents),
+      wKg,
+      hCm,
+      lCm,
+      wiCm,
+      s,
+      image_url || null,
+      1,
+      0,
+      isActive,
+      order
+    );
 
   return getById(info.lastInsertRowid);
 }
@@ -158,12 +178,33 @@ function update(variantId, patch) {
   return getById(v.variant_id);
 }
 
-function deleteById(variantId) {
+function archiveById(variantId) {
+  // Backward-compatible name: treat as disabling.
+  return update(variantId, { active: false });
+}
+
+function unarchiveById(variantId) {
+  // Backward-compatible name: treat as enabling.
+  return update(variantId, { active: true });
+}
+
+function getVariantActivityCounts(productId) {
   const db = getDb();
-  const v = getById(variantId);
-  if (!v) return null;
-  db.prepare('DELETE FROM product_variants WHERE variant_id=?').run(v.variant_id);
-  return v;
+  const pid = Number(productId);
+  if (!Number.isFinite(pid) || pid <= 0) return { total: 0, active: 0 };
+  const row = db
+    .prepare(
+      `SELECT
+         COUNT(*) as total,
+         SUM(CASE WHEN COALESCE(active, 1)=1 THEN 1 ELSE 0 END) as active
+       FROM product_variants
+       WHERE product_id=?`
+    )
+    .get(pid);
+  return {
+    total: Math.max(0, Math.floor(Number(row?.total || 0))),
+    active: Math.max(0, Math.floor(Number(row?.active || 0))),
+  };
 }
 
 function computeAggregateForProduct(productId) {
@@ -174,20 +215,20 @@ function computeAggregateForProduct(productId) {
   const row = db
     .prepare(
       `SELECT
-         COUNT(*) as c,
-         SUM(stock) as total_stock,
-         MIN(price) as min_price
+         COUNT(*) as c_all,
+         SUM(CASE WHEN COALESCE(active, 1)=1 THEN stock ELSE 0 END) as total_stock,
+         MIN(CASE WHEN COALESCE(active, 1)=1 THEN price ELSE NULL END) as min_price
        FROM product_variants
-       WHERE product_id=? AND active=1`
+       WHERE product_id=?`
     )
     .get(pid);
 
-  const count = Number(row?.c || 0);
-  if (count <= 0) return { hasVariants: false, stock: null, minPrice: null };
+  const countAll = Number(row?.c_all || 0);
+  if (countAll <= 0) return { hasVariants: false, stock: null, minPrice: null };
   return {
     hasVariants: true,
     stock: Math.max(0, Number(row.total_stock || 0)),
-    minPrice: Number(row.min_price || 0),
+    minPrice: row.min_price == null ? null : Number(row.min_price),
   };
 }
 
@@ -196,7 +237,9 @@ module.exports = {
   getById,
   create,
   update,
-  deleteById,
+  archiveById,
+  unarchiveById,
+  getVariantActivityCounts,
   computeAggregateForProduct,
   normalizeTypeKey,
 };

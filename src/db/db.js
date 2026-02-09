@@ -95,24 +95,32 @@ function ensureInventoryAggregatesFromVariants(database) {
   try {
     const rows = database
       .prepare(
-        `SELECT product_id, SUM(stock) as total_stock, MIN(price) as min_price
+        `SELECT
+           product_id,
+           COUNT(*) as all_count,
+           SUM(CASE WHEN COALESCE(visibility, 1)=1 AND COALESCE(archived, 0)=0 THEN stock ELSE 0 END) as total_stock,
+           MIN(CASE WHEN COALESCE(visibility, 1)=1 AND COALESCE(archived, 0)=0 THEN price ELSE NULL END) as min_price
          FROM product_variants
-         WHERE active=1
          GROUP BY product_id`
       )
       .all();
 
     if (!rows || !rows.length) return;
 
-    const updateStmt = database.prepare('UPDATE inventory SET stock=?, price=? WHERE product_id=?');
+    const updateStmt = database.prepare('UPDATE inventory SET stock=@stock, price=COALESCE(@price, price) WHERE product_id=@product_id');
 
     const tx = database.transaction((rs) => {
       for (const r of rs) {
         const productId = Number(r.product_id);
         if (!Number.isFinite(productId) || productId <= 0) continue;
+        const allCount = Math.max(0, Math.floor(Number(r.all_count || 0)));
+        if (allCount <= 0) continue;
+
         const stock = Math.max(0, Math.floor(Number(r.total_stock || 0)));
-        const minPrice = Math.max(100, Math.floor(Number(r.min_price || 0)));
-        updateStmt.run(stock, minPrice, productId);
+        const rawMin = r.min_price == null ? null : Number(r.min_price);
+        const minPrice = rawMin == null || !Number.isFinite(rawMin) ? null : Math.max(100, Math.floor(rawMin));
+
+        updateStmt.run({ product_id: productId, stock, price: minPrice });
       }
     });
 
@@ -217,6 +225,8 @@ function ensureProductVariants(database) {
       width_cm REAL,
       stock INTEGER NOT NULL CHECK (stock >= 0),
       image_url TEXT,
+      visibility INTEGER NOT NULL DEFAULT 1 CHECK (visibility IN (0,1)),
+      archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0,1)),
       active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -245,11 +255,38 @@ function ensureProductVariants(database) {
     if (!has('width_cm')) {
       database.exec('ALTER TABLE product_variants ADD COLUMN width_cm REAL');
     }
+    if (!has('visibility')) {
+      database.exec('ALTER TABLE product_variants ADD COLUMN visibility INTEGER NOT NULL DEFAULT 1');
+    }
+    if (!has('archived')) {
+      database.exec('ALTER TABLE product_variants ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
+    }
+
+    // Defensive backfill: some older DBs may end up with NULLs (or columns created without NOT NULL).
+    try {
+      database.exec('UPDATE product_variants SET visibility = 1 WHERE visibility IS NULL');
+    } catch (_) {
+      // ignore
+    }
+    try {
+      database.exec('UPDATE product_variants SET archived = 0 WHERE archived IS NULL');
+    } catch (_) {
+      // ignore
+    }
   } catch (_) {
     // ignore
   }
 
   database.exec('CREATE INDEX IF NOT EXISTS idx_product_variants_product ON product_variants(product_id, active, sort_order, variant_id)');
+
+  // Optimized listing index (safe to create even if unused).
+  try {
+    database.exec(
+      'CREATE INDEX IF NOT EXISTS idx_product_variants_list ON product_variants(product_id, archived, visibility, active, sort_order, variant_id)'
+    );
+  } catch (_) {
+    // ignore
+  }
 
   database.exec(
     `CREATE TRIGGER IF NOT EXISTS trg_product_variants_updated_at

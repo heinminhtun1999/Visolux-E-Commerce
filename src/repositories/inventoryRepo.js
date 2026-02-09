@@ -29,6 +29,12 @@ function mapProduct(row) {
 function countPublic({ q, category, availability, minPriceCents, maxPriceCents }) {
   const db = getDb();
   const where = ['i.archived=0', 'i.visibility=1', 'c.archived=0', 'c.visible=1'];
+  // If a product has variants, only show it publicly when it has at least one sellable variant.
+  // If it has no variants, fall back to base product visibility/archived.
+  where.push(`(
+    NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id)
+    OR EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1)
+  )`);
   const params = {};
   if (category) {
     where.push('i.category=@category');
@@ -64,6 +70,12 @@ function countPublic({ q, category, availability, minPriceCents, maxPriceCents }
 function listPublic({ q, category, availability, minPriceCents, maxPriceCents, sort, limit, offset }) {
   const db = getDb();
   const where = ['i.archived=0', 'i.visibility=1', 'c.archived=0', 'c.visible=1'];
+  // If a product has variants, only show it publicly when it has at least one sellable variant.
+  // If it has no variants, fall back to base product visibility/archived.
+  where.push(`(
+    NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id)
+    OR EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1)
+  )`);
   const params = { limit, offset };
   if (category) {
     where.push('i.category=@category');
@@ -146,12 +158,12 @@ function countAdmin({ q, includeArchived, archived, category, visibility, stock,
     where.push(
       `(
         (
-          EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
-          AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
+          EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1)
+          AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
         )
         OR
         (
-          NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
+          NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1)
           AND i.stock > 0 AND i.stock <= @lowStock
         )
       )`
@@ -207,12 +219,12 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
     where.push(
       `(
         (
-          EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
-          AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
+          EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1)
+          AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
         )
         OR
         (
-          NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
+          NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1)
           AND i.stock > 0 AND i.stock <= @lowStock
         )
       )`
@@ -296,12 +308,12 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
                  c.name as category_name,
                  CASE WHEN (
                    (
-                     EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
-                     AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
+                     EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1)
+                     AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
                    )
                    OR
                    (
-                     NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND pv.active=1)
+                     NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = i.product_id AND COALESCE(pv.active, 1)=1)
                      AND i.stock > 0 AND i.stock <= @lowStock
                    )
                  ) THEN 1 ELSE 0 END as low_stock
@@ -318,12 +330,12 @@ function countLowStockAdmin({ includeArchived, lowStockThreshold }) {
   const where = [
     `(
       (
-        EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = inventory.product_id AND pv.active=1)
-        AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = inventory.product_id AND pv.active=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
+        EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = inventory.product_id AND COALESCE(pv.active, 1)=1)
+        AND EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = inventory.product_id AND COALESCE(pv.active, 1)=1 AND pv.stock > 0 AND pv.stock <= @lowStock)
       )
       OR
       (
-        NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = inventory.product_id AND pv.active=1)
+        NOT EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = inventory.product_id AND COALESCE(pv.active, 1)=1)
         AND inventory.stock > 0 AND inventory.stock <= @lowStock
       )
     )`,

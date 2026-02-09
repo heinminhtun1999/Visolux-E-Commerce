@@ -194,7 +194,7 @@ function deductStockAtomicallyForOrder(order) {
 
       const res = useVariant
         ? db
-          .prepare('UPDATE product_variants SET stock = stock - ? WHERE variant_id=? AND stock >= ? AND active=1')
+          .prepare('UPDATE product_variants SET stock = stock - ? WHERE variant_id=? AND stock >= ? AND visibility=1 AND archived=0')
           .run(it.quantity, it.variant_id, it.quantity)
         : db
           .prepare('UPDATE inventory SET stock = stock - ? WHERE product_id=? AND stock >= ? AND archived=0')
