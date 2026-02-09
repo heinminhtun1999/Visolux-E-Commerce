@@ -491,7 +491,7 @@ function createOrder({
         }
 
         const v = db
-          .prepare('SELECT variant_id, product_id, stock, active FROM product_variants WHERE variant_id=?')
+          .prepare('SELECT variant_id, product_id, stock, COALESCE(active, 1) as active FROM product_variants WHERE variant_id=?')
           .get(variantId);
         const vStock = Math.max(0, Math.floor(Number(v?.stock || 0)));
         if (!v || Number(v.active) !== 1 || Number(v.product_id) !== pid) {

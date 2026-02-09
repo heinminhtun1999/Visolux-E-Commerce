@@ -139,6 +139,11 @@
   <div class="muted small" style="margin-top:-6px; margin-bottom:10px">
     <% if (order.payment_method === 'ONLINE') { %>
       Refunds here send a partial refund request to the online payment provider and are recorded in-app.
+      <span class="muted">•</span>
+      Refund is disabled after <strong><%= (typeof onlineRefundWindowMonths !== 'undefined' ? onlineRefundWindowMonths : 3) %> months</strong> for ONLINE payments.
+      <% if (typeof onlineRefundAgeBlocked !== 'undefined' && onlineRefundAgeBlocked) { %>
+        <span class="badge warn" style="margin-left:8px">Refund disabled (age)</span>
+      <% } %>
       <% if (/^FPX/i.test(String(order.payment_channel || ''))) { %>
         For <strong>FPX</strong>, auto-refund is disabled; record refunds manually after bank transfer.
       <% } %>
@@ -149,7 +154,8 @@
   <table class="table">
     <thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Subtotal</th><th>Refunded</th><th></th></tr></thead>
     <tbody>
-      <% const canOnlineRefund = order.payment_method === 'ONLINE' && (order.payment_status === 'PAID' || order.payment_status === 'PARTIALLY_REFUNDED' || order.payment_status === 'REFUNDED'); %>
+      <% const onlineRefundAgeBlockedFlag = (typeof onlineRefundAgeBlocked !== 'undefined') ? Boolean(onlineRefundAgeBlocked) : false; %>
+      <% const canOnlineRefund = !onlineRefundAgeBlockedFlag && order.payment_method === 'ONLINE' && (order.payment_status === 'PAID' || order.payment_status === 'PARTIALLY_REFUNDED' || order.payment_status === 'REFUNDED'); %>
       <% const isFpxOnline = order.payment_method === 'ONLINE' && /^FPX/i.test(String(order.payment_channel || '')); %>
       <% const canOnlineRefundViaGateway = canOnlineRefund && !isFpxOnline; %>
       <% const canOfflineManualRefund = order.payment_method === 'OFFLINE_TRANSFER' && (order.payment_status === 'PAID' || order.payment_status === 'PARTIALLY_REFUNDED' || order.payment_status === 'REFUNDED'); %>
@@ -194,7 +200,9 @@
             <% } %>
           </td>
           <td>
-            <% if (isFpxOnline) { %>
+            <% if (order.payment_method === 'ONLINE' && onlineRefundAgeBlockedFlag) { %>
+              <span class="muted small">Refund disabled (order older than <%= (typeof onlineRefundWindowMonths !== 'undefined' ? onlineRefundWindowMonths : 3) %> months)</span>
+            <% } else if (isFpxOnline) { %>
               <% if (canOnlineRefund && remainingQty > 0) { %>
                 <form
                   method="post"
@@ -300,7 +308,9 @@
     <div class="card" style="padding:12px; min-width:320px">
       <div style="font-weight:800; margin-bottom:6px">Extra refund (shipping / manual)</div>
       <div class="muted small" style="margin-bottom:10px">Use this to refund shipping or any remaining amount up to the grand total.</div>
-      <% if (isFpxOnline) { %>
+      <% if (order.payment_method === 'ONLINE' && onlineRefundAgeBlockedFlag) { %>
+        <div class="muted small">Refund disabled (order older than <%= (typeof onlineRefundWindowMonths !== 'undefined' ? onlineRefundWindowMonths : 3) %> months)</div>
+      <% } else if (isFpxOnline) { %>
         <% if (canOnlineRefund && Number(refundableRemainingCents || 0) > 0) { %>
           <form
             method="post"

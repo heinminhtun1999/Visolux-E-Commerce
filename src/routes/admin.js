@@ -38,9 +38,25 @@ const backupService = require('../services/backupService');
 const { env } = require('../config/env');
 const { MALAYSIA_STATES } = require('../utils/malaysia');
 const { renderMarkdown, sanitizeHtmlFragment, sanitizeHtmlFragmentNoImages } = require('../utils/markdown');
+const { parseSqliteDateTimeAsUtc } = require('../utils/datetime');
 const crypto = require('crypto');
 
 const router = express.Router();
+
+const ONLINE_REFUND_WINDOW_MONTHS = 3;
+
+function isOnlineRefundWindowExpired(order) {
+  try {
+    if (!order || String(order.payment_method || '') !== 'ONLINE') return false;
+    const createdAt = parseSqliteDateTimeAsUtc(order.created_at);
+    if (!createdAt) return false;
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - ONLINE_REFUND_WINDOW_MONTHS);
+    return createdAt.getTime() < cutoff.getTime();
+  } catch (_) {
+    return false;
+  }
+}
 
 router.get('/admin-accounts', requireSuperAdmin, (req, res) => {
   const page = Math.max(1, Number(req.query.page || 1) || 1);
@@ -309,6 +325,38 @@ function assertValidCategorySlug(slug) {
     err.status = 400;
     throw err;
   }
+  return s;
+}
+
+function slugifyCategory(name) {
+  let s = String(name || '').trim();
+  if (!s) {
+    const err = new Error('Category name is required.');
+    err.status = 400;
+    throw err;
+  }
+
+  s = s
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[^a-z0-9]+/g, '')
+    .replace(/[-_]+$/g, '')
+    .trim();
+
+  if (s.length > 80) {
+    s = s.slice(0, 80).replace(/[-_]+$/g, '');
+  }
+
+  if (s.length < 2) {
+    const err = new Error('Category name could not be converted into a valid slug.');
+    err.status = 400;
+    throw err;
+  }
+
   return s;
 }
 
@@ -3282,6 +3330,20 @@ async function refreshProductAggregatesFromVariants(productId) {
   inventoryRepo.update(productId, patch);
 }
 
+function maybeAutoArchiveProductIfNoActiveVariants(productId) {
+  const product = inventoryRepo.getById(productId);
+  if (!product) return { archived: false };
+  if (product.archived) return { archived: false };
+
+  const counts = productVariantRepo.getVariantActivityCounts(productId);
+  if (!counts || counts.total <= 0) return { archived: false };
+  if (counts.active > 0) return { archived: false };
+
+  // All variants are disabled => auto-archive product and hide from storefront.
+  inventoryRepo.update(productId, { archived: true, visibility: false });
+  return { archived: true };
+}
+
 router.post(
   '/products/:id/variants/new',
   upload.single('variant_image'),
@@ -3324,7 +3386,7 @@ router.post(
       const lengthCm = parseNonNegativeNumberOrNull(req.validated.body.length_cm, { label: 'Length (cm)' });
       const widthCm = parseNonNegativeNumberOrNull(req.validated.body.width_cm, { label: 'Width (cm)' });
       const stock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
-      const active = String(req.validated.body.active || '') === '1';
+      const active = String(req.validated.body.active || '1') === '1';
       const sortOrderRaw = String(req.validated.body.sort_order || '').trim();
       const sortOrder = sortOrderRaw ? Math.floor(Number(sortOrderRaw)) : 0;
 
@@ -3421,7 +3483,7 @@ router.post(
       const lengthCm = parseNonNegativeNumberOrNull(req.validated.body.length_cm, { label: 'Length (cm)' });
       const widthCm = parseNonNegativeNumberOrNull(req.validated.body.width_cm, { label: 'Width (cm)' });
       const stock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
-      const active = String(req.validated.body.active || '') === '1';
+      const active = String(req.validated.body.active || (existing.active ? '1' : '0')) === '1';
       const sortOrderRaw = String(req.validated.body.sort_order || '').trim();
       const sortOrder = sortOrderRaw ? Math.floor(Number(sortOrderRaw)) : 0;
 
@@ -3462,7 +3524,105 @@ router.post(
 
       await refreshProductAggregatesFromVariants(productId);
 
+      const productAfter = inventoryRepo.getById(productId);
+      if (active && productAfter && productAfter.archived) {
+        req.session.flash = {
+          type: 'info',
+          message: 'Variant enabled, but this product is archived. Unarchive the product to show it on the storefront.',
+        };
+        return res.redirect(`/admin/products/${productId}/edit`);
+      }
+
+      const auto = maybeAutoArchiveProductIfNoActiveVariants(productId);
+      if (auto.archived) {
+        req.session.flash = { type: 'info', message: 'Variant saved. Product was auto-archived because all variants are disabled.' };
+        return res.redirect(`/admin/products/${productId}/edit`);
+      }
+
       req.session.flash = { type: 'success', message: 'Variant updated.' };
+      return res.redirect(`/admin/products/${productId}/edit`);
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/products/:id/variants/:variantId/archive',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      params: z.object({ id: z.string(), variantId: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      const productId = Number(req.params.id);
+      const variantId = Number(req.params.variantId);
+      if (!Number.isFinite(productId) || !Number.isFinite(variantId)) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid request.' });
+      }
+
+      const existing = productVariantRepo.getById(variantId);
+      if (!existing || existing.product_id !== productId) {
+        return res.status(404).render('shared/error', { title: 'Not Found', message: 'Variant not found.' });
+      }
+
+      productVariantRepo.archiveById(variantId);
+      await refreshProductAggregatesFromVariants(productId);
+
+      const auto = maybeAutoArchiveProductIfNoActiveVariants(productId);
+      if (auto.archived) {
+        req.session.flash = { type: 'info', message: 'Variant disabled. Product was auto-archived because all variants are disabled.' };
+        return res.redirect(`/admin/products/${productId}/edit`);
+      }
+
+      req.session.flash = { type: 'success', message: 'Variant disabled.' };
+      return res.redirect(`/admin/products/${productId}/edit`);
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/products/:id/variants/:variantId/unarchive',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      params: z.object({ id: z.string(), variantId: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      const productId = Number(req.params.id);
+      const variantId = Number(req.params.variantId);
+      if (!Number.isFinite(productId) || !Number.isFinite(variantId)) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid request.' });
+      }
+
+      const existing = productVariantRepo.getById(variantId);
+      if (!existing || existing.product_id !== productId) {
+        return res.status(404).render('shared/error', { title: 'Not Found', message: 'Variant not found.' });
+      }
+
+      productVariantRepo.unarchiveById(variantId);
+      await refreshProductAggregatesFromVariants(productId);
+
+      const productAfter = inventoryRepo.getById(productId);
+      if (productAfter && productAfter.archived) {
+        req.session.flash = {
+          type: 'info',
+          message: 'Variant enabled, but this product is archived. Unarchive the product to show it on the storefront.',
+        };
+        return res.redirect(`/admin/products/${productId}/edit`);
+      }
+
+      req.session.flash = { type: 'success', message: 'Variant enabled.' };
       return res.redirect(`/admin/products/${productId}/edit`);
     } catch (e) {
       return next(e);
@@ -3493,26 +3653,19 @@ router.post(
         return res.status(404).render('shared/error', { title: 'Not Found', message: 'Variant not found.' });
       }
 
-      const removed = productVariantRepo.deleteById(variantId);
-
-      if (removed && removed.image_url) {
-        const url = String(removed.image_url || '');
-        if (url.startsWith('/uploads/products/')) {
-          const fileName = path.posix.basename(url);
-          if (/^variant_\d+_\d+_[0-9a-f]{16}\.webp$/i.test(fileName)) {
-            const fullPath = path.join(process.cwd(), 'storage', 'uploads', 'products', fileName);
-            try {
-              fs.unlinkSync(fullPath);
-            } catch (_) {
-              // ignore
-            }
-          }
-        }
-      }
+      // Deletion is disabled for variants; keep history for orders.
+      // Preserve route for backward compatibility and treat it as "disable".
+      productVariantRepo.archiveById(variantId);
 
       await refreshProductAggregatesFromVariants(productId);
 
-      req.session.flash = { type: 'success', message: 'Variant deleted.' };
+      const auto = maybeAutoArchiveProductIfNoActiveVariants(productId);
+      if (auto.archived) {
+        req.session.flash = { type: 'info', message: 'Variant disabled. Product was auto-archived because all variants are disabled.' };
+        return res.redirect(`/admin/products/${productId}/edit`);
+      }
+
+      req.session.flash = { type: 'success', message: 'Variant disabled.' };
       return res.redirect(`/admin/products/${productId}/edit`);
     } catch (e) {
       return next(e);
@@ -3573,9 +3726,9 @@ router.post(
       const requestedStock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
 
       const agg = productVariantRepo.computeAggregateForProduct(id);
-      const hasActiveVariants = Boolean(agg && agg.hasVariants);
-      const stock = hasActiveVariants ? Math.max(0, Math.floor(Number(agg.stock || 0))) : requestedStock;
-      const effectivePriceCents = hasActiveVariants && agg.minPrice != null
+      const hasVariants = Boolean(agg && agg.hasVariants);
+      const stock = hasVariants ? Math.max(0, Math.floor(Number(agg.stock || 0))) : requestedStock;
+      const effectivePriceCents = hasVariants && agg.minPrice != null
         ? Math.max(100, Math.floor(Number(agg.minPrice || priceCents)))
         : priceCents;
 
@@ -3604,6 +3757,13 @@ router.post(
         }
       }
 
+      const nextArchived = req.validated.body.archived === '1';
+      let nextVisibility = req.validated.body.visibility === '1';
+      // Archiving always hides the product from storefront.
+      if (nextArchived) nextVisibility = false;
+      // Unarchiving should bring it back (admins can hide again if needed).
+      if (product.archived && !nextArchived) nextVisibility = true;
+
       inventoryRepo.update(id, {
         name: req.validated.body.name,
         description: descText,
@@ -3616,10 +3776,13 @@ router.post(
         length_cm: lengthCm,
         width_cm: widthCm,
         stock,
-        visibility: req.validated.body.visibility === '1',
-        archived: req.validated.body.archived === '1',
+        visibility: nextVisibility,
+        archived: nextArchived,
         product_image: imagePath,
       });
+
+      // Keep inventory stock/price aligned with variants.
+      await refreshProductAggregatesFromVariants(id);
 
       // Audit: field-level changes.
       try {
@@ -3800,6 +3963,8 @@ router.get('/orders/:id', (req, res) => {
   const refundByItem = orderRefundRepo.summariesByOrder(id);
   const refundByItemConfirmed = orderRefundRepo.summariesConfirmedByOrder(id);
 
+  const onlineRefundAgeBlocked = isOnlineRefundWindowExpired(order);
+
   return res.render('admin/order_detail', {
     title: `Admin – Order ${order.order_code || `#${order.order_id}`}`,
     order,
@@ -3817,6 +3982,8 @@ router.get('/orders/:id', (req, res) => {
     refundableRemainingCents,
     refundByItem,
     refundByItemConfirmed,
+    onlineRefundAgeBlocked,
+    onlineRefundWindowMonths: ONLINE_REFUND_WINDOW_MONTHS,
   });
 });
 
@@ -3897,6 +4064,13 @@ router.post(
       }
 
       const order = orderRepo.getById(orderId);
+      if (order && order.payment_method === 'ONLINE' && isOnlineRefundWindowExpired(order)) {
+        req.session.flash = {
+          type: 'error',
+          message: `Refund is disabled for ONLINE payments after ${ONLINE_REFUND_WINDOW_MONTHS} months.`,
+        };
+        return res.redirect(`/admin/orders/${orderId}`);
+      }
       if (order && order.payment_method === 'ONLINE' && /^FPX/i.test(String(order.payment_channel || ''))) {
         req.session.flash = { type: 'error', message: 'Auto-refund is disabled for FPX payments. Refund must be processed manually.' };
         return res.redirect(`/admin/orders/${orderId}`);
@@ -4004,6 +4178,13 @@ router.post(
       }
 
       const order = orderRepo.getById(orderId);
+      if (order && order.payment_method === 'ONLINE' && isOnlineRefundWindowExpired(order)) {
+        req.session.flash = {
+          type: 'error',
+          message: `Refund is disabled for ONLINE payments after ${ONLINE_REFUND_WINDOW_MONTHS} months.`,
+        };
+        return res.redirect(`/admin/orders/${orderId}`);
+      }
       if (order && order.payment_method === 'ONLINE' && /^FPX/i.test(String(order.payment_channel || ''))) {
         req.session.flash = { type: 'error', message: 'Auto-refund is disabled for FPX payments. Refund must be processed manually.' };
         return res.redirect(`/admin/orders/${orderId}`);
@@ -4061,6 +4242,12 @@ router.post(
       if (!order) {
         const err = new Error('Order not found');
         err.status = 404;
+        throw err;
+      }
+
+      if (order.payment_method === 'ONLINE' && isOnlineRefundWindowExpired(order)) {
+        const err = new Error(`Refund is disabled for ONLINE payments after ${ONLINE_REFUND_WINDOW_MONTHS} months.`);
+        err.status = 400;
         throw err;
       }
 
@@ -4165,6 +4352,12 @@ router.post(
       if (!order) {
         const err = new Error('Order not found');
         err.status = 404;
+        throw err;
+      }
+
+      if (order.payment_method === 'ONLINE' && isOnlineRefundWindowExpired(order)) {
+        const err = new Error(`Refund is disabled for ONLINE payments after ${ONLINE_REFUND_WINDOW_MONTHS} months.`);
+        err.status = 400;
         throw err;
       }
 
@@ -4306,6 +4499,12 @@ router.post(
       if (!order) {
         const err = new Error('Order not found');
         err.status = 404;
+        throw err;
+      }
+
+      if (order.payment_method === 'ONLINE' && isOnlineRefundWindowExpired(order)) {
+        const err = new Error(`Refund is disabled for ONLINE payments after ${ONLINE_REFUND_WINDOW_MONTHS} months.`);
+        err.status = 400;
         throw err;
       }
 

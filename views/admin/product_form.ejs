@@ -97,6 +97,13 @@
       </div>
     </div>
 
+    <% if (product && product.archived) { %>
+      <div class="muted small" style="margin-top:8px">
+        This product is archived and will not appear on the storefront, even if some variants are enabled.
+        Unarchive the product to make it available again.
+      </div>
+    <% } %>
+
     <label>Product images</label>
     <input class="input" type="file" name="product_images" accept="image/*" />
     <div class="muted small" style="margin-top:6px">Tip: upload one main product image.</div>
@@ -126,6 +133,9 @@
         <% variants.forEach(v => { %>
           <div class="card" style="padding:12px">
             <div class="muted small">Variant #<%= v.variant_id %></div>
+            <% if (!v.active) { %>
+              <div class="muted small" style="margin-top:4px">Status: <strong>Disabled</strong></div>
+            <% } %>
 
             <% if (v.image_url) { %>
               <img class="product-img" style="height:140px; margin-top:8px" src="<%= v.image_url %>" alt="" />
@@ -178,8 +188,8 @@
                 <div class="col" style="min-width:160px">
                   <label>Active</label>
                   <select name="active">
-                    <option value="1" <%= v.active ? 'selected' : '' %>>Yes</option>
-                    <option value="0" <%= !v.active ? 'selected' : '' %>>No</option>
+                    <option value="1" <%= v.active ? 'selected' : '' %>>Enabled</option>
+                    <option value="0" <%= !v.active ? 'selected' : '' %>>Disabled</option>
                   </select>
                 </div>
                 <div class="col" style="min-width:160px">
@@ -191,14 +201,9 @@
               <label>Variant image (optional)</label>
               <input class="input" type="file" name="variant_image" accept="image/*" />
 
-              <div class="actions" style="margin-top:10px">
-                <button class="btn btn-primary btn-icon" type="submit" title="Save variant" aria-label="Save variant" data-label="Save variant">Save</button>
+              <div class="actions" style="margin-top:10px; width: 100%;">
+                <button class="btn btn-primary btn-icon" type="submit" title="Save variant" aria-label="Save variant" data-label="Save variant" style="width: 100%;">Save</button>
               </div>
-            </form>
-
-            <form method="post" action="/admin/products/<%= product.product_id %>/variants/<%= v.variant_id %>/delete" style="margin-top:8px">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-              <button class="btn btn-icon" type="submit" title="Delete variant" aria-label="Delete variant" data-label="Delete variant"><%- icon('trash') %></button>
             </form>
           </div>
         <% }) %>
@@ -237,8 +242,8 @@
           <div class="col" style="min-width:200px">
             <label>Active</label>
             <select name="active">
-              <option value="1" selected>Yes</option>
-              <option value="0">No</option>
+              <option value="1" selected>Enabled</option>
+              <option value="0">Disabled</option>
             </select>
           </div>
         </div>

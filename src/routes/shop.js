@@ -361,6 +361,14 @@ router.get('/products/:id', (req, res, next) => {
   const images = productImageRepo.listByProductId(id);
   const variants = productVariantRepo.listByProductId(id, { includeInactive: false });
 
+  // If the product has variants, require at least one sellable variant to show the product publicly.
+  // This prevents products with all variants archived/hidden from being reachable via direct URL.
+  const agg = productVariantRepo.computeAggregateForProduct(id);
+  const hasAnyVariants = Boolean(agg && agg.hasVariants);
+  if (hasAnyVariants && (!variants || variants.length === 0)) {
+    return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
+  }
+
   const cheapestVariant = (variants && variants.length)
     ? variants.reduce((best, v) => (!best || Number(v.price || 0) < Number(best.price || 0)) ? v : best, null)
     : null;
