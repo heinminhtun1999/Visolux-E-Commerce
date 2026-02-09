@@ -68,7 +68,7 @@
         <% } else { %>
           <% events.forEach(ev => { %>
             <tr>
-              <td class="muted"><%= ev.created_at || '' %></td>
+              <td class="muted"><%= (typeof formatDateTime === 'function') ? formatDateTime(ev.created_at) : (ev.created_at || '') %></td>
               <td>
                 <strong><%= ev.actor_username %></strong>
                 <% if (ev.actor_is_super_admin) { %>

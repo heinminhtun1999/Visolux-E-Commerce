@@ -211,6 +211,19 @@ async function refundOrderItem({ orderId, orderItemId, quantityRefunded, amountR
       throw err;
     }
 
+    // Also enforce the order-level remaining refundable amount to prevent over-refunds
+    // when other refunds (items/extra) have already consumed the grand total.
+    const inFlightItems = orderRefundRepo.summaryByOrder(orderId);
+    const inFlightExtra = orderRefundExtraRepo.summaryByOrder(orderId);
+    const inFlightAmount = Number(inFlightItems.amount_refunded || 0) + Number(inFlightExtra.amount_refunded || 0);
+    const paidAmount = Number(order.total_amount || 0);
+    const remainingOrderAmount = Math.max(0, paidAmount - inFlightAmount);
+    if (amount > remainingOrderAmount) {
+      const err = new Error('Refund amount exceeds remaining refundable amount for this order.');
+      err.status = 400;
+      throw err;
+    }
+
     const txnId = paymentEventRepo.getLatestProviderTxnIdByOrder({ orderId, provider: 'FIUU' });
     if (!txnId) {
       const err = new Error('Cannot refund: missing online payment transaction id for this order.');

@@ -20,9 +20,9 @@
       </form>
     <% } %>
 
-    <form method="post" action="/admin/contact-messages/<%= message.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this message?');">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-      <button class="btn btn-icon icon-only" type="submit" title="Delete" aria-label="Delete" data-label="Delete"><%- icon('trash-2') %></button>
+        <form method="post" action="/admin/contact-messages/<%= message.id %>/delete" style="display:inline">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button class="btn btn-icon icon-only" type="submit" title="Delete" aria-label="Delete" data-label="Delete" data-confirm="Delete this message?" data-confirm-title="Delete message" data-confirm-ok="Delete"><%- icon('trash-2') %></button>
     </form>
   </div>
 </div>

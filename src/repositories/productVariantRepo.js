@@ -232,8 +232,42 @@ function computeAggregateForProduct(productId) {
   };
 }
 
+function listActiveByProductIds(productIds) {
+  const db = getDb();
+  const ids = Array.from(
+    new Set(
+      (Array.isArray(productIds) ? productIds : [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
+  );
+  if (!ids.length) return {};
+
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = db
+    .prepare(
+      `SELECT *
+       FROM product_variants
+       WHERE product_id IN (${placeholders})
+         AND COALESCE(active, 1)=1
+       ORDER BY product_id ASC, sort_order ASC, variant_id ASC`
+    )
+    .all(...ids);
+
+  const map = {};
+  for (const row of rows) {
+    const v = mapVariant(row);
+    if (!v) continue;
+    const k = String(v.product_id);
+    if (!map[k]) map[k] = [];
+    map[k].push(v);
+  }
+  return map;
+}
+
 module.exports = {
   listByProductId,
+  listActiveByProductIds,
   getById,
   create,
   update,

@@ -99,11 +99,11 @@ function countAdmin({ q, actorUserId, method, scope } = {}) {
   const params = {};
 
   const s = String(scope || '').trim().toLowerCase();
-  if (s === 'settings') {
   if (s === 'all') {
     // Treat "all" as "all changes" (exclude page views).
     where.push("method <> 'GET'");
   }
+  if (s === 'settings') {
     // Prefer meta-based filtering for newer diff-based audit logs, and keep path-based
     // filtering for backwards compatibility.
     where.push(

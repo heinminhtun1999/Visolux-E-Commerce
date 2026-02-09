@@ -108,6 +108,30 @@
     <% } %>
   </div>
 
+  <div class="modal" data-confirm-modal aria-hidden="true">
+    <div class="modal__backdrop" data-modal-backdrop></div>
+    <div class="modal__panel" role="dialog" aria-modal="true" aria-label="Confirmation" style="width:min(560px, 100%)">
+      <div class="modal__top">
+        <div class="modal__title" data-confirm-title>Confirm</div>
+        <button class="btn btn-icon icon-only" type="button" data-confirm-close title="Close" aria-label="Close" data-label="Close"><%- icon('x') %></button>
+      </div>
+      <div class="modal__body">
+        <div data-confirm-message>Are you sure?</div>
+        <div data-confirm-prompt-wrap style="display:none; margin-top:10px">
+          <div class="field">
+            <label data-confirm-prompt-label>Reason</label>
+            <input class="input" type="text" data-confirm-prompt-input />
+          </div>
+        </div>
+        <div class="actions" style="margin-top:12px; justify-content:flex-end">
+          <button class="btn" type="button" data-confirm-cancel>Cancel</button>
+          <button class="btn btn-danger" type="button" data-confirm-ok>Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/public/js/modal-confirm.js" defer></script>
   <script src="/public/js/button-links.js" defer></script>
   <script src="/public/js/flash-dismiss.js" defer></script>
   <script src="/public/js/password-toggle.js" defer></script>

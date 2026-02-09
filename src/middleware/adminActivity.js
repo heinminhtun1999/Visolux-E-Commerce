@@ -19,7 +19,7 @@ function adminActionFromRequest(req) {
   const p = req.params || {};
 
   // Only log settings changes (not page views).
-  // This keeps the audit trail focused on configuration changes.
+  // This keeps the audit trail focused on changes (exclude page-entering views).
   const isMutation = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
   if (!isMutation) return null;
 
@@ -65,7 +65,36 @@ function adminActionFromRequest(req) {
   if (/^\/site\//.test(rel)) return 'Updated site settings';
   if (/^\/promos/.test(rel)) return 'Updated promo settings';
 
-  return null;
+  // Generic fallback: log all other admin mutations too (categories, products, orders, etc.).
+  // More detailed entries should be logged via adminAuditService (req._auditLogged).
+  const resource = String(rel || '/').split('/').filter(Boolean)[0] || 'admin';
+  const toSingular = (word) => {
+    const w = String(word || '').trim();
+    if (!w) return '';
+    if (w.endsWith('ies') && w.length > 3) return `${w.slice(0, -3)}y`;
+    if (w.endsWith('s') && w.length > 1) return w.slice(0, -1);
+    return w;
+  };
+  const titleCase = (word) => {
+    const w = String(word || '').trim();
+    if (!w) return '';
+    return `${w.charAt(0).toUpperCase()}${w.slice(1)}`;
+  };
+  const resourceLabel = titleCase(toSingular(resource).replace(/-/g, ' '));
+
+  if (/\/archive$/.test(rel)) return `Archived ${resource}`;
+  if (/\/restore$/.test(rel)) return `Restored ${resource}`;
+  if (/\/(delete|remove)$/.test(rel)) return `Deleted ${resource}`;
+  if (/\/visibility$/.test(rel)) return `Updated ${resource} visibility`;
+  if (method === 'POST' && rel === '/categories') return 'Created category';
+  if (method === 'POST' && /^\/categories\/\d+$/.test(rel)) return 'Updated category';
+
+  // Final fallback: English, no route strings.
+  if (method === 'DELETE') return resourceLabel ? `Deleted ${resourceLabel}` : 'Deleted item';
+  if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+    return resourceLabel ? `Updated ${resourceLabel}` : 'Updated item';
+  }
+  return resourceLabel ? `Changed ${resourceLabel}` : 'Admin change';
 }
 
 function redactBody(body) {

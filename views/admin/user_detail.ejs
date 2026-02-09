@@ -24,8 +24,7 @@
           <button class="btn btn-primary" type="submit">Reopen account</button>
         </form>
         <% } else { %>
-          <form method="post" action="/admin/users/<%= user.user_id %>/close" style="display:inline"
-            onsubmit="return confirm('Close this account? The user will not be able to sign in.');">
+          <form method="post" action="/admin/users/<%= user.user_id %>/close" style="display:inline" data-confirm="Close this account? The user will not be able to sign in." data-confirm-title="Close account" data-confirm-ok="Close">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
             <button class="btn" type="submit" style="border-color:#fecaca; background:#fef2f2; color:#991b1b">Close
               account</button>

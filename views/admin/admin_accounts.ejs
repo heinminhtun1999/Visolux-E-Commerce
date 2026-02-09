@@ -73,7 +73,7 @@
                       <button class="btn btn-secondary" type="submit">Enable</button>
                     </form>
                   <% } else { %>
-                    <form method="post" action="/admin/admin-accounts/<%= a.user_id %>/disable" style="display:inline" onsubmit="return confirm('Disable this sub-admin account?');">
+                      <form method="post" action="/admin/admin-accounts/<%= a.user_id %>/disable" style="display:inline" data-confirm="Disable this sub-admin account?" data-confirm-title="Disable sub-admin" data-confirm-ok="Disable">
                       <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                       <button class="btn btn-danger" type="submit">Disable</button>
                     </form>

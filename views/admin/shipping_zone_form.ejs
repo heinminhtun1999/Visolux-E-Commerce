@@ -114,7 +114,7 @@
   <div class="row" style="justify-content:space-between; margin-top:14px">
     <div>
       <% if (zone && zone.id) { %>
-        <button class="btn" type="submit" form="deleteZoneForm" onclick="return confirm('Delete this shipping zone?')">Delete zone</button>
+        <button class="btn" type="submit" form="deleteZoneForm">Delete zone</button>
       <% } %>
     </div>
 
@@ -126,7 +126,7 @@
 </form>
 
 <% if (zone && zone.id) { %>
-  <form id="deleteZoneForm" method="post" action="/admin/site/shipping-zones/<%= zone.id %>/delete" style="display:none">
+  <form id="deleteZoneForm" method="post" action="/admin/site/shipping-zones/<%= zone.id %>/delete" style="display:none" data-confirm="Delete this shipping zone?" data-confirm-title="Delete zone" data-confirm-ok="Delete">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
   </form>
 <% } %>
