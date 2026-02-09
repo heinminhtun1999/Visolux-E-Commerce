@@ -13,6 +13,28 @@
     var initialStockIsOk = stockEl ? stockEl.classList.contains('ok') : false;
     var initialStockIsNo = stockEl ? stockEl.classList.contains('no') : false;
 
+    function renderPriceRM(el, priceLabel) {
+      if (!el) return;
+      var label = String(priceLabel || '').trim();
+      if (!label) return;
+
+      // Build: <span>RM </span> {label}
+      try {
+        while (el.firstChild) el.removeChild(el.firstChild);
+        var span = document.createElement('span');
+        span.textContent = 'RM ';
+        el.appendChild(span);
+        el.appendChild(document.createTextNode(' ' + label));
+      } catch (_) {
+        // Fallback
+        try {
+          el.textContent = 'RM ' + label;
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
+
     function encodeItems(items) {
       return (items || [])
         .map(function (u) {
@@ -91,7 +113,7 @@
       var imageUrl = opt.getAttribute('data-image-url') || '';
 
       if (priceEl && priceLabel) {
-        priceEl.textContent = priceLabel;
+        renderPriceRM(priceEl, priceLabel);
       }
 
       if (stockEl) {
