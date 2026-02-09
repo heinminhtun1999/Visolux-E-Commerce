@@ -92,14 +92,6 @@
       </a>
 
       <div class="actions product-card__actions actions_primary">
-        <% if (!isAdmin) { %>
-          <form method="post" action="/cart/add" class="btn-grow">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-            <input type="hidden" name="product_id" value="<%= p.product_id %>" />
-            <input type="hidden" name="return_to" value="<%= currentUrl %>" />
-            <button class="btn btn-primary btn-block" type="submit" <%= effStock > 0 ? '' : 'disabled' %>>Add to cart</button>
-          </form>
-        <% } %>
         <button class="btn btn-grow" type="button" data-href="/products/<%= p.product_id %>">View</button>
       </div>
     </div>

@@ -920,8 +920,11 @@ router.post(
   validate(
     z.object({
       body: z.object({
-        file: z.string().min(1),
+        file: z.string().min(1).optional(),
+        files: z.any().optional(),
         confirm: z.string().optional(),
+      }).refine((b) => Boolean((b && b.file) || (b && b.files)), {
+        message: 'Missing backup file(s).',
       }),
       query: z.any().optional(),
       params: z.any().optional(),
@@ -936,8 +939,41 @@ router.post(
         return res.redirect('/admin/backups');
       }
 
-      backupService.deleteBackupFile(String(body.file || ''));
-      req.session.flash = { type: 'success', message: 'Backup deleted.' };
+      const targets = (() => {
+        if (body.files != null) {
+          if (Array.isArray(body.files)) return body.files.map((v) => String(v || '').trim()).filter(Boolean);
+          const s = String(body.files || '').trim();
+          return s ? [s] : [];
+        }
+        const s = String(body.file || '').trim();
+        return s ? [s] : [];
+      })();
+
+      if (!targets.length) {
+        req.session.flash = { type: 'error', message: 'Please select at least 1 backup.' };
+        return res.redirect('/admin/backups');
+      }
+
+      let deleted = 0;
+      const errors = [];
+      targets.forEach((file) => {
+        try {
+          backupService.deleteBackupFile(file);
+          deleted += 1;
+        } catch (e) {
+          errors.push(e && e.message ? e.message : String(e));
+        }
+      });
+
+      if (errors.length) {
+        req.session.flash = {
+          type: 'error',
+          message: `Deleted ${deleted}/${targets.length}. ${errors[0]}`,
+        };
+        return res.redirect('/admin/backups');
+      }
+
+      req.session.flash = { type: 'success', message: deleted === 1 ? 'Backup deleted.' : `Backups deleted (${deleted}).` };
       return res.redirect('/admin/backups');
     } catch (e) {
       return next(e);
@@ -2403,13 +2439,43 @@ router.post(
         throw err;
       }
 
-      categorySectionRepo.create({
+      const created = categorySectionRepo.create({
         category_id: categoryId,
         title: String(req.validated.body.title || '').trim(),
         body_md: bodyMd,
         sort_order: sortOrder,
         active,
       });
+
+      try {
+        const changes = computeFieldChanges({
+          before: { title: '', sort_order: '', active: '', body_md: '' },
+          after: {
+            title: String(req.validated.body.title || '').trim(),
+            sort_order: String(sortOrder),
+            active: active ? '1' : '0',
+            body_md: bodyMd,
+          },
+          fields: [
+            { key: 'title', label: 'Title' },
+            { key: 'sort_order', label: 'Sort order' },
+            { key: 'active', label: 'Active' },
+            { key: 'body_md', label: 'Content' },
+          ],
+        });
+
+        logAdminChange({
+          req,
+          verb: 'Created',
+          entity: 'category_section',
+          entityLabel: 'Category section',
+          entityId: created?.id ?? null,
+          changes,
+          meta: { categoryId, categorySlug: category.slug },
+        });
+      } catch (_) {
+        // ignore audit failures
+      }
 
       req.session.flash = { type: 'success', message: 'Section added.' };
       return res.redirect(`/admin/categories/${categoryId}/sections`);
@@ -2473,12 +2539,49 @@ router.post(
         throw err;
       }
 
-      categorySectionRepo.update(sectionId, {
+      const updated = categorySectionRepo.update(sectionId, {
         title: String(req.validated.body.title || '').trim(),
         body_md: bodyMd,
         sort_order: sortOrder,
         active: String(req.validated.body.active || '1') === '1',
       });
+
+      try {
+        const changes = computeFieldChanges({
+          before: {
+            title: current.title || '',
+            sort_order: String(current.sort_order ?? ''),
+            active: current.active ? '1' : '0',
+            body_md: current.body_md || '',
+          },
+          after: {
+            title: updated?.title || String(req.validated.body.title || '').trim(),
+            sort_order: String(updated?.sort_order ?? sortOrder),
+            active: (updated?.active ?? (String(req.validated.body.active || '1') === '1')) ? '1' : '0',
+            body_md: updated?.body_md || bodyMd,
+          },
+          fields: [
+            { key: 'title', label: 'Title' },
+            { key: 'sort_order', label: 'Sort order' },
+            { key: 'active', label: 'Active' },
+            { key: 'body_md', label: 'Content' },
+          ],
+        });
+
+        if (changes.length) {
+          logAdminChange({
+            req,
+            verb: 'Updated',
+            entity: 'category_section',
+            entityLabel: 'Category section',
+            entityId: sectionId,
+            changes,
+            meta: { categoryId, categorySlug: category.slug },
+          });
+        }
+      } catch (_) {
+        // ignore audit failures
+      }
 
       req.session.flash = { type: 'success', message: 'Section saved.' };
       return res.redirect(`/admin/categories/${categoryId}/sections`);
@@ -2510,6 +2613,38 @@ router.post(
       }
 
       categorySectionRepo.remove(sectionId);
+
+      try {
+        const category = categoryRepo.getById(categoryId);
+        const changes = computeFieldChanges({
+          before: {
+            title: current.title || '',
+            sort_order: String(current.sort_order ?? ''),
+            active: current.active ? '1' : '0',
+            body_md: current.body_md || '',
+          },
+          after: { title: '', sort_order: '', active: '', body_md: '' },
+          fields: [
+            { key: 'title', label: 'Title' },
+            { key: 'sort_order', label: 'Sort order' },
+            { key: 'active', label: 'Active' },
+            { key: 'body_md', label: 'Content' },
+          ],
+        });
+
+        logAdminChange({
+          req,
+          verb: 'Deleted',
+          entity: 'category_section',
+          entityLabel: 'Category section',
+          entityId: sectionId,
+          changes,
+          meta: { categoryId, categorySlug: category?.slug || null },
+        });
+      } catch (_) {
+        // ignore audit failures
+      }
+
       req.session.flash = { type: 'success', message: 'Section deleted.' };
       return res.redirect(`/admin/categories/${categoryId}/sections`);
     } catch (e) {
@@ -2792,6 +2927,8 @@ router.post(
       let slug = slugifyCategory(name);
       slug = assertValidCategorySlug(slug);
 
+      const selectedAccountId = String(req.validated.body.fiuu_account_id || '').trim();
+
       // Ensure uniqueness; auto-suffix if needed.
       let unique = slug;
       for (let i = 2; i < 50; i++) {
@@ -2806,13 +2943,42 @@ router.post(
       }
 
       const visible = String(req.validated.body.visible || '1') === '1';
-      categoryRepo.create({ slug: unique, name, visible });
 
-      const selectedAccountId = String(req.validated.body.fiuu_account_id || '').trim();
+      const created = categoryRepo.create({ slug: unique, name, visible });
       if (selectedAccountId) {
         fiuuAccountsService.setCategoryAccountForSlug({ slug: unique, accountId: selectedAccountId });
       } else {
         fiuuAccountsService.clearCategoryMappingForSlug(unique);
+      }
+
+      try {
+        const changes = computeFieldChanges({
+          before: { name: '', slug: '', visible: '', fiuu_account_id: '' },
+          after: {
+            name: created?.name || name,
+            slug: created?.slug || unique,
+            visible: visible ? '1' : '0',
+            fiuu_account_id: selectedAccountId || '',
+          },
+          fields: [
+            { key: 'name', label: 'Name' },
+            { key: 'slug', label: 'Slug' },
+            { key: 'visible', label: 'Visible' },
+            { key: 'fiuu_account_id', label: 'Online payment account' },
+          ],
+        });
+
+        logAdminChange({
+          req,
+          verb: 'Created',
+          entity: 'category',
+          entityLabel: 'Category',
+          entityId: created?.id || null,
+          changes,
+          meta: { slug: created?.slug || unique },
+        });
+      } catch (_) {
+        // ignore audit failures
       }
 
       req.session.flash = { type: 'success', message: 'Category created.' };
@@ -2851,14 +3017,53 @@ router.post(
         throw err;
       }
 
-      // Slugs are immutable after creation; update name only.
-      categoryRepo.update(id, { name: req.validated.body.name });
+      const beforeAccountId = (() => {
+        try {
+          const map = fiuuAccountsService.getCategoryAccountMap();
+          return map && current.slug && map[current.slug] ? String(map[current.slug]) : '';
+        } catch (_) {
+          return '';
+        }
+      })();
 
+      // Slugs are immutable after creation; update name only.
       const selectedAccountId = String(req.validated.body.fiuu_account_id || '').trim();
+      const updated = categoryRepo.update(id, { name: req.validated.body.name });
       if (selectedAccountId) {
         fiuuAccountsService.setCategoryAccountForSlug({ slug: current.slug, accountId: selectedAccountId });
       } else {
         fiuuAccountsService.clearCategoryMappingForSlug(current.slug);
+      }
+
+      try {
+        const changes = computeFieldChanges({
+          before: {
+            name: current.name || '',
+            fiuu_account_id: beforeAccountId,
+          },
+          after: {
+            name: updated?.name || String(req.validated.body.name || '').trim(),
+            fiuu_account_id: selectedAccountId || '',
+          },
+          fields: [
+            { key: 'name', label: 'Name' },
+            { key: 'fiuu_account_id', label: 'Online payment account' },
+          ],
+        });
+
+        if (changes.length) {
+          logAdminChange({
+            req,
+            verb: 'Updated',
+            entity: 'category',
+            entityLabel: 'Category',
+            entityId: id,
+            changes,
+            meta: { slug: current.slug },
+          });
+        }
+      } catch (_) {
+        // ignore audit failures
       }
 
       req.session.flash = { type: 'success', message: 'Category updated.' };
@@ -2906,7 +3111,28 @@ router.post(
       // Use versioned filenames for categories so updates don't get stuck behind
       // long-lived immutable caching in production.
       const optimized = await imageService.optimizeAndSaveSiteContentImage(req.file.path, `category_${id}`);
-      categoryRepo.setImageUrl(id, optimized);
+      const updated = categoryRepo.setImageUrl(id, optimized);
+
+      try {
+        const changes = computeFieldChanges({
+          before: { image_url: previousImageUrl },
+          after: { image_url: updated?.image_url || optimized },
+          fields: [{ key: 'image_url', label: 'Image' }],
+        });
+        if (changes.length) {
+          logAdminChange({
+            req,
+            verb: 'Updated',
+            entity: 'category',
+            entityLabel: 'Category image',
+            entityId: id,
+            changes,
+            meta: { slug: current.slug },
+          });
+        }
+      } catch (_) {
+        // ignore
+      }
 
       // Clean up the previous category image file (best-effort).
       if (previousImageUrl.startsWith('/uploads/site/')) {
@@ -2963,7 +3189,28 @@ router.post(
       }
 
       const previousImageUrl = String(current.image_url || '').trim();
-      categoryRepo.setImageUrl(id, '');
+      const updated = categoryRepo.setImageUrl(id, '');
+
+      try {
+        const changes = computeFieldChanges({
+          before: { image_url: previousImageUrl },
+          after: { image_url: updated?.image_url || '' },
+          fields: [{ key: 'image_url', label: 'Image' }],
+        });
+        if (changes.length) {
+          logAdminChange({
+            req,
+            verb: 'Removed',
+            entity: 'category',
+            entityLabel: 'Category image',
+            entityId: id,
+            changes,
+            meta: { slug: current.slug },
+          });
+        }
+      } catch (_) {
+        // ignore
+      }
 
       // Remove the on-disk image file (best-effort).
       if (previousImageUrl.startsWith('/uploads/site/')) {
@@ -3004,7 +3251,38 @@ router.post(
         err.status = 400;
         throw err;
       }
-      categoryRepo.setVisible(id, String(req.validated.body.visible) === '1');
+
+      const current = categoryRepo.getById(id);
+      if (!current) {
+        const err = new Error('Category not found.');
+        err.status = 404;
+        throw err;
+      }
+
+      const nextVisible = String(req.validated.body.visible) === '1';
+      const updated = categoryRepo.setVisible(id, nextVisible);
+
+      try {
+        const changes = computeFieldChanges({
+          before: { visible: current.visible ? '1' : '0' },
+          after: { visible: updated?.visible ? '1' : (nextVisible ? '1' : '0') },
+          fields: [{ key: 'visible', label: 'Visible' }],
+        });
+        if (changes.length) {
+          logAdminChange({
+            req,
+            verb: 'Updated',
+            entity: 'category',
+            entityLabel: 'Category',
+            entityId: id,
+            changes,
+            meta: { slug: current.slug },
+          });
+        }
+      } catch (_) {
+        // ignore
+      }
+
       req.session.flash = { type: 'success', message: 'Category visibility updated.' };
       return res.redirect('/admin/categories');
     } catch (e) {
@@ -3025,7 +3303,35 @@ router.post(
         err.status = 400;
         throw err;
       }
-      categoryRepo.setArchived(id, true);
+
+      const current = categoryRepo.getById(id);
+      if (!current) {
+        const err = new Error('Category not found.');
+        err.status = 404;
+        throw err;
+      }
+
+      const updated = categoryRepo.setArchived(id, true);
+
+      try {
+        const changes = computeFieldChanges({
+          before: { archived: current.archived ? '1' : '0' },
+          after: { archived: updated?.archived ? '1' : '1' },
+          fields: [{ key: 'archived', label: 'Archived' }],
+        });
+        logAdminChange({
+          req,
+          verb: 'Archived',
+          entity: 'category',
+          entityLabel: 'Category',
+          entityId: id,
+          changes,
+          meta: { slug: current.slug },
+        });
+      } catch (_) {
+        // ignore
+      }
+
       req.session.flash = { type: 'success', message: 'Category archived.' };
       return res.redirect('/admin/categories?archived=ALL');
     } catch (e) {
@@ -3046,7 +3352,35 @@ router.post(
         err.status = 400;
         throw err;
       }
-      categoryRepo.setArchived(id, false);
+
+      const current = categoryRepo.getById(id);
+      if (!current) {
+        const err = new Error('Category not found.');
+        err.status = 404;
+        throw err;
+      }
+
+      const updated = categoryRepo.setArchived(id, false);
+
+      try {
+        const changes = computeFieldChanges({
+          before: { archived: current.archived ? '1' : '0' },
+          after: { archived: updated?.archived ? '1' : '0' },
+          fields: [{ key: 'archived', label: 'Archived' }],
+        });
+        logAdminChange({
+          req,
+          verb: 'Restored',
+          entity: 'category',
+          entityLabel: 'Category',
+          entityId: id,
+          changes,
+          meta: { slug: current.slug },
+        });
+      } catch (_) {
+        // ignore
+      }
+
       req.session.flash = { type: 'success', message: 'Category restored.' };
       return res.redirect('/admin/categories');
     } catch (e) {
@@ -4395,6 +4729,18 @@ router.post(
       const amountCents = parseMoneyToCentsAllowZero(req.validated.body.amount);
       const note = req.validated.body.note ? String(req.validated.body.note).trim() : '';
 
+      // Ensure the order-level remaining refundable amount is not exceeded.
+      const inFlightItems = orderRefundRepo.summaryByOrder(orderId);
+      const inFlightExtra = orderRefundExtraRepo.summaryByOrder(orderId);
+      const inFlightAmount = Number(inFlightItems.amount_refunded || 0) + Number(inFlightExtra.amount_refunded || 0);
+      const paidAmount = Number(order.total_amount || 0);
+      const remainingOrderAmount = Math.max(0, paidAmount - inFlightAmount);
+      if (amountCents > remainingOrderAmount) {
+        const err = new Error('Refund amount exceeds remaining refundable amount for this order.');
+        err.status = 400;
+        throw err;
+      }
+
       // Ensure we don't exceed remaining refundable quantity (based on requested/excluding failures).
       const itemSummary = orderRefundRepo.summaryByOrderItem(orderItemId);
       const alreadyQty = Number(itemSummary.quantity_refunded || 0);
@@ -4572,6 +4918,18 @@ router.post(
 
       if (amountCents > remainingAmount) {
         const err = new Error('Refund amount exceeds remaining refundable amount for this item.');
+        err.status = 400;
+        throw err;
+      }
+
+      // Ensure the order-level remaining refundable amount is not exceeded.
+      const inFlightItems = orderRefundRepo.summaryByOrder(orderId);
+      const inFlightExtra = orderRefundExtraRepo.summaryByOrder(orderId);
+      const inFlightAmount = Number(inFlightItems.amount_refunded || 0) + Number(inFlightExtra.amount_refunded || 0);
+      const paidAmount = Number(order.total_amount || 0);
+      const remainingOrderAmount = Math.max(0, paidAmount - inFlightAmount);
+      if (amountCents > remainingOrderAmount) {
+        const err = new Error('Refund amount exceeds remaining refundable amount for this order.');
         err.status = 400;
         throw err;
       }

@@ -4,8 +4,11 @@
   <div class="row">
     <div class="col">
       <% const hasVariants = (typeof variants !== 'undefined' && variants && variants.length); %>
-      <% const defaultVariant = hasVariants
-        ? (variants || []).reduce((best, v) => (!best || Number(v.price || 0) < Number(best.price || 0)) ? v : best, null)
+      <% const sellableVariants = hasVariants
+        ? (variants || []).filter((v) => Boolean(Number((v && v.active) == null ? 1 : v.active)))
+        : []; %>
+      <% const defaultVariant = sellableVariants.length
+        ? sellableVariants.reduce((best, v) => (!best || Number(v.price || 0) < Number(best.price || 0)) ? v : best, null)
         : null; %>
       <% const mainProductImg = (product && product.product_image) ? product.product_image : '/public/placeholder.svg'; %>
       <% const defaultVariantImg = (defaultVariant && defaultVariant.image_url) ? defaultVariant.image_url : null; %>
@@ -44,7 +47,8 @@
       <div class="product-price u-mt-10" data-product-price><%= defaultVariant ? formatMoney(defaultVariant.price) : formatMoney(product.price) %></div>
       <div class="u-mt-10">
         <% if (hasVariants) { %>
-          <span class="badge ok" data-product-stock>In stock: <%= Math.max(0, Math.floor(Number(defaultVariant && defaultVariant.stock || 0))) %></span>
+          <% const dvStock = Math.max(0, Math.floor(Number(defaultVariant && defaultVariant.stock || 0))); %>
+          <span class="badge <%= dvStock > 0 ? 'ok' : 'no' %>" data-product-stock><%= dvStock > 0 ? ('In stock: ' + dvStock) : 'Out of stock' %></span>
         <% } else if (effStock > 0) { %>
           <span class="badge ok" data-product-stock>In stock: <%= effStock %></span>
         <% } else { %>
@@ -59,6 +63,42 @@
         <% } %>
       </div>
 
+      <% if (isAdmin && hasVariants) { %>
+        <div class="u-mt-12">
+          <div style="font-weight:800">Variants</div>
+          <div class="muted small u-mt-6">Admin view: variants are shown for review only (admin accounts cannot add to cart).</div>
+
+          <div class="table-scroll u-mt-8">
+            <table class="table" style="min-width:0">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% (variants || []).forEach(v => { %>
+                  <% const isActive = Boolean(Number((v && v.active) == null ? 1 : v.active)); %>
+                  <% const st = Math.max(0, Math.floor(Number(v && v.stock || 0))); %>
+                  <tr>
+                    <td><%= v.label %></td>
+                    <td><%= formatMoney(v.price) %></td>
+                    <td>
+                      <span class="badge <%= st > 0 ? 'ok' : 'no' %>"><%= st > 0 ? ('In stock: ' + st) : 'Out of stock' %></span>
+                    </td>
+                    <td>
+                      <span class="badge <%= isActive ? 'ok' : 'warn' %>"><%= isActive ? 'Enabled' : 'Disabled' %></span>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% } %>
+
       <% if (!isAdmin) { %>
         <form method="post" action="/cart/add" class="row row--align-end u-mt-12">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
@@ -71,22 +111,25 @@
           <% if (hasVariants) { %>
             <div class="field is-sm">
               <label>Type</label>
-              <select class="input" name="variant_id" data-variant-select <%= effStock > 0 ? '' : 'disabled' %>>
+              <select class="input" name="variant_id" data-variant-select required <%= effStock > 0 ? '' : 'disabled' %>>
+                <option value="" selected disabled data-placeholder="1">Please select a type</option>
                 <% (variants || []).forEach(v => { %>
+                  <% const isActive = Boolean(Number((v && v.active) == null ? 1 : v.active)); %>
                   <option
                     value="<%= v.variant_id %>"
-                    <%= (defaultVariant && String(defaultVariant.variant_id) === String(v.variant_id)) ? 'selected' : '' %>
+                    <%= (!isActive && isAdmin) ? 'disabled' : '' %>
                     data-price-label="<%= formatMoney(v.price) %>"
                     data-stock="<%= Math.max(0, Math.floor(Number(v.stock || 0))) %>"
                     data-image-url="<%= v.image_url || '' %>"
-                  ><%= v.label %></option>
+                  ><%= v.label %><%= (!isActive && isAdmin) ? ' (Disabled)' : '' %></option>
                 <% }) %>
               </select>
             </div>
           <% } else { %>
             <div class="field is-sm">
               <label>Type</label>
-              <select class="input" name="product_type" <%= effStock > 0 ? '' : 'disabled' %>>
+              <select class="input" name="product_type" required <%= effStock > 0 ? '' : 'disabled' %>>
+                <option value="" selected disabled data-placeholder="1">Please select a type</option>
                 <% ((typeof productTypeOptions !== 'undefined' && productTypeOptions) ? productTypeOptions() : []).forEach(opt => { %>
                   <option value="<%= opt.key %>"><%= opt.label %></option>
                 <% }) %>

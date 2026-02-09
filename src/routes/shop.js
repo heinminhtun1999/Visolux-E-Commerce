@@ -269,6 +269,8 @@ function renderProductsListing(req, res, query) {
     available_stock: inventoryRepo.getEffectiveAvailableStock(p.product_id),
   }));
 
+  const variantsByProductId = productVariantRepo.listActiveByProductIds((products || []).map((p) => p.product_id));
+
   const pageCount = getPageCount(total, pageSize);
 
   const categorySections = category
@@ -288,6 +290,7 @@ function renderProductsListing(req, res, query) {
     title: pageTitle,
     description: pageDescription,
     products,
+    variantsByProductId,
     categories,
     categorySections,
     q: q || '',
@@ -346,6 +349,8 @@ router.get('/products/:id', (req, res, next) => {
     return next(err);
   }
 
+  const isAdmin = Boolean(req.session.user?.isAdmin);
+
   const product = inventoryRepo.getById(id);
   if (!product || product.archived || !product.visibility) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
@@ -359,18 +364,21 @@ router.get('/products/:id', (req, res, next) => {
   }
 
   const images = productImageRepo.listByProductId(id);
-  const variants = productVariantRepo.listByProductId(id, { includeInactive: false });
+  const activeVariants = productVariantRepo.listByProductId(id, { includeInactive: false });
+  const variants = isAdmin
+    ? productVariantRepo.listByProductId(id, { includeInactive: true })
+    : activeVariants;
 
   // If the product has variants, require at least one sellable variant to show the product publicly.
   // This prevents products with all variants archived/hidden from being reachable via direct URL.
   const agg = productVariantRepo.computeAggregateForProduct(id);
   const hasAnyVariants = Boolean(agg && agg.hasVariants);
-  if (hasAnyVariants && (!variants || variants.length === 0)) {
+  if (!isAdmin && hasAnyVariants && (!activeVariants || activeVariants.length === 0)) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
   }
 
-  const cheapestVariant = (variants && variants.length)
-    ? variants.reduce((best, v) => (!best || Number(v.price || 0) < Number(best.price || 0)) ? v : best, null)
+  const cheapestVariant = (activeVariants && activeVariants.length)
+    ? activeVariants.reduce((best, v) => (!best || Number(v.price || 0) < Number(best.price || 0)) ? v : best, null)
     : null;
 
   // Product SEO
@@ -455,6 +463,9 @@ router.post(
     const quantity = Number(req.validated.body.quantity || 1);
     const variantIdRaw = String(req.validated.body.variant_id || '').trim();
     const variantId = variantIdRaw ? Number(variantIdRaw) : null;
+    const productType = String(req.validated.body.product_type || '').trim();
+    const returnTo = safeReturnTo(req.validated.body.return_to, '');
+    const backTo = returnTo || safeRedirectBack(req, `/products/${productId}`);
 
     const product = inventoryRepo.getById(productId);
     if (!product || product.archived || !product.visibility) {
@@ -462,14 +473,30 @@ router.post(
       return res.redirect('/');
     }
 
+    // If the product has variants, require selecting a variant.
+    // If it has no variants, require selecting a product type.
+    const agg = productVariantRepo.computeAggregateForProduct(productId);
+    const hasAnyVariants = Boolean(agg && agg.hasVariants);
+    const activeVariants = hasAnyVariants ? productVariantRepo.listByProductId(productId, { includeInactive: false }) : [];
+    if (hasAnyVariants && (!activeVariants || activeVariants.length === 0)) {
+      req.session.flash = { type: 'error', message: 'Product is not available.' };
+      return res.redirect(backTo);
+    }
+    if (hasAnyVariants && !(variantId != null && Number.isFinite(variantId) && variantId > 0)) {
+      req.session.flash = { type: 'error', message: 'Please select a type.' };
+      return res.redirect(backTo);
+    }
+    if (!hasAnyVariants && !productType) {
+      req.session.flash = { type: 'error', message: 'Please select a type.' };
+      return res.redirect(backTo);
+    }
+
     let variant = null;
     if (variantId != null && Number.isFinite(variantId) && variantId > 0) {
       const v = productVariantRepo.getById(variantId);
       if (!v || !v.active || v.product_id !== productId) {
         req.session.flash = { type: 'error', message: 'Selected type is not available.' };
-        const returnTo = safeReturnTo(req.validated.body.return_to, '');
-        if (returnTo) return res.redirect(returnTo);
-        return res.redirect(safeRedirectBack(req, `/products/${productId}`));
+        return res.redirect(backTo);
       }
       variant = v;
     }
@@ -495,7 +522,6 @@ router.post(
             message:
               'This item uses a different payment merchant account from items already in your cart. Please checkout separately, or clear your cart first.',
           };
-          const returnTo = safeReturnTo(req.validated.body.return_to, '');
           if (returnTo) return res.redirect(returnTo);
           return res.redirect(safeRedirectBack(req, '/cart'));
         }
@@ -507,9 +533,7 @@ router.post(
     const availableStock = variant ? Math.max(0, Math.floor(Number(variant.stock || 0))) : inventoryRepo.getEffectiveAvailableStock(productId);
     if (availableStock <= 0) {
       req.session.flash = { type: 'error', message: 'This product is out of stock.' };
-      const returnTo = safeReturnTo(req.validated.body.return_to, '');
-      if (returnTo) return res.redirect(returnTo);
-      return res.redirect(safeRedirectBack(req, '/'));
+      return res.redirect(returnTo || safeRedirectBack(req, '/'));
     }
 
     const q = Math.max(1, Math.min(99, Math.floor(quantity)));
@@ -536,7 +560,6 @@ router.post(
     } else {
       req.session.flash = { type: 'success', message: 'Added to cart.' };
     }
-    const returnTo = safeReturnTo(req.validated.body.return_to, '');
     if (returnTo) return res.redirect(returnTo);
     return res.redirect(safeRedirectBack(req, '/'));
   }

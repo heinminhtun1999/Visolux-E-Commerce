@@ -960,6 +960,7 @@ function ensureOrdersDeliveryAddressColumns(database) {
   if (!has('delivery_state')) database.exec('ALTER TABLE orders ADD COLUMN delivery_state TEXT');
   if (!has('delivery_postcode')) database.exec('ALTER TABLE orders ADD COLUMN delivery_postcode TEXT');
   if (!has('delivery_region')) database.exec("ALTER TABLE orders ADD COLUMN delivery_region TEXT");
+  if (!has('delivery_zone_name')) database.exec('ALTER TABLE orders ADD COLUMN delivery_zone_name TEXT');
 }
 
 function ensureOrdersPricingColumns(database) {
@@ -1008,6 +1009,7 @@ function ensureOrdersPaymentStatusEnum(database) {
         delivery_state TEXT,
         delivery_postcode TEXT,
         delivery_region TEXT CHECK (delivery_region IN ('WEST','EAST')),
+        delivery_zone_name TEXT,
         payment_method TEXT NOT NULL CHECK (payment_method IN ('ONLINE', 'OFFLINE_TRANSFER')),
         payment_channel TEXT,
         payment_status TEXT NOT NULL CHECK (payment_status IN ('PENDING','PAID','FAILED','PARTIALLY_REFUNDED','REFUNDED','AWAITING_VERIFICATION')),
@@ -1025,13 +1027,14 @@ function ensureOrdersPaymentStatusEnum(database) {
     database.exec(
       `INSERT INTO orders_new (
         order_id, order_code, user_id, customer_name, phone, email, address,
-        delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region,
+        delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region, delivery_zone_name,
         payment_method, payment_channel, payment_status, refund_status, fulfilment_status,
         items_subtotal, discount_amount, shipping_fee, total_amount, created_at
       )
       SELECT
         order_id, order_code, user_id, customer_name, phone, email, address,
         delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region,
+        COALESCE(delivery_zone_name, NULL),
         payment_method, payment_channel,
         CASE WHEN payment_status='REFUNDED' THEN 'REFUNDED' ELSE payment_status END,
         COALESCE(refund_status, 'NONE'),

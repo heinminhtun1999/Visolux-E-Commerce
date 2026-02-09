@@ -88,7 +88,7 @@
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                   <button class="btn btn-primary" type="submit">Save</button>
                 </form>
-                <form method="post" action="/admin/categories/<%= category.id %>/sections/<%= s.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this section?')">
+                <form method="post" action="/admin/categories/<%= category.id %>/sections/<%= s.id %>/delete" style="display:inline" data-confirm="Delete this section?" data-confirm-title="Delete section" data-confirm-ok="Delete">
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                   <button class="btn btn-danger" type="submit">Delete</button>
                 </form>

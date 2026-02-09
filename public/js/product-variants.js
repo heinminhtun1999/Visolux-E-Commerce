@@ -8,6 +8,11 @@
     var mainImg = document.querySelector('[data-carousel-img]');
     var carouselRoot = document.querySelector('[data-image-carousel]');
 
+    var initialPriceText = priceEl ? String(priceEl.textContent || '') : '';
+    var initialStockText = stockEl ? String(stockEl.textContent || '') : '';
+    var initialStockIsOk = stockEl ? stockEl.classList.contains('ok') : false;
+    var initialStockIsNo = stockEl ? stockEl.classList.contains('no') : false;
+
     function encodeItems(items) {
       return (items || [])
         .map(function (u) {
@@ -68,6 +73,18 @@
     function applyFromSelected() {
       var opt = select.options[select.selectedIndex];
       if (!opt) return;
+
+      // Placeholder option: don't overwrite the initial UI.
+      var isPlaceholder = opt.hasAttribute('data-placeholder') || String(opt.value || '').trim() === '';
+      if (isPlaceholder) {
+        if (priceEl) priceEl.textContent = initialPriceText;
+        if (stockEl) {
+          stockEl.textContent = initialStockText;
+          stockEl.classList.toggle('ok', initialStockIsOk);
+          stockEl.classList.toggle('no', initialStockIsNo);
+        }
+        return;
+      }
 
       var priceLabel = opt.getAttribute('data-price-label') || '';
       var stock = opt.getAttribute('data-stock');

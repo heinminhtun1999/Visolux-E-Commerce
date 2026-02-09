@@ -113,6 +113,9 @@ function placeOrder({
     err.status = 400;
     throw err;
   }
+  const deliveryZoneName = shippingQuote && shippingQuote.zone && shippingQuote.zone.name
+    ? String(shippingQuote.zone.name).trim()
+    : '';
   const shippingFeeCents = Number(shippingQuote?.shippingCents || 0);
   const preDiscountGrandTotal = Math.max(0, built.subtotal + shippingFeeCents);
 
@@ -147,6 +150,7 @@ function placeOrder({
     delivery_state: customer.state || null,
     delivery_postcode: customer.postcode || null,
     delivery_region: deliveryRegion,
+    delivery_zone_name: deliveryZoneName || null,
     payment_method,
     payment_status,
     fulfilment_status,

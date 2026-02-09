@@ -26,8 +26,9 @@
       <div class="kv" style="margin-top:6px"><span class="muted">Discount</span> <strong>-<%= formatMoney(discountAmount) %></strong></div>
     <% } %>
     <div class="kv" style="margin-top:6px"><span class="muted">Courier charge</span> <strong><%= formatMoney(shippingFee) %></strong></div>
-    <% if (order.delivery_region) { %>
-      <div class="muted small" style="margin-top:8px">Delivery region: <strong><%= order.delivery_region === 'EAST' ? 'East Malaysia' : 'West Malaysia' %></strong></div>
+    <% const deliveryZoneLabel = String(order.delivery_zone_name || '').trim() || (order.delivery_region ? (order.delivery_region === 'EAST' ? 'East Malaysia' : 'West Malaysia') : ''); %>
+    <% if (deliveryZoneLabel) { %>
+      <div class="muted small" style="margin-top:8px">Delivery region: <strong><%= deliveryZoneLabel %></strong></div>
     <% } %>
   </div>
 
@@ -47,7 +48,13 @@
     <tbody>
       <% order.items.forEach(it => { %>
         <tr>
-          <td><%= it.product_name_snapshot %></td>
+          <td>
+            <div><%= it.product_name_snapshot %></div>
+            <% const itemNote = String(it.item_note || '').trim(); %>
+            <% if (itemNote) { %>
+              <div class="muted small" style="margin-top:4px">Note: <%= itemNote %></div>
+            <% } %>
+          </td>
           <td><%= it.quantity %></td>
           <td><%= formatMoney(it.subtotal) %></td>
         </tr>

@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS orders (
   delivery_state TEXT,
   delivery_postcode TEXT,
   delivery_region TEXT CHECK (delivery_region IN ('WEST','EAST')),
+  delivery_zone_name TEXT,
   payment_method TEXT NOT NULL CHECK (payment_method IN ('ONLINE', 'OFFLINE_TRANSFER')),
   payment_channel TEXT,
   payment_status TEXT NOT NULL CHECK (payment_status IN ('PENDING','PAID','FAILED','PARTIALLY_REFUNDED','REFUNDED','AWAITING_VERIFICATION')),

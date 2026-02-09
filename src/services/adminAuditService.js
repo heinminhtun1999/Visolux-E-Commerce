@@ -3,6 +3,14 @@ const adminActivityRepo = require('../repositories/adminActivityRepo');
 function previewValue(v, { max = 120 } = {}) {
   if (v == null) return '';
   const s = String(v);
+  // Avoid exposing raw routes/paths in audit logs (e.g. "/uploads/.../file.webp").
+  // Prefer showing just the filename for readability.
+  const trimmed = s.trim();
+  if (trimmed.startsWith('/uploads/') || trimmed.includes('/uploads/')) {
+    const parts = trimmed.split('/').filter(Boolean);
+    const last = parts.length ? parts[parts.length - 1] : trimmed;
+    return last.length > max ? `${last.slice(0, max)}…` : last;
+  }
   if (s.length <= max) return s;
   return `${s.slice(0, max)}…`;
 }

@@ -17,6 +17,7 @@ function mapOrder(row) {
     delivery_state: row.delivery_state,
     delivery_postcode: row.delivery_postcode,
     delivery_region: row.delivery_region,
+    delivery_zone_name: row.delivery_zone_name || null,
     payment_method: row.payment_method,
     payment_channel: row.payment_channel || null,
     payment_status: row.payment_status,
@@ -404,6 +405,7 @@ function createOrder({
   delivery_state,
   delivery_postcode,
   delivery_region,
+  delivery_zone_name,
   payment_method,
   payment_status,
   fulfilment_status,
@@ -538,7 +540,7 @@ function createOrder({
           .prepare(
             `INSERT INTO orders (
               order_code, user_id, customer_name, phone, email, address,
-              delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region,
+              delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region, delivery_zone_name,
               payment_method, payment_status, fulfilment_status,
               online_payment_provider, online_payment_account_id, online_payment_merchant_id, online_payment_verify_key, online_payment_secret_key, online_payment_gateway_url, online_payment_currency,
               offline_transfer_bank, offline_transfer_account_no, offline_transfer_account_name,
@@ -548,7 +550,7 @@ function createOrder({
             )
              VALUES (
               @order_code, @user_id, @customer_name, @phone, @email, @address,
-              @delivery_address_line1, @delivery_address_line2, @delivery_city, @delivery_state, @delivery_postcode, @delivery_region,
+              @delivery_address_line1, @delivery_address_line2, @delivery_city, @delivery_state, @delivery_postcode, @delivery_region, @delivery_zone_name,
               @payment_method, @payment_status, @fulfilment_status,
               @online_payment_provider, @online_payment_account_id, @online_payment_merchant_id, @online_payment_verify_key, @online_payment_secret_key, @online_payment_gateway_url, @online_payment_currency,
               @offline_transfer_bank, @offline_transfer_account_no, @offline_transfer_account_name,
@@ -570,6 +572,7 @@ function createOrder({
             delivery_state: delivery_state || null,
             delivery_postcode: delivery_postcode || null,
             delivery_region: delivery_region || null,
+            delivery_zone_name: String(delivery_zone_name || '').trim() || null,
             payment_method,
             payment_status,
             fulfilment_status,

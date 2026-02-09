@@ -75,7 +75,12 @@
                   method="post"
                   action="/admin/slips/<%= r.order.order_id %>/reject"
                   style="display:inline"
-                  onsubmit="var r = prompt('Rejection reason (shown to customer):'); if (r === null) return false; this.querySelector('input[name=\'rejection_reason\']').value = String(r).trim(); return confirm('Reject this slip? The customer will need to re-upload a new slip.');"
+                  data-confirm="Reject this slip? The customer will need to re-upload a new slip."
+                  data-confirm-title="Reject slip"
+                  data-confirm-ok="Reject"
+                  data-confirm-prompt="Rejection reason (shown to customer):"
+                  data-confirm-prompt-name="rejection_reason"
+                  data-confirm-prompt-required="1"
                 >
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                   <input type="hidden" name="rejection_reason" value="" />

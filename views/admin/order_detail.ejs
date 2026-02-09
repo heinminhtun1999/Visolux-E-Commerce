@@ -203,13 +203,13 @@
             <% if (order.payment_method === 'ONLINE' && onlineRefundAgeBlockedFlag) { %>
               <span class="muted small">Refund disabled (order older than <%= (typeof onlineRefundWindowMonths !== 'undefined' ? onlineRefundWindowMonths : 3) %> months)</span>
             <% } else if (isFpxOnline) { %>
-              <% if (canOnlineRefund && remainingQty > 0) { %>
+              <% if (canOnlineRefund && remainingQty > 0 && Number(refundableRemainingCents || 0) > 0) { %>
                 <form
                   method="post"
                   action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund/manual"
                   class="actions icon-row"
                   style="gap:8px; justify-content:flex-end"
-                  onsubmit="return confirm('Record a manual refund for this FPX item? Only do this after you have refunded the customer via bank transfer.');"
+                  data-confirm="Record a manual refund for this FPX item? Only do this after you have refunded the customer via bank transfer."
                 >
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                   <input class="input" name="quantity" type="number" min="1" max="<%= remainingQty %>" value="1" style="width:70px" title="Qty" />
@@ -222,16 +222,18 @@
                 </div>
               <% } else if (!canOnlineRefund) { %>
                 <span class="muted small">Payment must be PAID to refund</span>
+              <% } else if (Number(refundableRemainingCents || 0) <= 0) { %>
+                <span class="muted small">No remaining refundable amount</span>
               <% } else { %>
                 <span class="muted small">Fully refunded</span>
               <% } %>
-            <% } else if (canOnlineRefundViaGateway && remainingQty > 0) { %>
+            <% } else if (canOnlineRefundViaGateway && remainingQty > 0 && Number(refundableRemainingCents || 0) > 0) { %>
               <form
                 method="post"
                 action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund"
                 class="actions icon-row"
                 style="gap:8px; justify-content:flex-end"
-                onsubmit="return confirm('Send a refund request for this item?');"
+                data-confirm="Send a refund request for this item?"
               >
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                 <input class="input" name="quantity" type="number" min="1" max="<%= remainingQty %>" value="1" style="width:70px" title="Qty" />
@@ -240,13 +242,13 @@
                 <button class="btn btn-danger" type="submit">Refund (online payment)</button>
               </form>
 
-              <% if (latestFiuuFailed) { %>
+              <% if (latestFiuuFailed && Number(refundableRemainingCents || 0) > 0) { %>
                 <form
                   method="post"
                   action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund/mark"
                   class="actions icon-row"
                   style="gap:8px; justify-content:flex-end; margin-top:8px"
-                  onsubmit="return confirm('Mark this item as refunded manually? Only do this after you have refunded the customer outside the online payment provider.');"
+                  data-confirm="Mark this item as refunded manually? Only do this after you have refunded the customer outside the online payment provider."
                 >
                   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                   <input type="hidden" name="quantity" value="<%= latest.quantity_refunded %>" />
@@ -258,13 +260,13 @@
                   The last online refund request failed. You can manually mark after external refund.
                 </div>
               <% } %>
-            <% } else if (canOfflineManualRefund && remainingQty > 0) { %>
+            <% } else if (canOfflineManualRefund && remainingQty > 0 && Number(refundableRemainingCents || 0) > 0) { %>
               <form
                 method="post"
                 action="/admin/orders/<%= order.order_id %>/items/<%= it.id %>/refund/manual"
                 class="actions icon-row"
                 style="gap:8px; justify-content:flex-end"
-                onsubmit="return confirm('Record a manual refund for this offline transfer item?');"
+                data-confirm="Record a manual refund for this offline transfer item?"
               >
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                 <input class="input" name="quantity" type="number" min="1" max="<%= remainingQty %>" value="1" style="width:70px" title="Qty" />
@@ -276,6 +278,8 @@
               <span class="muted small">Refund not supported for this payment method</span>
             <% } else if (order.payment_status !== 'PAID' && order.payment_status !== 'REFUNDED') { %>
               <span class="muted small">Payment must be PAID to refund</span>
+            <% } else if (Number(refundableRemainingCents || 0) <= 0) { %>
+              <span class="muted small">No remaining refundable amount</span>
             <% } else { %>
               <span class="muted small">Fully refunded</span>
             <% } %>
@@ -317,7 +321,7 @@
             action="/admin/orders/<%= order.order_id %>/refund/manual"
             class="actions icon-row"
             style="gap:8px; justify-content:flex-end"
-            onsubmit="return confirm('Record a manual refund for this FPX order amount? Only do this after you have refunded the customer via bank transfer.');"
+            data-confirm="Record a manual refund for this FPX order amount? Only do this after you have refunded the customer via bank transfer."
           >
             <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
             <input class="input" name="amount" placeholder="RM" style="width:140px" title="Refund amount" required />
@@ -338,7 +342,7 @@
           action="/admin/orders/<%= order.order_id %>/refund"
           class="actions icon-row"
           style="gap:8px; justify-content:flex-end"
-          onsubmit="return confirm('Send a refund request for this amount?');"
+          data-confirm="Send a refund request for this amount?"
         >
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
           <input class="input" name="amount" placeholder="RM" style="width:140px" title="Refund amount" required />
@@ -351,7 +355,7 @@
           action="/admin/orders/<%= order.order_id %>/refund/manual"
           class="actions icon-row"
           style="gap:8px; justify-content:flex-end"
-          onsubmit="return confirm('Record a manual refund for this offline transfer amount?');"
+          data-confirm="Record a manual refund for this offline transfer amount?"
         >
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
           <input class="input" name="amount" placeholder="RM" style="width:140px" title="Refund amount" required />
@@ -446,34 +450,17 @@
 
               <div class="actions" style="margin-top:10px">
                 <% if (!offline.verified && !offline.slip_deleted) { %>
-                  <form method="post" action="/admin/orders/<%= order.order_id %>/offline/verify" style="display:inline" onsubmit="return confirm('Verify this bank transfer slip and mark payment as PAID? This will deduct stock.');">
+                  <form method="post" action="/admin/orders/<%= order.order_id %>/offline/verify" style="display:inline" data-confirm="Verify this bank transfer slip and mark payment as PAID? This will deduct stock." data-confirm-title="Approve payment" data-confirm-ok="Approve">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                     <button class="btn btn-primary" type="submit">Approve payment</button>
                   </form>
                 <% } %>
                 <% if (!offline.verified && !offline.slip_deleted) { %>
-                  <form method="post" action="/admin/orders/<%= order.order_id %>/offline/reject" style="display:inline" onsubmit="return confirm('Reject this slip? The customer will need to re-upload a new slip.');">
+                  <form method="post" action="/admin/orders/<%= order.order_id %>/offline/reject" style="display:inline" data-confirm="Reject this slip? The customer will need to re-upload a new slip." data-confirm-title="Reject slip" data-confirm-ok="Reject" data-confirm-prompt="Rejection reason (shown to customer):" data-confirm-prompt-name="rejection_reason" data-confirm-prompt-required="1">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
                     <input type="hidden" name="rejection_reason" value="" />
                     <button class="btn btn-danger" type="submit">Reject slip</button>
                   </form>
-                  <script>
-                    // Inline, page-local prompt so we don't need extra JS assets.
-                    (function () {
-                      var f = document.currentScript && document.currentScript.previousElementSibling;
-                      if (!f || f.tagName !== 'FORM') return;
-                      f.addEventListener('submit', function (e) {
-                        var input = f.querySelector('input[name="rejection_reason"]');
-                        if (!input) return;
-                        var r = prompt('Rejection reason (shown to customer):');
-                        if (r === null) {
-                          e.preventDefault();
-                          return;
-                        }
-                        input.value = String(r).trim();
-                      });
-                    })();
-                  </script>
                 <% } %>
               </div>
             </div>
