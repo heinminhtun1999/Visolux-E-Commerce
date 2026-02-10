@@ -40,7 +40,7 @@
       </button>
 
       <label class="sr-only" for="viewSelect">View</label>
-      <select id="viewSelect" class="select-compact" aria-label="View" onchange="if (this.value) window.location.href = this.value">
+      <select id="viewSelect" class="select-compact" aria-label="View">
         <option value="<%= listHref %>" <%= view === 'list' ? 'selected' : '' %>>List view</option>
         <option value="<%= gridHref %>" <%= view === 'grid' ? 'selected' : '' %>>Grid view</option>
       </select>
@@ -49,6 +49,17 @@
     </div>
   </div>
 </div>
+
+<script nonce="<%= cspNonce %>">
+  (function () {
+    var sel = document.getElementById('viewSelect');
+    if (!sel) return;
+    sel.addEventListener('change', function () {
+      var v = String(sel.value || '').trim();
+      if (v) window.location.href = v;
+    });
+  })();
+</script>
 
 <% if (Number(lowStockCount || 0) > 0) { %>
   <%
@@ -177,6 +188,9 @@
             <div class="admin-product-meta">
               <% if (p.low_stock) { %>
                 <span class="badge warn">Low</span>
+                <% if (p.low_stock_variant_label) { %>
+                  <span class="muted small" style="margin-left:6px"><%= p.low_stock_variant_label %></span>
+                <% } %>
               <% } %>
               <% if (p.visibility) { %>
                 <span class="badge ok">Visible</span>
@@ -245,6 +259,9 @@
               <%= p.stock %>
               <% if (p.low_stock) { %>
                 <span class="badge warn" style="margin-left:6px">Low</span>
+                <% if (p.low_stock_variant_label) { %>
+                  <span class="muted small" style="margin-left:6px"><%= p.low_stock_variant_label %></span>
+                <% } %>
               <% } %>
             </td>
             <td><%= p.visibility ? 'Yes' : 'No' %></td>

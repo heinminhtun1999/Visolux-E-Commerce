@@ -1,5 +1,6 @@
 const { getDb } = require('../db/db');
 const inventoryRepo = require('../repositories/inventoryRepo');
+const productVariantRepo = require('../repositories/productVariantRepo');
 const orderRepo = require('../repositories/orderRepo');
 const adminNotificationRepo = require('../repositories/adminNotificationRepo');
 const emailService = require('./emailService');
@@ -193,12 +194,16 @@ function deductStockAtomicallyForOrder(order) {
   const db = getDb();
 
   const tx = db.transaction(() => {
+    const variantProductIds = new Set();
+
     for (const it of order.items) {
       const useVariant = it.variant_id != null && Number.isFinite(Number(it.variant_id)) && Number(it.variant_id) > 0;
 
       const res = useVariant
         ? db
-          .prepare('UPDATE product_variants SET stock = stock - ? WHERE variant_id=? AND stock >= ? AND visibility=1 AND archived=0')
+          .prepare(
+            'UPDATE product_variants SET stock = stock - ? WHERE variant_id=? AND stock >= ? AND COALESCE(active, 1)=1 AND visibility=1 AND archived=0'
+          )
           .run(it.quantity, it.variant_id, it.quantity)
         : db
           .prepare('UPDATE inventory SET stock = stock - ? WHERE product_id=? AND stock >= ? AND archived=0')
@@ -208,6 +213,19 @@ function deductStockAtomicallyForOrder(order) {
         const product = inventoryRepo.getById(it.product_id);
         const name = product?.name || `#${it.product_id}`;
         throw new StockInsufficientError(`Insufficient stock for ${name}`);
+      }
+
+      if (useVariant) {
+        variantProductIds.add(Number(it.product_id));
+      }
+    }
+
+    // Keep product-level stock in sync with sum of active variants.
+    // This ensures admin/product stock reflects variant deductions after payment.
+    for (const productId of variantProductIds) {
+      const agg = productVariantRepo.computeAggregateForProduct(productId);
+      if (agg && agg.hasVariants) {
+        inventoryRepo.update(productId, { stock: Math.max(0, Math.floor(Number(agg.stock || 0))) });
       }
     }
   });

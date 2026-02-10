@@ -68,6 +68,22 @@
           <option value="OFFLINE_TRANSFER">Offline bank transfer (upload slip)</option>
         </select>
 
+        <% if (!canOnlinePay && onlinePayWarning) { %>
+          <div class="card card--pad card--mt">
+            <div class="badge warn">Online payment unavailable</div>
+            <div class="muted small" style="margin-top:6px"><%= onlinePayWarning %></div>
+
+            <% if (onlinePayIncompatibleCategories && onlinePayIncompatibleCategories.length) { %>
+              <div class="muted small" style="margin-top:10px">Not compatible together:</div>
+              <div class="muted small" style="margin-top:6px">
+                <% onlinePayIncompatibleCategories.forEach(group => { %>
+                  <div>• <%= (group || []).join(', ') %></div>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        <% } %>
+
         <div class="card card--pad card--mt" id="offlineBankDetails" style="display:none">
           <div class="muted small kicker">Offline bank transfer details</div>
 
@@ -103,7 +119,9 @@
 
         <div class="muted small u-mt-10">
           <% if (!canOnlinePay) { %>
-            Online payment is currently disabled.
+            <% if (!onlinePayWarning) { %>
+              Online payment is currently disabled.
+            <% } %>
           <% } %>
         </div>
       </form>

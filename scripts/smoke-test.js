@@ -39,6 +39,9 @@ function getBaseLocals(overrides = {}) {
     // CSRF
     csrfToken: 'smoke-test-token',
 
+    // CSP nonce (required for inline scripts)
+    cspNonce: 'smoke-test-nonce',
+
     // View helpers (normally provided via app locals)
     icon: () => '',
     formatMoney: (value) => {

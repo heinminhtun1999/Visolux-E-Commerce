@@ -68,7 +68,7 @@
   #zonesTbody tr.dnd-over { outline: 2px dashed rgba(0,0,0,0.25); outline-offset: -2px; }
 </style>
 
-<script>
+<script nonce="<%= cspNonce %>">
 (function () {
   var tbody = document.getElementById('zonesTbody');
   if (!tbody) return;

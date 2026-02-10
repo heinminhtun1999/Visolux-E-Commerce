@@ -1590,13 +1590,74 @@ router.get('/reports/sales.csv', (req, res) => {
   const report = reportRepo.getSalesReport({ dateFrom: date_from, dateTo: date_to });
 
   const lines = [];
-  lines.push(['Date', 'PaidOrders', 'GrossRM', 'RefundsRM', 'NetRM', 'ProfitRM'].join(','));
+
+  // Summary
+  lines.push(['Metric', 'Value'].join(','));
+  const s = report && report.summary ? report.summary : {};
+  lines.push(['DateFrom', report.date_from || ''].map(csvCell).join(','));
+  lines.push(['DateTo', report.date_to || ''].map(csvCell).join(','));
+  lines.push(['PaidOrders', String(Number(s.orders_count || 0))].map(csvCell).join(','));
+  lines.push(['UnitsSold', String(Number(s.units_sold || 0))].map(csvCell).join(','));
+  lines.push(['AvgOrderValueRM', (Number(s.avg_order_value_cents || 0) / 100).toFixed(2)].map(csvCell).join(','));
+  lines.push(['ItemsSubtotalRM', (Number(s.items_subtotal_cents || 0) / 100).toFixed(2)].map(csvCell).join(','));
+  lines.push(['DiscountsRM', (Number(s.discount_cents || 0) / 100).toFixed(2)].map(csvCell).join(','));
+  lines.push(['ShippingCollectedRM', (Number(s.shipping_cents || 0) / 100).toFixed(2)].map(csvCell).join(','));
+  lines.push(['GrossSalesRM', (Number(s.gross_cents || 0) / 100).toFixed(2)].map(csvCell).join(','));
+  lines.push(['RefundsConfirmedRM', (Number(s.refund_cents || 0) / 100).toFixed(2)].map(csvCell).join(','));
+  lines.push(['NetRM', (Number(s.net_cents || 0) / 100).toFixed(2)].map(csvCell).join(','));
+  lines.push(['GrossProfitEstRM', (Number(s.profit_cents || 0) / 100).toFixed(2)].map(csvCell).join(','));
+  lines.push(['UnknownCostUnits', String(Number(s.profit_unknown_cost_units || 0))].map(csvCell).join(','));
+
+  lines.push('');
+
+  // Daily
+  lines.push([
+    'Date',
+    'PaidOrders',
+    'UnitsSold',
+    'ItemsSubtotalRM',
+    'DiscountsRM',
+    'ShippingCollectedRM',
+    'GrossRM',
+    'RefundsRM',
+    'NetRM',
+    'ProfitRM',
+    'UnknownCostUnits',
+  ].join(','));
   for (const r of report.daily || []) {
+    const itemsSubtotalRm = (Number(r.items_subtotal_cents || 0) / 100).toFixed(2);
+    const discountRm = (Number(r.discount_cents || 0) / 100).toFixed(2);
+    const shippingRm = (Number(r.shipping_cents || 0) / 100).toFixed(2);
     const grossRm = (Number(r.gross_cents || 0) / 100).toFixed(2);
     const refundRm = (Number(r.refund_cents || 0) / 100).toFixed(2);
     const netRm = (Number(r.net_cents || 0) / 100).toFixed(2);
     const profitRm = (Number(r.profit_cents || 0) / 100).toFixed(2);
-    lines.push([String(r.day), String(r.orders_count || 0), grossRm, refundRm, netRm, profitRm].join(','));
+    lines.push(
+      [
+        String(r.day),
+        String(r.orders_count || 0),
+        String(Number(r.units_sold || 0)),
+        itemsSubtotalRm,
+        discountRm,
+        shippingRm,
+        grossRm,
+        refundRm,
+        netRm,
+        profitRm,
+        String(Number(r.profit_unknown_cost_units || 0)),
+      ].join(',')
+    );
+  }
+
+  lines.push('');
+
+  // Top products
+  lines.push(['TopProducts', '', '', '', ''].join(','));
+  lines.push(['ProductId', 'ProductName', 'Qty', 'SubtotalRM', 'ProfitEstRM'].join(','));
+  for (const p of report.topProducts || []) {
+    const subtotalRm = (Number(p.subtotal_cents || 0) / 100).toFixed(2);
+    const profitRm = (Number(p.profit_cents || 0) / 100).toFixed(2);
+    lines.push([p.product_id, p.product_name || '', Number(p.quantity || 0), subtotalRm, profitRm].map(csvCell).join(','));
   }
 
   const label = `sales_report_${report.date_from || 'all'}_${report.date_to || 'all'}.csv`;
@@ -1686,13 +1747,22 @@ router.get('/exports/products.csv', (req, res) => {
     'product_id',
     'name',
     'category',
+    'variant_id',
+    'variant_type_key',
+    'variant_label',
     'selling_price_rm',
     'selling_price_cents',
     'cost_price_rm',
     'cost_price_cents',
     'weight_kg',
+    'height_cm',
+    'length_cm',
+    'width_cm',
     'stock',
     'availability',
+    'variant_active',
+    'variant_visibility',
+    'variant_archived',
     'visibility',
     'archived',
     'created_at',
@@ -1717,26 +1787,78 @@ router.get('/exports/products.csv', (req, res) => {
     });
     if (!batch.length) break;
 
+
+    const variantsByProductId = productVariantRepo.listByProductIds(
+      batch.map((p) => p.product_id),
+      { includeInactive: true }
+    );
+
     for (const p of batch) {
-      const priceCents = Number(p.price || 0);
-      const costCents = p.cost_price == null ? null : Number(p.cost_price || 0);
-      const row = [
-        p.product_id,
-        p.name,
-        p.category,
-        formatMoneyRm2(priceCents),
-        priceCents,
-        costCents == null ? '' : formatMoneyRm2(costCents),
-        costCents == null ? '' : costCents,
-        p.weight_kg == null ? '' : p.weight_kg,
-        p.stock,
-        p.availability ? 1 : 0,
-        p.visibility ? 1 : 0,
-        p.archived ? 1 : 0,
-        p.created_at || '',
-        p.updated_at || '',
-      ].map(csvCell);
-      res.write(`${row.join(',')}\n`);
+      const variants = variantsByProductId[String(p.product_id)] || [];
+
+      if (!variants.length) {
+        const priceCents = Number(p.price || 0);
+        const costCents = p.cost_price == null ? null : Number(p.cost_price || 0);
+        const row = [
+          p.product_id,
+          p.name,
+          p.category,
+          '',
+          '',
+          '',
+          formatMoneyRm2(priceCents),
+          priceCents,
+          costCents == null ? '' : formatMoneyRm2(costCents),
+          costCents == null ? '' : costCents,
+          p.weight_kg == null ? '' : p.weight_kg,
+          p.height_cm == null ? '' : p.height_cm,
+          p.length_cm == null ? '' : p.length_cm,
+          p.width_cm == null ? '' : p.width_cm,
+          p.stock,
+          p.availability ? 1 : 0,
+          '',
+          '',
+          '',
+          p.visibility ? 1 : 0,
+          p.archived ? 1 : 0,
+          p.created_at || '',
+          p.updated_at || '',
+        ].map(csvCell);
+        res.write(`${row.join(',')}\n`);
+        continue;
+      }
+
+      for (const v of variants) {
+        const priceCents = Number(v.price || 0);
+        const costCents = v.cost_price == null ? null : Number(v.cost_price || 0);
+        const stock = Math.max(0, Math.floor(Number(v.stock || 0)));
+        const row = [
+          p.product_id,
+          p.name,
+          p.category,
+          v.variant_id,
+          v.type_key || '',
+          v.label || '',
+          formatMoneyRm2(priceCents),
+          priceCents,
+          costCents == null ? '' : formatMoneyRm2(costCents),
+          costCents == null ? '' : costCents,
+          v.weight_kg == null ? '' : v.weight_kg,
+          v.height_cm == null ? '' : v.height_cm,
+          v.length_cm == null ? '' : v.length_cm,
+          v.width_cm == null ? '' : v.width_cm,
+          stock,
+          stock > 0 ? 1 : 0,
+          v.active ? 1 : 0,
+          v.visibility ? 1 : 0,
+          v.archived ? 1 : 0,
+          p.visibility ? 1 : 0,
+          p.archived ? 1 : 0,
+          p.created_at || '',
+          p.updated_at || '',
+        ].map(csvCell);
+        res.write(`${row.join(',')}\n`);
+      }
     }
   }
 
@@ -2029,13 +2151,30 @@ function extractSitePageImageNamesFromHtml(html) {
 
   // Very small/safe extraction for our own generated URLs.
   // Example: <img src="/uploads/site/site_page_<nonce>.webp">
-  const re = /\bsrc\s*=\s*["']([^"']+)["']/gi;
+  const re = /\b(?:src|data-mce-src)\s*=\s*["']([^"']+)["']/gi;
   for (;;) {
     const m = re.exec(s);
     if (!m) break;
-    const src = String(m[1] || '').trim();
-    if (!src.startsWith('/uploads/site/')) continue;
-    const fileName = path.posix.basename(src);
+    const srcRaw = String(m[1] || '').trim();
+    if (!srcRaw) continue;
+
+    // Support both relative and absolute URLs.
+    // Examples:
+    // - /uploads/site/site_page_<nonce>.webp
+    // - https://example.com/uploads/site/site_page_<nonce>.webp
+    let pathname = srcRaw;
+    try {
+      if (/^https?:\/\//i.test(srcRaw)) {
+        pathname = new URL(srcRaw).pathname || srcRaw;
+      } else if (srcRaw.startsWith('//')) {
+        pathname = new URL(`http:${srcRaw}`).pathname || srcRaw;
+      }
+    } catch (_) {
+      pathname = srcRaw;
+    }
+
+    if (!String(pathname).startsWith('/uploads/site/')) continue;
+    const fileName = path.posix.basename(String(pathname));
     if (!/^site_page_[0-9a-f]{16}\.webp$/i.test(fileName)) continue;
     out.add(fileName);
   }
@@ -3571,6 +3710,7 @@ router.post(
   '/products/new',
   upload.fields([
     { name: 'product_images', maxCount: 1 },
+    { name: 'variant_image', maxCount: 1 },
   ]),
   csrfProtection({ ignoreMultipart: false }),
   validate(
@@ -3580,6 +3720,9 @@ router.post(
         description: z.string().trim().max(20000).optional().or(z.literal('')),
         description_html: z.string().trim().max(200000).optional().or(z.literal('')),
         category: z.string().trim().min(2).max(80),
+        // Default variant fields
+        type_key: z.string().trim().max(80).optional().or(z.literal('')),
+        label: z.string().trim().min(1).max(80).optional().or(z.literal('')),
         price: z.string(),
         cost_price: z.string().optional().or(z.literal('')),
         weight_kg: z.string().optional().or(z.literal('')),
@@ -3587,6 +3730,8 @@ router.post(
         length_cm: z.string().optional().or(z.literal('')),
         width_cm: z.string().optional().or(z.literal('')),
         stock: z.string(),
+        active: z.string().optional(),
+        sort_order: z.string().optional().or(z.literal('')),
         visibility: z.string().optional(),
         archived: z.string().optional(),
       }),
@@ -3604,6 +3749,14 @@ router.post(
       const widthCm = parseNonNegativeNumberOrNull(req.validated.body.width_cm, { label: 'Width (cm)' });
       const requestedStock = Math.max(0, Math.floor(Number(req.validated.body.stock)));
       const stock = requestedStock;
+
+      const defaultVariantLabel = String(req.validated.body.label || '').trim() || 'Default';
+      const defaultVariantActive = String(req.validated.body.active || '1') === '1';
+      const sortOrderRaw = String(req.validated.body.sort_order || '').trim();
+      const defaultVariantSortOrder = sortOrderRaw ? Math.floor(Number(sortOrderRaw)) : 0;
+
+      const rawTypeKey = String(req.validated.body.type_key || '').trim();
+      const defaultVariantTypeKey = productVariantRepo.normalizeTypeKey(rawTypeKey || defaultVariantLabel);
 
       const cat = categoryRepo.getBySlug(req.validated.body.category);
       if (!cat || cat.archived) {
@@ -3628,6 +3781,48 @@ router.post(
         archived: req.validated.body.archived === '1',
         product_image: null,
       });
+
+      // New requirement: at least one variant must exist per product.
+      // Create a default variant using the product fields so stock/price are variant-driven.
+      try {
+        const createdVariant = productVariantRepo.create({
+          product_id: created.product_id,
+          type_key: defaultVariantTypeKey || 'DEFAULT',
+          label: defaultVariantLabel,
+          price: priceCents,
+          cost_price: costPriceCents,
+          weight_kg: weightKg,
+          height_cm: heightCm,
+          length_cm: lengthCm,
+          width_cm: widthCm,
+          stock,
+          image_url: null,
+          active: defaultVariantActive,
+          sort_order: Number.isFinite(defaultVariantSortOrder) ? defaultVariantSortOrder : 0,
+        });
+
+        const files = req.files || {};
+        const variantFiles = Array.isArray(files.variant_image) ? files.variant_image : [];
+        if (variantFiles.length) {
+          const vf = variantFiles[0];
+          try {
+            if (createdVariant) {
+              const url = await imageService.optimizeAndSaveVariantImage(vf.path, { productId: created.product_id, variantId: createdVariant.variant_id });
+              productVariantRepo.update(createdVariant.variant_id, { image_url: url });
+            }
+          } finally {
+            try {
+              fs.unlinkSync(vf.path);
+            } catch (_) {
+              // ignore
+            }
+          }
+        }
+
+        await refreshProductAggregatesFromVariants(created.product_id);
+      } catch (_) {
+        // If variant creation fails, keep product but continue (admin can fix on edit page).
+      }
 
       const rawHtml = String(req.validated.body.description_html || '').trim();
       const cleanHtml = rawHtml ? sanitizeHtmlFragmentNoImages(rawHtml) : '';
@@ -3726,7 +3921,7 @@ router.post(
   validate(
     z.object({
       body: z.object({
-        type_key: z.string().trim().min(1).max(80),
+        type_key: z.string().trim().max(80).optional().or(z.literal('')),
         label: z.string().trim().min(1).max(80),
         price: z.string(),
         cost_price: z.string().optional().or(z.literal('')),
@@ -3765,7 +3960,7 @@ router.post(
       const sortOrderRaw = String(req.validated.body.sort_order || '').trim();
       const sortOrder = sortOrderRaw ? Math.floor(Number(sortOrderRaw)) : 0;
 
-      const typeKey = productVariantRepo.normalizeTypeKey(req.validated.body.type_key);
+      const typeKey = productVariantRepo.normalizeTypeKey(String(req.validated.body.type_key || '').trim() || req.validated.body.label);
       if (!typeKey) {
         return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Type key is required.' });
       }
@@ -3817,7 +4012,7 @@ router.post(
   validate(
     z.object({
       body: z.object({
-        type_key: z.string().trim().min(1).max(80),
+        type_key: z.string().trim().max(80).optional().or(z.literal('')),
         label: z.string().trim().min(1).max(80),
         price: z.string(),
         cost_price: z.string().optional().or(z.literal('')),
@@ -3862,13 +4057,7 @@ router.post(
       const sortOrderRaw = String(req.validated.body.sort_order || '').trim();
       const sortOrder = sortOrderRaw ? Math.floor(Number(sortOrderRaw)) : 0;
 
-      const typeKey = productVariantRepo.normalizeTypeKey(req.validated.body.type_key);
-      if (!typeKey) {
-        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Type key is required.' });
-      }
-
       const patch = {
-        type_key: typeKey,
         label: req.validated.body.label,
         price: priceCents,
         cost_price: costPriceCents,
@@ -4333,7 +4522,9 @@ router.get('/orders/:id', (req, res) => {
   };
   const refundableRemainingCents = Math.max(
     0,
-    Number(order.total_amount || 0) - Number(combinedRefundSummaryConfirmed.amount_refunded || 0)
+    // Use in-flight refunds so refundable remaining decreases immediately after a successful
+    // refund request (PENDING) and restores automatically if the gateway later reports FAILED.
+    Number(order.total_amount || 0) - Number(combinedRefundSummary.amount_refunded || 0)
   );
   const refundByItem = orderRefundRepo.summariesByOrder(id);
   const refundByItemConfirmed = orderRefundRepo.summariesConfirmedByOrder(id);

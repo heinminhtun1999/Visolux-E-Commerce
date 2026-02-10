@@ -40,7 +40,7 @@
   <link rel="icon" href="<%= faviconHref %>" />
   <link rel="apple-touch-icon" href="<%= faviconHref %>" />
   <link rel="manifest" href="/public/site.webmanifest" />
-  <script>
+  <script nonce="<%= cspNonce %>">
     // Apply theme before CSS loads to avoid flash.
     (function () {
       try {
@@ -58,7 +58,7 @@
 
   <% if (typeof structuredData !== 'undefined' && structuredData && Array.isArray(structuredData) && structuredData.length) { %>
     <% structuredData.forEach(function(obj){ %>
-      <script type="application/ld+json"><%- JSON.stringify(obj) %></script>
+      <script nonce="<%= cspNonce %>" type="application/ld+json"><%- JSON.stringify(obj) %></script>
     <% }) %>
   <% } %>
 </head>
@@ -300,7 +300,6 @@
 
     <script src="/public/js/table-sort.js" defer></script>
     <script src="/public/js/theme-toggle.js" defer></script>
-    <script src="/public/js/flash-dismiss.js" defer></script>
     <% if (_isAdmin && (_currentPath || '').startsWith('/admin')) { %>
       <script src="/public/js/admin-notifications.js" defer></script>
       <script src="/public/js/admin-sidebar.js" defer></script>

@@ -17,6 +17,7 @@ function mapProduct(row) {
     width_cm: row.width_cm == null ? null : Number(row.width_cm),
     stock: row.stock,
     low_stock: row.low_stock == null ? false : Boolean(row.low_stock),
+    low_stock_variant_label: row.low_stock_variant_label ? String(row.low_stock_variant_label) : '',
     availability: Boolean(row.availability),
     visibility: Boolean(row.visibility),
     archived: Boolean(row.archived),
@@ -317,6 +318,15 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
                      AND i.stock > 0 AND i.stock <= @lowStock
                    )
                  ) THEN 1 ELSE 0 END as low_stock
+                 ,(
+                   SELECT pv.label
+                   FROM product_variants pv
+                   WHERE pv.product_id = i.product_id
+                     AND COALESCE(pv.active, 1)=1
+                     AND pv.stock > 0 AND pv.stock <= @lowStock
+                   ORDER BY pv.stock ASC, pv.sort_order ASC, pv.variant_id ASC
+                   LIMIT 1
+                 ) as low_stock_variant_label
                FROM inventory i
                LEFT JOIN categories c ON c.slug = i.category
                ${where.length ? ` WHERE ${where.join(' AND ')}` : ''}

@@ -43,9 +43,17 @@ function sanitizeHtmlFragment(html) {
     ],
     allowedAttributes: {
       a: ['href', 'title', 'target', 'rel'],
-      img: ['src', 'alt', 'title', 'width', 'height'],
-      th: ['align'],
-      td: ['align'],
+      img: ['src', 'alt', 'title', 'width', 'height', 'style'],
+      p: ['style'],
+      div: ['style'],
+      span: ['style'],
+      th: ['align', 'style'],
+      td: ['align', 'style'],
+    },
+    allowedStyles: {
+      '*': {
+        'text-align': [/^left$/i, /^right$/i, /^center$/i, /^justify$/i],
+      },
     },
     allowedSchemes: ['http', 'https', 'mailto', 'tel', 'data'],
     transformTags: {
@@ -102,8 +110,16 @@ function sanitizeHtmlFragmentNoImages(html) {
     ],
     allowedAttributes: {
       a: ['href', 'title', 'target', 'rel'],
-      th: ['align'],
-      td: ['align'],
+      p: ['style'],
+      div: ['style'],
+      span: ['style'],
+      th: ['align', 'style'],
+      td: ['align', 'style'],
+    },
+    allowedStyles: {
+      '*': {
+        'text-align': [/^left$/i, /^right$/i, /^center$/i, /^justify$/i],
+      },
     },
     allowedSchemes: ['http', 'https', 'mailto', 'tel'],
     transformTags: {

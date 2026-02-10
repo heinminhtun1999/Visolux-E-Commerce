@@ -1,4 +1,5 @@
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
@@ -41,6 +42,13 @@ function getFiuuGatewayOrigin() {
 
 function createApp() {
   const app = express();
+
+  // CSP nonce: allows inline scripts without relying on 'unsafe-inline'.
+  // Exposed to EJS templates as `cspNonce`.
+  app.use((req, res, next) => {
+    res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+    next();
+  });
 
   // Health check for uptime monitors. Keep it before session/CSRF so it doesn't write cookies.
   app.locals.startedAt = Date.now();
@@ -196,9 +204,18 @@ function createApp() {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
           // Allow the admin rich-text editor (TinyMCE) CDN.
-          'script-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
-          'script-src-elem': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
-          'script-src-attr': ["'unsafe-inline'"],
+          'script-src': [
+            "'self'",
+            (req, res) => `'nonce-${res.locals.cspNonce}'`,
+            'https://cdn.jsdelivr.net',
+          ],
+          'script-src-elem': [
+            "'self'",
+            (req, res) => `'nonce-${res.locals.cspNonce}'`,
+            'https://cdn.jsdelivr.net',
+          ],
+          // Disallow inline event handlers like onclick="...".
+          'script-src-attr': ["'none'"],
           'frame-ancestors': env.iframeAncestors.split(/\s+/).filter(Boolean),
           // Allow posting the hosted-payment form to Fiuu.
           'form-action': formAction,

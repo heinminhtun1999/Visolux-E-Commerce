@@ -28,6 +28,25 @@
       <% } %>
     </select>
 
+    <% const isNewProduct = !product; %>
+    <% if (isNewProduct) { %>
+      <hr class="divider" />
+      <h2 class="h2">Default variant</h2>
+      <div class="muted small" style="margin-top:6px">A new product starts with one variant.</div>
+
+      <div class="row" style="margin-top:10px">
+        <div class="col" style="min-width:220px">
+          <label>Variant key</label>
+          <input class="input" name="type_key" value="" readonly aria-disabled="true" tabindex="-1" data-variant-type-key placeholder="Auto" />
+          <div class="muted small" style="margin-top:6px">Auto-generated from the label.</div>
+        </div>
+        <div class="col" style="min-width:240px">
+          <label>Variant label</label>
+          <input class="input" name="label" value="Default" required data-variant-label />
+        </div>
+      </div>
+    <% } %>
+
     <div class="row">
       <div class="col" style="min-width:220px">
         <label>Selling price (RM)</label>
@@ -58,6 +77,26 @@
         <% } %>
       </div>
     </div>
+
+    <% if (isNewProduct) { %>
+      <div class="row">
+        <div class="col" style="min-width:220px">
+          <label>Active</label>
+          <select name="active">
+            <option value="1" selected>Enabled</option>
+            <option value="0">Disabled</option>
+          </select>
+        </div>
+        <div class="col" style="min-width:220px">
+          <label>Sort order</label>
+          <input class="input" name="sort_order" type="number" step="1" value="0" />
+        </div>
+        <div class="col" style="min-width:260px">
+          <label>Variant image (optional)</label>
+          <input class="input" type="file" name="variant_image" accept="image/*" />
+        </div>
+      </div>
+    <% } %>
 
     <% if (!hasVariants) { %>
       <div class="row">
@@ -145,7 +184,7 @@
               <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
 
               <label>Type key</label>
-              <input class="input" name="type_key" value="<%= v.type_key %>" required />
+              <input class="input" name="type_key" value="<%= v.type_key %>" readonly aria-disabled="true" tabindex="-1" required />
 
               <label>Label</label>
               <input class="input" name="label" value="<%= v.label %>" required />
@@ -218,11 +257,11 @@
         <div class="row">
           <div class="col" style="min-width:200px">
             <label>Type key</label>
-            <input class="input" name="type_key" placeholder="" required />
+            <input class="input" name="type_key" placeholder="Auto" readonly aria-disabled="true" tabindex="-1" required data-variant-type-key />
           </div>
           <div class="col" style="min-width:240px">
             <label>Label</label>
-            <input class="input" name="label" placeholder="" required />
+            <input class="input" name="label" placeholder="" required data-variant-label />
           </div>
         </div>
 

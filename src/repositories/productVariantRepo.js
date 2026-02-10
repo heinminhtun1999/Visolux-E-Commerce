@@ -15,6 +15,8 @@ function mapVariant(row) {
     width_cm: row.width_cm == null ? null : Number(row.width_cm),
     stock: Number(row.stock),
     image_url: row.image_url || null,
+    visibility: row.visibility == null ? true : Boolean(row.visibility),
+    archived: row.archived == null ? false : Boolean(row.archived),
     active: row.active == null ? true : Boolean(row.active),
     sort_order: Number(row.sort_order || 0),
     created_at: row.created_at,
@@ -265,8 +267,44 @@ function listActiveByProductIds(productIds) {
   return map;
 }
 
+function listByProductIds(productIds, { includeInactive } = {}) {
+  const db = getDb();
+  const ids = Array.from(
+    new Set(
+      (Array.isArray(productIds) ? productIds : [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )
+  );
+  if (!ids.length) return {};
+
+  const clauses = [`product_id IN (${ids.map(() => '?').join(',')})`];
+  if (!includeInactive) clauses.push('COALESCE(active, 1)=1');
+  const where = clauses.join(' AND ');
+
+  const rows = db
+    .prepare(
+      `SELECT *
+       FROM product_variants
+       WHERE ${where}
+       ORDER BY product_id ASC, sort_order ASC, variant_id ASC`
+    )
+    .all(...ids);
+
+  const map = {};
+  for (const row of rows) {
+    const v = mapVariant(row);
+    if (!v) continue;
+    const k = String(v.product_id);
+    if (!map[k]) map[k] = [];
+    map[k].push(v);
+  }
+  return map;
+}
+
 module.exports = {
   listByProductId,
+  listByProductIds,
   listActiveByProductIds,
   getById,
   create,

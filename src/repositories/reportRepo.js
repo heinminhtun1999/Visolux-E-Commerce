@@ -111,6 +111,9 @@ function getSalesReport({ dateFrom, dateTo } = {}) {
       `SELECT
         date(created_at) as day,
         COUNT(*) as orders_count,
+        COALESCE(SUM(items_subtotal), 0) as items_subtotal_cents,
+        COALESCE(SUM(discount_amount), 0) as discount_cents,
+        COALESCE(SUM(shipping_fee), 0) as shipping_cents,
         COALESCE(SUM(total_amount), 0) as gross_cents
        FROM orders
        WHERE ${paidWhere.join(' AND ')}
@@ -121,8 +124,30 @@ function getSalesReport({ dateFrom, dateTo } = {}) {
     .map((r) => ({
       day: r.day,
       orders_count: r.orders_count,
+      units_sold: 0,
+      items_subtotal_cents: Number(r.items_subtotal_cents || 0),
+      discount_cents: Number(r.discount_cents || 0),
+      shipping_cents: Number(r.shipping_cents || 0),
       gross_cents: r.gross_cents,
     }));
+
+  const dailyUnitsRows = db
+    .prepare(
+      `SELECT
+        date(o.created_at) as day,
+        COALESCE(SUM(oi.quantity), 0) as units_sold
+       FROM order_items oi
+       JOIN orders o ON o.order_id = oi.order_id
+       WHERE o.${paidWhere.join(' AND o.')}
+       GROUP BY date(o.created_at)
+       ORDER BY day ASC`
+    )
+    .all(paidParams);
+
+  const unitsByDay = new Map();
+  for (const r of dailyUnitsRows) {
+    unitsByDay.set(String(r.day), Number(r.units_sold || 0));
+  }
 
   const dailyProfitRows = db
     .prepare(
@@ -188,6 +213,10 @@ function getSalesReport({ dateFrom, dateTo } = {}) {
     return {
       day: r.day,
       orders_count: r.orders_count,
+      units_sold: unitsByDay.get(String(r.day)) || 0,
+      items_subtotal_cents: Number(r.items_subtotal_cents || 0),
+      discount_cents: Number(r.discount_cents || 0),
+      shipping_cents: Number(r.shipping_cents || 0),
       gross_cents: r.gross_cents,
       refund_cents: refunds,
       net_cents: Number(r.gross_cents || 0) - refunds,

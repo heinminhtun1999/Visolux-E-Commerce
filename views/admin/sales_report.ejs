@@ -100,7 +100,19 @@
   <div class="table-scroll" style="margin-top:10px">
     <table class="table">
       <thead>
-        <tr><th>Date</th><th>Paid orders</th><th>Gross</th><th>Refunds</th><th>Net</th><th>Profit (est.)</th></tr>
+        <tr>
+          <th>Date</th>
+          <th>Paid orders</th>
+          <th>Units sold</th>
+          <th>Items subtotal</th>
+          <th>Discounts</th>
+          <th>Shipping</th>
+          <th>Gross</th>
+          <th>Refunds</th>
+          <th>Net</th>
+          <th>Profit (est.)</th>
+          <th>Unknown cost units</th>
+        </tr>
       </thead>
       <tbody>
         <% if (daily && daily.length) { %>
@@ -108,14 +120,19 @@
             <tr>
               <td class="muted"><%= r.day %></td>
               <td><%= r.orders_count %></td>
+              <td><%= (r.units_sold != null) ? r.units_sold : 0 %></td>
+              <td>RM <%= formatMoney(r.items_subtotal_cents || 0) %></td>
+              <td>RM <%= formatMoney(r.discount_cents || 0) %></td>
+              <td>RM <%= formatMoney(r.shipping_cents || 0) %></td>
               <td>RM <%= formatMoney(r.gross_cents || 0) %></td>
               <td>RM <%= formatMoney(r.refund_cents || 0) %></td>
               <td>RM <%= formatMoney(r.net_cents || 0) %></td>
               <td>RM <%= formatMoney(r.profit_cents || 0) %></td>
+              <td><%= (r.profit_unknown_cost_units != null) ? r.profit_unknown_cost_units : 0 %></td>
             </tr>
           <% }) %>
         <% } else { %>
-          <tr><td colspan="6" class="muted">No data for this range.</td></tr>
+          <tr><td colspan="11" class="muted">No data for this range.</td></tr>
         <% } %>
       </tbody>
     </table>

@@ -10,13 +10,6 @@
   </div>
 </div>
 
-<div class="card" style="padding:14px; margin-top:12px">
-  <div class="row" style="gap:10px; flex-wrap:wrap">
-    <button class="btn" type="button" data-href="#payment-gateway">Online payment</button>
-    <button class="btn" type="button" data-href="#offline-transfer">Offline transfer</button>
-  </div>
-</div>
-
 <section id="payment-gateway" class="card" style="padding:14px; margin-top:12px">
   <h2 class="h2" style="margin-top:0">Online payment</h2>
   <div class="muted small">Configure your online payment accounts. Set one default account. To map a category to a specific account, use <a href="/admin/categories">Admin → Categories</a>.</div>
@@ -73,7 +66,7 @@
     </div>
   </form>
 
-  <script>
+  <script nonce="<%= cspNonce %>">
     (function () {
       function randHex16() {
         try {
@@ -182,7 +175,7 @@
     </div>
   </form>
 
-  <script>
+  <script nonce="<%= cspNonce %>">
     (function () {
       function randHex16() {
         try {

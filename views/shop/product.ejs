@@ -3,6 +3,7 @@
 <div class="card card--pad-lg">
   <div class="row">
     <div class="col">
+      <%# Variants: choose a default (lowest-price active variant) for initial display %>
       <% const hasVariants = (typeof variants !== 'undefined' && variants && variants.length); %>
       <% const sellableVariants = hasVariants
         ? (variants || []).filter((v) => Boolean(Number((v && v.active) == null ? 1 : v.active)))
@@ -10,6 +11,8 @@
       <% const defaultVariant = sellableVariants.length
         ? sellableVariants.reduce((best, v) => (!best || Number(v.price || 0) < Number(best.price || 0)) ? v : best, null)
         : null; %>
+
+      <%# Images: main product image + (optional) default variant image for quick switching %>
       <% const mainProductImg = (product && product.product_image) ? product.product_image : '/public/placeholder.svg'; %>
       <% const defaultVariantImg = (defaultVariant && defaultVariant.image_url) ? defaultVariant.image_url : null; %>
       <% const items = [mainProductImg]; %>
@@ -24,6 +27,8 @@
             <button class="product-carousel__btn product-carousel__btn--prev" type="button" data-carousel-prev aria-label="Previous image">‹</button>
             <button class="product-carousel__btn product-carousel__btn--next" type="button" data-carousel-next aria-label="Next image">›</button>
           </div>
+
+          <%# Stock: prefer available_stock when present (supports reservations/adjustments) %>
           <% const effStock = (product.available_stock == null ? product.stock : product.available_stock); %>
           <% if (effStock <= 0) { %>
             <div class="product-stock-overlay" aria-label="Out of stock"><%= (Number(product.stock || 0) > 0) ? 'Temporarily out of stock' : 'Out of stock' %></div>

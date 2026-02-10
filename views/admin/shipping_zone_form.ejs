@@ -131,7 +131,7 @@
   </form>
 <% } %>
 
-<script>
+<script nonce="<%= cspNonce %>">
 (function () {
   function q(sel) { return document.querySelector(sel); }
   function show(el, on) {

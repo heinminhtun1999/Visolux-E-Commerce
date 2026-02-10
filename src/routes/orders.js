@@ -28,6 +28,7 @@ const offlineTransferService = require('../services/offlineTransferService');
 const fiuuAccountsService = require('../services/fiuuAccountsService');
 const { logger } = require('../utils/logger');
 const paymentDisplay = require('../utils/paymentDisplay');
+const categoryRepo = require('../repositories/categoryRepo');
 
 const router = express.Router();
 
@@ -127,10 +128,51 @@ router.get('/checkout', requireUser, async (req, res) => {
 
   const offlineTransferBanks = offlineTransferService.getBanksForCheckout();
 
+  // Validate FIUU account mapping at render-time too (mapping can change after items were added to cart).
+  let onlinePayWarning = '';
+  let onlinePayIncompatibleCategories = [];
+  const canOnlinePay = (() => {
+    if (!fiuuAccountsService.isOnlinePaymentConfigured()) return false;
+    const resolved = fiuuAccountsService.resolveAccountForCartItems(hydrated.items);
+    if (resolved && resolved.ok) return true;
+
+    if (resolved && resolved.reason === 'multiple_accounts_required') {
+      const slugToName = (slug) => {
+        try {
+          const c = categoryRepo.getBySlug(slug);
+          return String(c?.name || slug || '').trim() || String(slug || '').trim();
+        } catch (_) {
+          return String(slug || '').trim();
+        }
+      };
+
+      const pairs = Array.isArray(resolved.resolvedPairs) ? resolved.resolvedPairs : [];
+      const groupsByAccount = new Map();
+      for (const p of pairs) {
+        const accountId = String(p?.accountId || '').trim() || '(default)';
+        const slug = String(p?.slug || '').trim();
+        if (!slug) continue;
+        const name = slugToName(slug);
+        if (!groupsByAccount.has(accountId)) groupsByAccount.set(accountId, new Set());
+        groupsByAccount.get(accountId).add(name);
+      }
+
+      onlinePayIncompatibleCategories = Array.from(groupsByAccount.values())
+        .map((set) => Array.from(set))
+        .filter((arr) => arr.length);
+
+      onlinePayWarning =
+        'Your cart contains items from categories that require different online payment accounts. Please place separate orders, or use offline bank transfer.';
+    }
+    return false;
+  })();
+
   return res.render('orders/checkout', {
     title: 'Checkout',
     cart: hydrated,
-    canOnlinePay: fiuuAccountsService.isOnlinePaymentConfigured(),
+    canOnlinePay,
+    onlinePayWarning,
+    onlinePayIncompatibleCategories,
     prefill,
     malaysiaStates: MALAYSIA_STATES,
     prefillShippingFee,
@@ -489,15 +531,18 @@ router.post(
         const encoded = new URLSearchParams(
           Object.entries(reqInfo.fields).map(([k, v]) => [k, String(v)])
         ).toString();
-        // eslint-disable-next-line no-console
-        console.log('[fiuu] hosted payment request', {
-          method: reqInfo.method || 'POST',
-          url: reqInfo.url,
-          fullUrl: reqInfo.fullUrl || null,
-          meta: reqInfo.meta || null,
-          fields: reqInfo.fields,
-          urlencoded: encoded,
-        });
+        logger.debug(
+          {
+            event: 'fiuu_hosted_payment_request',
+            method: reqInfo.method || 'POST',
+            url: reqInfo.url,
+            fullUrl: reqInfo.fullUrl || null,
+            meta: reqInfo.meta || null,
+            fields: reqInfo.fields,
+            urlencoded: encoded,
+          },
+          '[fiuu] hosted payment request'
+        );
       }
 
       // When using GET-mode integration, we can redirect directly to the gateway URL.
@@ -512,7 +557,6 @@ router.post(
         gatewayFullUrl: reqInfo.fullUrl || null,
         gatewayMethod: reqInfo.method || 'POST',
         fields: reqInfo.fields,
-        debugFiuu: Boolean(env.fiuu.logRequests),
       });
     } catch (e) {
       if (e && (e.status === 409 || e.name === 'StockInsufficientError')) {

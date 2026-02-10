@@ -81,7 +81,7 @@
   <%- include('../shared/pagination', { basePath: '/admin/contact-messages', query: qs.toString(), page, pageCount }) %>
 </div>
 
-<script>
+<script nonce="<%= cspNonce %>">
   // Same UX as notifications: click row to open.
   document.addEventListener('click', (e) => {
     const tr = e.target && e.target.closest ? e.target.closest('tr[data-open-url]') : null;

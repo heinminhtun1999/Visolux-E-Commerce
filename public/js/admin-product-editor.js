@@ -1,4 +1,54 @@
 (function () {
+  function slugToTypeKey(input) {
+    var s = String(input || '')
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^A-Z0-9_\-]/g, '');
+    return s;
+  }
+
+  function initVariantTypeKeyAutofill() {
+    // 1) New product default variant.
+    var newProductForm = document.querySelector('form[action="/admin/products/new"]');
+    if (newProductForm) {
+      var keyEl = newProductForm.querySelector('input[name="type_key"]');
+      var labelEl = newProductForm.querySelector('input[name="label"]');
+      if (keyEl && labelEl) {
+        keyEl.readOnly = true;
+
+        var syncNew = function () {
+          var next = slugToTypeKey(labelEl.value);
+          if (next) keyEl.value = next;
+        };
+        labelEl.addEventListener('input', syncNew);
+        syncNew();
+      }
+    }
+
+    // 2) Add variant form on edit page.
+    var addVariantForm = document.querySelector('form[action*="/variants/new"]');
+    if (addVariantForm) {
+      var addKeyEl = addVariantForm.querySelector('input[name="type_key"]');
+      var addLabelEl = addVariantForm.querySelector('input[name="label"]');
+      if (addKeyEl && addLabelEl) {
+        addKeyEl.readOnly = true;
+        var syncAdd = function () {
+          var next2 = slugToTypeKey(addLabelEl.value);
+          if (next2) addKeyEl.value = next2;
+        };
+        addLabelEl.addEventListener('input', syncAdd);
+        syncAdd();
+      }
+    }
+
+    // 3) Ensure edit-variant type keys are non-editable.
+    var variantEditTypeKeys = document.querySelectorAll('form[action*="/variants/"] input[name="type_key"]');
+    for (var i = 0; i < variantEditTypeKeys.length; i++) {
+      variantEditTypeKeys[i].readOnly = true;
+    }
+  }
+
   function htmlToText(html) {
     try {
       var doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
@@ -14,6 +64,8 @@
   }
 
   function init() {
+    initVariantTypeKeyAutofill();
+
     var textareaText = document.querySelector('[data-product-desc-textarea]');
     var textareaHtml = document.querySelector('[data-product-desc-html]');
     var wrap = document.querySelector('[data-product-desc-editor]');

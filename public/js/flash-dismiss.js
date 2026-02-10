@@ -13,21 +13,27 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    var el = document.querySelector('[data-flash]');
-    if (!el) return;
+    document.addEventListener('click', function (e) {
+      var target = e && e.target;
+      if (!target) return;
+      var btn = target.closest ? target.closest('[data-flash-close]') : null;
+      if (!btn) return;
 
-    var closeBtn = el.querySelector('[data-flash-close]');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dismissFlash(el);
-      });
-    }
+      var el = btn.closest ? btn.closest('[data-flash]') : null;
+      if (!el) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      dismissFlash(el);
+    });
 
     document.addEventListener('keydown', function (e) {
-      if (!el || el.dataset.dismissed === '1') return;
-      if (e && (e.key === 'Escape' || e.key === 'Esc')) dismissFlash(el);
+      if (!e || (e.key !== 'Escape' && e.key !== 'Esc')) return;
+      var flashes = document.querySelectorAll('[data-flash]');
+      if (!flashes || !flashes.length) return;
+      flashes.forEach(function (el) {
+        dismissFlash(el);
+      });
     });
   });
 })();
