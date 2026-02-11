@@ -625,10 +625,16 @@ router.post(
   '/account/password',
   validate(
     z.object({
-      body: z.object({
-        current_password: z.string().max(200).optional().or(z.literal('')),
-        new_password: z.string().min(8).max(200),
-      }),
+      body: z
+        .object({
+          current_password: z.string().max(200).optional().or(z.literal('')),
+          new_password: z.string().min(8).max(200),
+          confirm_password: z.string().min(8).max(200),
+        })
+        .refine((v) => v.new_password === v.confirm_password, {
+          message: 'Passwords do not match',
+          path: ['confirm_password'],
+        }),
       query: z.any().optional(),
       params: z.any().optional(),
     })
