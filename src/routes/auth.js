@@ -559,6 +559,7 @@ router.post(
     z.object({
       body: z
         .object({
+          username: z.string().trim().min(3).max(32),
           email: z.string().trim().email().max(128),
           phone: z.string().trim().max(32).optional().or(z.literal('')),
 
@@ -587,19 +588,31 @@ router.post(
         return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
 
-      const { email, phone, address_line1, address_line2, city, state, postcode } = req.validated.body;
+      const { username, email, phone, address_line1, address_line2, city, state, postcode } = req.validated.body;
+
+      const nextUsername = String(username || '').trim();
 
       // Security: do not allow non-admins to become admin by changing their email.
-      if (!req.session.user.isAdmin && computeIsAdmin({ username: req.session.user.username, email })) {
-        req.session.flash = { type: 'error', message: 'Email update is not allowed.' };
+      if (!req.session.user.isAdmin && computeIsAdmin({ username: nextUsername, email })) {
+        req.session.flash = { type: 'error', message: 'Username or email update is not allowed.' };
         return res.redirect('/account');
       }
+
+      if (nextUsername.toLowerCase() !== String(req.session.user.username || '').toLowerCase()) {
+        const existingU = userRepo.findByUsernameOrEmail(nextUsername);
+        if (existingU && existingU.user_id !== req.session.user.user_id) {
+          req.session.flash = { type: 'error', message: 'Username already in use.' };
+          return res.redirect('/account');
+        }
+      }
+
       const hasFullAddress = Boolean(address_line1 && city && state && postcode);
       const address = hasFullAddress
         ? buildMalaysiaFullAddress({ line1: address_line1, line2: address_line2, city, state, postcode })
         : null;
 
       const updated = userRepo.updateProfile(req.session.user.user_id, {
+        username: nextUsername,
         email,
         phone,
         address,
@@ -609,6 +622,7 @@ router.post(
         state: state || null,
         postcode: postcode || null,
       });
+      req.session.user.username = updated.username;
       req.session.user.email = updated.email;
       // Do not allow privilege escalation via mutable fields.
       req.session.user.isAdmin = Boolean(req.session.user.isAdmin);

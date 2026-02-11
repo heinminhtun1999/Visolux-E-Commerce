@@ -128,12 +128,13 @@ function countAdminAccounts({ q } = {}) {
   return db.prepare(sql).get(params).c;
 }
 
-function updateProfile(userId, { email, phone, address, address_line1, address_line2, city, state, postcode }) {
+function updateProfile(userId, { username, email, phone, address, address_line1, address_line2, city, state, postcode }) {
   const db = getDb();
   db.prepare(
-    'UPDATE users SET email=@e, phone=@p, address=@a, address_line1=@l1, address_line2=@l2, city=@c, state=@s, postcode=@pc WHERE user_id=@id'
+    'UPDATE users SET username=@u, email=@e, phone=@p, address=@a, address_line1=@l1, address_line2=@l2, city=@c, state=@s, postcode=@pc WHERE user_id=@id'
   ).run({
     id: userId,
+    u: username,
     e: email,
     p: phone || null,
     a: address || null,
