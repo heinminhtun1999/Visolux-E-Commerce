@@ -48,6 +48,7 @@ function initializeSchema(database) {
   ensureUsersAccountClosure(database);
   ensureUsersAdminRoles(database);
   ensureUsersOAuthIdentities(database);
+  ensureUsersLocalPasswordSet(database);
   bootstrapSuperAdminsFromEnv(database);
   ensureSiteSettings(database);
   ensureOrdersOrderCode(database);
@@ -312,6 +313,35 @@ function ensureUsersOAuthIdentities(database) {
     // Facebook OAuth was removed; clean up the old index if it exists (best-effort).
     try {
       database.exec('DROP INDEX IF EXISTS idx_users_facebook_id');
+    } catch (_) {
+      // ignore
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
+function ensureUsersLocalPasswordSet(database) {
+  try {
+    const cols = database.prepare("PRAGMA table_info('users')").all();
+    const has = (name) => cols.some((c) => c.name === name);
+
+    const newlyAdded = !has('local_password_set');
+    if (newlyAdded) {
+      database.exec('ALTER TABLE users ADD COLUMN local_password_set INTEGER NOT NULL DEFAULT 1');
+      // For OAuth-created accounts, treat local password as not set until the user explicitly sets one.
+      // This allows the first-time password set flow to not require a current password.
+      database.exec('UPDATE users SET local_password_set=0 WHERE google_sub IS NOT NULL');
+    }
+
+    // Defensive backfill: keep values constrained to 0/1.
+    try {
+      database.exec('UPDATE users SET local_password_set=1 WHERE local_password_set IS NULL');
+    } catch (_) {
+      // ignore
+    }
+    try {
+      database.exec('UPDATE users SET local_password_set=0 WHERE local_password_set NOT IN (0,1)');
     } catch (_) {
       // ignore
     }

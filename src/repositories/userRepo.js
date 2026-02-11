@@ -7,6 +7,7 @@ function mapUser(row) {
     username: row.username,
     email: row.email,
     password_hash: row.password_hash,
+    local_password_set: row.local_password_set == null ? 1 : (Number(row.local_password_set || 0) ? 1 : 0),
     google_sub: row.google_sub || null,
     phone: row.phone,
     address: row.address,
@@ -59,6 +60,7 @@ function create({
   username,
   email,
   password_hash,
+  local_password_set,
   phone,
   address,
   address_line1,
@@ -71,13 +73,14 @@ function create({
 }) {
   const db = getDb();
   const stmt = db.prepare(
-    `INSERT INTO users (username, email, password_hash, phone, address, address_line1, address_line2, city, state, postcode, is_admin, is_super_admin)
-     VALUES (@username, @email, @password_hash, @phone, @address, @address_line1, @address_line2, @city, @state, @postcode, @is_admin, @is_super_admin)`
+    `INSERT INTO users (username, email, password_hash, local_password_set, phone, address, address_line1, address_line2, city, state, postcode, is_admin, is_super_admin)
+     VALUES (@username, @email, @password_hash, @local_password_set, @phone, @address, @address_line1, @address_line2, @city, @state, @postcode, @is_admin, @is_super_admin)`
   );
   const result = stmt.run({
     username,
     email,
     password_hash,
+    local_password_set: local_password_set == null ? 1 : (local_password_set ? 1 : 0),
     phone: phone || null,
     address: address || null,
     address_line1: address_line1 || null,
@@ -145,7 +148,14 @@ function updateProfile(userId, { email, phone, address, address_line1, address_l
 
 function updatePassword(userId, password_hash) {
   const db = getDb();
-  db.prepare('UPDATE users SET password_hash=? WHERE user_id=?').run(password_hash, userId);
+  // Updating the password means the user now has a known local password.
+  db.prepare('UPDATE users SET password_hash=?, local_password_set=1 WHERE user_id=?').run(password_hash, userId);
+  return getById(userId);
+}
+
+function markLocalPasswordSet(userId) {
+  const db = getDb();
+  db.prepare('UPDATE users SET local_password_set=1 WHERE user_id=?').run(userId);
   return getById(userId);
 }
 
@@ -280,6 +290,7 @@ module.exports = {
   setGoogleSub,
   updateProfile,
   updatePassword,
+  markLocalPasswordSet,
   setPasswordResetToken,
   clearPasswordResetToken,
   findByValidPasswordResetTokenHash,

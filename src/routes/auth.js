@@ -124,6 +124,7 @@ async function ensureOAuthUser({ provider, providerId, email, displayName }) {
         username,
         email: normalizedEmail,
         password_hash,
+        local_password_set: 0,
         is_admin: 0,
         is_super_admin: 0,
       });
@@ -508,6 +509,14 @@ router.post(
         return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
 
+      // If an OAuth user successfully signed in with a password, they now have a known local password.
+      // This flips the UI/validation to the standard "current password required" flow.
+      try {
+        if (user.google_sub && !user.local_password_set) userRepo.markLocalPasswordSet(user.user_id);
+      } catch (_) {
+        // ignore
+      }
+
       await regenerateSession(req);
 
       req.session.user = {
@@ -640,7 +649,7 @@ router.post(
       }
 
       const isGoogleUser = Boolean(user.google_sub);
-      const canSkipCurrent = isGoogleUser && !current_password;
+      const canSkipCurrent = isGoogleUser && !user.local_password_set;
 
       if (!canSkipCurrent) {
         if (!current_password) {
