@@ -151,6 +151,9 @@
       <div style="margin-top:12px">
         <div class="muted small" style="margin-bottom:6px">Main image</div>
         <img class="product-img" style="height:220px" src="<%= product.product_image %>" alt="" />
+        <div style="margin-top:8px">
+          <button class="btn btn-danger" type="submit" form="delete-main-image-form">Delete image</button>
+        </div>
       </div>
     <% } %>
 
@@ -178,6 +181,18 @@
 
             <% if (v.image_url) { %>
               <img class="product-img" style="height:140px; margin-top:8px" src="<%= v.image_url %>" alt="" />
+              <form
+                id="delete-variant-image-<%= v.variant_id %>"
+                method="post"
+                action="/admin/products/<%= product.product_id %>/variants/<%= v.variant_id %>/image/delete"
+                data-confirm="Delete this variant image?"
+                data-confirm-title="Delete image"
+                data-confirm-ok="Delete"
+                style="margin-top:8px"
+              >
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button class="btn btn-danger" type="submit">Delete image</button>
+              </form>
             <% } %>
 
             <form method="post" action="/admin/products/<%= product.product_id %>/variants/<%= v.variant_id %>/edit" enctype="multipart/form-data" style="margin-top:10px">
@@ -244,6 +259,20 @@
                 <button class="btn btn-primary btn-icon" type="submit" title="Save variant" aria-label="Save variant" data-label="Save variant" style="width: 100%;">Save</button>
               </div>
             </form>
+
+            <% if (product && product.product_image) { %>
+              <form
+                id="delete-main-image-form"
+                method="post"
+                action="/admin/products/<%= product.product_id %>/image/delete"
+                data-confirm="Delete the main product image?"
+                data-confirm-title="Delete image"
+                data-confirm-ok="Delete"
+                style="display:none"
+              >
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              </form>
+            <% } %>
           </div>
         <% }) %>
       </div>

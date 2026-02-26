@@ -66,7 +66,7 @@ router.get('/admin-accounts', requireSuperAdmin, (req, res) => {
   const total = userRepo.countAdminAccounts({ q });
   const pageCount = getPageCount(total, pageSize);
   const safePage = Math.min(page, Math.max(1, pageCount || 1));
-  const { limit, offset } = getPagination(safePage, pageSize);
+  const { limit, offset } = getPagination({ page: safePage, pageSize });
 
   const admins = userRepo.listAdminAccounts({ q, limit, offset });
 
@@ -163,7 +163,7 @@ router.get('/activity', requireAdmin, (req, res) => {
   });
   const pageCount = getPageCount(total, pageSize);
   const safePage = Math.min(page, Math.max(1, pageCount || 1));
-  const { limit, offset } = getPagination(safePage, pageSize);
+  const { limit, offset } = getPagination({ page: safePage, pageSize, maxPageSize: 200 });
 
   const events = adminActivityRepo.listAdmin({
     q,
@@ -3891,6 +3891,27 @@ router.get('/products/:id/edit', (req, res) => {
   return res.render('admin/product_form', { title: 'Edit Product', product, categories, images, variants });
 });
 
+function deleteProductUploadByUrl(imageUrl) {
+  const url = String(imageUrl || '').trim();
+  if (!url.startsWith('/uploads/products/')) return false;
+
+  const fileName = path.posix.basename(url);
+  const isValid =
+    /^product_\d+\.webp$/i.test(fileName) ||
+    /^product_\d+_[0-9a-f]{16}\.webp$/i.test(fileName) ||
+    /^variant_\d+_\d+_[0-9a-f]{16}\.webp$/i.test(fileName);
+
+  if (!isValid) return false;
+
+  const fullPath = path.join(process.cwd(), 'storage', 'uploads', 'products', fileName);
+  try {
+    fs.unlinkSync(fullPath);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function refreshProductAggregatesFromVariants(productId) {
   const agg = productVariantRepo.computeAggregateForProduct(productId);
   if (!agg || !agg.hasVariants) return;
@@ -4070,6 +4091,8 @@ router.post(
         sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
       };
 
+      const previousImage = existing.image_url;
+
       const file = req.file;
       if (file && file.path) {
         try {
@@ -4085,6 +4108,10 @@ router.post(
       }
 
       productVariantRepo.update(variantId, patch);
+
+      if (patch.image_url && previousImage && previousImage !== patch.image_url) {
+        deleteProductUploadByUrl(previousImage);
+      }
 
       await refreshProductAggregatesFromVariants(productId);
 
@@ -4237,6 +4264,63 @@ router.post(
   }
 );
 
+router.post(
+  '/products/:id/variants/:variantId/image/delete',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      params: z.object({ id: z.string(), variantId: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  async (req, res, next) => {
+    try {
+      const productId = Number(req.params.id);
+      const variantId = Number(req.params.variantId);
+      if (!Number.isFinite(productId) || !Number.isFinite(variantId)) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid request.' });
+      }
+
+      const existing = productVariantRepo.getById(variantId);
+      if (!existing || existing.product_id !== productId) {
+        return res.status(404).render('shared/error', { title: 'Not Found', message: 'Variant not found.' });
+      }
+
+      if (!existing.image_url) {
+        req.session.flash = { type: 'info', message: 'No variant image to delete.' };
+        return res.redirect(`/admin/products/${productId}/edit`);
+      }
+
+      productVariantRepo.update(variantId, { image_url: null });
+      deleteProductUploadByUrl(existing.image_url);
+
+      try {
+        logAdminChange({
+          req,
+          verb: 'Deleted',
+          entity: 'variant_image',
+          entityLabel: 'Variant image',
+          entityId: variantId,
+          changes: [
+            { field: 'product_id', label: 'Product', before: '', after: String(productId) },
+            { field: 'variant_id', label: 'Variant', before: '', after: String(variantId) },
+            { field: 'image_url', label: 'Image', before: String(existing.image_url || ''), after: '' },
+          ],
+          meta: { productId, variantId },
+        });
+      } catch (_) {
+        // ignore audit failures
+      }
+
+      req.session.flash = { type: 'success', message: 'Variant image deleted.' };
+      return res.redirect(`/admin/products/${productId}/edit`);
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
 // Convenience alias for breadcrumb navigation: /admin/products/:id -> /admin/products/:id/edit
 router.get('/products/:id', (req, res) => {
   const id = String(req.params.id || '').trim();
@@ -4307,6 +4391,7 @@ router.post(
       const cleanHtml = rawHtml ? sanitizeHtmlFragmentNoImages(rawHtml) : '';
       const descText = cleanHtml ? htmlToPlainText(cleanHtml) : String(req.validated.body.description || '').trim();
 
+      const previousImage = product.product_image;
       let imagePath = product.product_image;
       const files = req.files || {};
       const galleryFiles = Array.isArray(files.product_images) ? files.product_images : [];
@@ -4344,6 +4429,10 @@ router.post(
         archived: nextArchived,
         product_image: imagePath,
       });
+
+      if (previousImage && previousImage !== imagePath) {
+        deleteProductUploadByUrl(previousImage);
+      }
 
       // Keep inventory stock/price aligned with variants.
       await refreshProductAggregatesFromVariants(id);
@@ -4445,21 +4534,65 @@ router.post(
         // ignore audit failures
       }
       if (removed && removed.image_url) {
-        const url = String(removed.image_url || '');
-        if (url.startsWith('/uploads/products/')) {
-          const fileName = path.posix.basename(url);
-          if (/^product_\d+_[0-9a-f]{16}\.webp$/i.test(fileName)) {
-            const fullPath = path.join(process.cwd(), 'storage', 'uploads', 'products', fileName);
-            try {
-              fs.unlinkSync(fullPath);
-            } catch (_) {
-              // ignore
-            }
-          }
-        }
+        deleteProductUploadByUrl(removed.image_url);
       }
 
       req.session.flash = { type: 'success', message: 'Image deleted.' };
+      return res.redirect(`/admin/products/${productId}/edit`);
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/products/:id/image/delete',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z.object({ _csrf: z.string().optional() }).passthrough(),
+      params: z.object({ id: z.string() }),
+      query: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const productId = Number(req.params.id);
+      if (!Number.isFinite(productId)) {
+        return res.status(400).render('shared/error', { title: 'Bad Request', message: 'Invalid request.' });
+      }
+
+      const product = inventoryRepo.getById(productId);
+      if (!product) {
+        return res.status(404).render('shared/error', { title: 'Not Found', message: 'Product not found.' });
+      }
+
+      if (!product.product_image) {
+        req.session.flash = { type: 'info', message: 'No main image to delete.' };
+        return res.redirect(`/admin/products/${productId}/edit`);
+      }
+
+      inventoryRepo.update(productId, { product_image: null });
+      deleteProductUploadByUrl(product.product_image);
+
+      try {
+        logAdminChange({
+          req,
+          verb: 'Deleted',
+          entity: 'product_image',
+          entityLabel: 'Main product image',
+          entityId: productId,
+          changes: [
+            { field: 'product_id', label: 'Product', before: '', after: String(productId) },
+            { field: 'product_image', label: 'Main image', before: String(product.product_image || ''), after: '' },
+          ],
+          meta: { productId },
+        });
+      } catch (_) {
+        // ignore audit failures
+      }
+
+      req.session.flash = { type: 'success', message: 'Main image deleted.' };
       return res.redirect(`/admin/products/${productId}/edit`);
     } catch (e) {
       return next(e);

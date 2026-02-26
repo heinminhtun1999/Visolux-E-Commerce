@@ -79,14 +79,28 @@
                 <div class="muted small">#<%= ev.actor_user_id %></div>
               </td>
               <td>
-                <div><%= ev.action || 'Performed an admin action' %></div>
-                <% const ch = ev && ev.meta && Array.isArray(ev.meta.changes) ? ev.meta.changes : []; %>
+                <% const simplifyUpload = (v) => { const s = String(v == null ? '' : v).trim(); if (!s) return s; if (s.indexOf('/uploads/') === -1) return s; const parts = s.split('/').filter(Boolean); return parts.length ? parts[parts.length - 1] : s; }; %>
+                <% const metaSafe = ev && ev.meta && typeof ev.meta === 'object' ? ev.meta : {}; %>
+                <% const entity = String(metaSafe.entity || '').trim(); %>
+                <% const variantId = metaSafe.variantId != null ? Number(metaSafe.variantId) : null; %>
+                <% const productId = metaSafe.productId != null ? Number(metaSafe.productId) : null; %>
+                <% let actionText = simplifyUpload(ev && ev.action ? ev.action : 'Performed an admin action'); %>
+                <% if (entity === 'variant_image' && Number.isFinite(variantId)) { %>
+                  <% actionText = `Deleted variant image (Variant #${variantId})`; %>
+                <% } else if (entity === 'product_image' && Number.isFinite(productId)) { %>
+                  <% actionText = `Deleted main image (Product #${productId})`; %>
+                <% } %>
+                <div><%= actionText %></div>
+                <% const ch = Array.isArray(metaSafe.changes) ? metaSafe.changes : []; %>
                 <% if (ch.length) { %>
                   <div class="muted small" style="margin-top:6px">
                     <% ch.slice(0, 8).forEach(c => { %>
                       <% const isFiuuAccount = String(c.field || '').trim() === 'fiuu_account_id'; %>
-                      <% const beforeShown = isFiuuAccount ? resolveFiuuAccountLabel(c.before) : c.before; %>
-                      <% const afterShown = isFiuuAccount ? resolveFiuuAccountLabel(c.after) : c.after; %>
+                      <% const isImageField = /image|image_url|product_image/i.test(String(c.field || '')); %>
+                      <% const beforeRaw = isFiuuAccount ? resolveFiuuAccountLabel(c.before) : c.before; %>
+                      <% const afterRaw = isFiuuAccount ? resolveFiuuAccountLabel(c.after) : c.after; %>
+                      <% const beforeShown = isImageField ? simplifyUpload(beforeRaw) : beforeRaw; %>
+                      <% const afterShown = isImageField ? simplifyUpload(afterRaw) : afterRaw; %>
                       <div>
                         <strong><%= c.label || c.field || 'Field' %></strong>: <%= (beforeShown == null || String(beforeShown) === '') ? '—' : beforeShown %> → <%= (afterShown == null || String(afterShown) === '') ? '—' : afterShown %>
                       </div>
