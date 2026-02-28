@@ -57,9 +57,11 @@ function listItems(orderId) {
         oi.*,
         COALESCE(pv.weight_kg, i.weight_kg) as weight_kg,
         pv.type_key as variant_type_key,
-        pv.label as variant_label
+        pv.label as variant_label,
+        COALESCE(c.name, i.category) as category_name
        FROM order_items oi
        LEFT JOIN inventory i ON i.product_id = oi.product_id
+       LEFT JOIN categories c ON c.slug = i.category
        LEFT JOIN product_variants pv ON pv.variant_id = oi.variant_id
        WHERE oi.order_id=?
        ORDER BY oi.id ASC`
@@ -79,6 +81,7 @@ function listItems(orderId) {
       quantity: r.quantity,
       subtotal: r.subtotal,
       weight_kg: r.weight_kg == null ? null : Number(r.weight_kg),
+      category_name: r.category_name || null,
     }));
 }
 

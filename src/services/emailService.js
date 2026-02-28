@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 
 const { env } = require('../config/env');
 const settingsRepo = require('../repositories/settingsRepo');
+const orderRepo = require('../repositories/orderRepo');
 const { formatDateTime } = require('../utils/datetime');
 const paymentDisplay = require('../utils/paymentDisplay');
 
@@ -55,6 +56,50 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+function getOrderCategoryNames(order) {
+  let items = Array.isArray(order?.items) ? order.items : [];
+  if (items.length === 0 && order?.order_id) {
+    const enriched = orderRepo.getWithItems(order.order_id);
+    items = Array.isArray(enriched?.items) ? enriched.items : [];
+  }
+  const names = [];
+  const seen = new Set();
+  for (const it of items) {
+    const name = String(it?.category_name || '').trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    names.push(name);
+  }
+  return names;
+}
+
+function getOrderCategoryLine(order) {
+  const names = getOrderCategoryNames(order);
+  if (names.length === 0) return '';
+  return `Categories: ${names.join(', ')}`;
+}
+
+function withSingleCategoryInSubject({ order, subject }) {
+  const safeSubject = String(subject || '').trim();
+  if (!safeSubject) return safeSubject;
+
+  const names = getOrderCategoryNames(order);
+  if (names.length !== 1) return safeSubject;
+
+  const orderLabel = order && (order.order_code || order.order_id) ? (order.order_code || `#${order.order_id}`) : '';
+  const categoryName = names[0];
+  if (!orderLabel || !categoryName) return safeSubject;
+  if (safeSubject.includes(categoryName)) return safeSubject;
+
+  if (safeSubject.includes(orderLabel)) {
+    return safeSubject.replace(orderLabel, `${categoryName} - ${orderLabel}`);
+  }
+
+  return `${safeSubject} ${categoryName} - ${orderLabel}`;
+}
+
 function getPublicBaseUrl() {
   let base = String(env.appBaseUrl || '').trim().replace(/\/$/, '');
   // If cookies are marked Secure, the public site should be HTTPS.
@@ -65,6 +110,10 @@ function getPublicBaseUrl() {
 
 function buildOrderEmail({ order, promo, orderLink }) {
   const orderLabel = order.order_code || `#${order.order_id}`;
+  const categoryNames = getOrderCategoryNames(order);
+  const categoriesLine = categoryNames.length ? `Categories: ${categoryNames.join(', ')}` : '';
+  const categoriesLabel = categoryNames.join(', ');
+  const singleCategoryName = categoryNames.length === 1 ? categoryNames[0] : '';
 
   const lines = [];
   lines.push(`New order received: ${orderLabel}`);
@@ -75,6 +124,7 @@ function buildOrderEmail({ order, promo, orderLink }) {
   lines.push(`Email: ${order.email}`);
   lines.push(`Phone: ${order.phone}`);
   lines.push(`Address: ${order.address}`);
+  if (categoriesLine) lines.push(categoriesLine);
   lines.push('');
   lines.push(`Payment method: ${paymentDisplay.paymentSummaryLabel(order)}`);
   lines.push(`Payment status: ${order.payment_status}`);
@@ -124,6 +174,7 @@ function buildOrderEmail({ order, promo, orderLink }) {
       <div>${escapeHtml(order.customer_name)}</div>
       <div>${escapeHtml(order.email)} • ${escapeHtml(order.phone)}</div>
       <div style="margin-top:6px">${escapeHtml(order.address)}</div>
+      ${categoriesLine ? `<div style="margin-top:6px"><strong>Categories:</strong> ${escapeHtml(categoriesLabel)}</div>` : ''}
 
       <h3 style="margin:16px 0 6px">Status</h3>
       <div><strong>Payment:</strong> ${escapeHtml(order.payment_status)} (${escapeHtml(paymentDisplay.paymentSummaryLabel(order))})</div>
@@ -151,7 +202,11 @@ function buildOrderEmail({ order, promo, orderLink }) {
     </div>
   `;
 
-  return { subject: `New order ${orderLabel}`, text, html };
+  const subject = singleCategoryName
+    ? `New Order ${singleCategoryName} ${orderLabel}`
+    : `New order ${orderLabel}`;
+
+  return { subject, text, html };
 }
 
 function buildCustomerOrderEmail({ order, promo, orderLink }) {
@@ -452,10 +507,14 @@ function buildRefundRequestFailedEmail({ order, itemLabel, qty, amountCents, rea
   const rm = `RM ${(Number(amountCents || 0) / 100).toFixed(2)}`;
   const safeReason = String(reason || '').trim();
   const safeErr = String(errorMessage || '').trim() || 'Refund request failed.';
+  const categoryNames = getOrderCategoryNames(order);
+  const categoriesLine = categoryNames.length ? `Categories: ${categoryNames.join(', ')}` : '';
+  const categoriesLabel = categoryNames.join(', ');
 
   const lines = [];
   lines.push(`Refund request FAILED for ${orderLabel}`);
   lines.push('');
+  if (categoriesLine) lines.push(categoriesLine);
   lines.push(`Item: ${itemLabel}`);
   lines.push(`Qty: ${qty}`);
   lines.push(`Amount: ${rm}`);
@@ -472,6 +531,7 @@ function buildRefundRequestFailedEmail({ order, itemLabel, qty, amountCents, rea
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; line-height:1.4">
       <h2 style="margin:0 0 8px">Refund request failed</h2>
       <p style="margin:0 0 10px"><strong>Order:</strong> ${escapeHtml(orderLabel)}</p>
+      ${categoriesLine ? `<p style="margin:0 0 10px"><strong>Categories:</strong> ${escapeHtml(categoriesLabel)}</p>` : ''}
       <p style="margin:0 0 10px"><strong>Item:</strong> ${escapeHtml(itemLabel)}<br/>
          <strong>Qty:</strong> ${escapeHtml(String(qty))}<br/>
          <strong>Amount:</strong> ${escapeHtml(rm)}
@@ -482,7 +542,12 @@ function buildRefundRequestFailedEmail({ order, itemLabel, qty, amountCents, rea
     </div>
   `;
 
-  return { subject: `Refund failed – ${orderLabel}`, text, html };
+  const subject = withSingleCategoryInSubject({
+    order,
+    subject: `Refund failed – ${orderLabel}`,
+  });
+
+  return { subject, text, html };
 }
 
 function buildAdminEventEmail({ subject, heading, lines, linkUrl, linkLabel }) {
@@ -532,10 +597,23 @@ async function sendAdminOrderEventEmail({ order, subject, heading, lines, linkLa
   const notify = getAdminNotifyConfig();
   const adminLink = `${getPublicBaseUrl()}/admin/orders/${order.order_id}`;
 
+  const enrichedLines = (() => {
+    const next = Array.isArray(lines) ? [...lines] : [];
+    const categoriesLine = getOrderCategoryLine(order);
+    if (!categoriesLine) return next;
+    const orderIndex = next.findIndex((l) => String(l).trim().toLowerCase().startsWith('order:'));
+    if (orderIndex >= 0) {
+      next.splice(orderIndex + 1, 0, categoriesLine);
+    } else {
+      next.unshift(categoriesLine);
+    }
+    return next;
+  })();
+
   const msg = buildAdminEventEmail({
-    subject,
+    subject: withSingleCategoryInSubject({ order, subject }),
     heading,
-    lines,
+    lines: enrichedLines,
     linkUrl: adminLink,
     linkLabel: linkLabel || 'View order',
   });
@@ -622,11 +700,15 @@ async function sendAdminPaymentReceivedEmail({ order, note, stockDeducted, stock
 
   const notify = getAdminNotifyConfig();
   const orderLabel = order.order_code || `#${order.order_id}`;
+  const categoryNames = getOrderCategoryNames(order);
+  const categoriesLine = categoryNames.length ? `Categories: ${categoryNames.join(', ')}` : '';
+  const singleCategoryName = categoryNames.length === 1 ? categoryNames[0] : '';
   const adminLink = `${getPublicBaseUrl()}/admin/orders/${order.order_id}`;
 
   const lines = [];
   lines.push(`Order: ${orderLabel}`);
   lines.push(`Customer: ${order.customer_name || '-'}`);
+  if (categoriesLine) lines.push(categoriesLine);
   lines.push(`Payment: ${order.payment_status || '-'} (${paymentDisplay.paymentSummaryLabel(order)})`);
   lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
   const safeNote = paymentDisplay.sanitizeStatusHistoryNote(note);
@@ -635,8 +717,12 @@ async function sendAdminPaymentReceivedEmail({ order, note, stockDeducted, stock
     lines.push(`Stock: NOT deducted${stockError ? ` (${String(stockError).trim()})` : ''}`);
   }
 
+  const subject = singleCategoryName
+    ? `Payment received ${singleCategoryName} - ${orderLabel}`
+    : `Payment received – ${orderLabel}`;
+
   const msg = buildAdminEventEmail({
-    subject: `Payment received – ${orderLabel}`,
+    subject,
     heading: `Payment received for ${orderLabel}`,
     lines,
     linkUrl: adminLink,
@@ -674,20 +760,24 @@ async function sendAdminOfflineSlipUploadedEmail({ order, bankName, referenceNum
 
   const notify = getAdminNotifyConfig();
   const orderLabel = order.order_code || `#${order.order_id}`;
+  const categoriesLine = getOrderCategoryLine(order);
   const adminLink = `${getPublicBaseUrl()}/admin/orders/${order.order_id}`;
   const slipUrl = slipPath ? `${getPublicBaseUrl()}${String(slipPath).trim()}` : '';
 
   const lines = [];
   lines.push(`Order: ${orderLabel}`);
   lines.push(`Customer: ${order.customer_name || '-'}`);
+  if (categoriesLine) lines.push(categoriesLine);
   if (bankName) lines.push(`Bank: ${String(bankName).trim()}`);
   if (referenceNumber) lines.push(`Reference: ${String(referenceNumber).trim()}`);
   lines.push(`Payment: ${order.payment_status || '-'} (${paymentDisplay.paymentSummaryLabel(order)})`);
   lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
   if (slipUrl) lines.push(`Slip: ${slipUrl}`);
 
+  const baseSubject = `${isReplacement ? 'Bank slip replaced' : 'Bank slip uploaded'} – ${orderLabel}`;
+
   const msg = buildAdminEventEmail({
-    subject: `${isReplacement ? 'Bank slip replaced' : 'Bank slip uploaded'} – ${orderLabel}`,
+    subject: withSingleCategoryInSubject({ order, subject: baseSubject }),
     heading: `${isReplacement ? 'Bank slip replaced' : 'Bank slip uploaded'} for ${orderLabel}`,
     lines,
     linkUrl: adminLink,
