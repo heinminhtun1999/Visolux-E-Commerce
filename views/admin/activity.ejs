@@ -80,6 +80,7 @@
               </td>
               <td>
                 <% const simplifyUpload = (v) => { const s = String(v == null ? '' : v).trim(); if (!s) return s; if (s.indexOf('/uploads/') === -1) return s; const parts = s.split('/').filter(Boolean); return parts.length ? parts[parts.length - 1] : s; }; %>
+                <% const formatMetaValue = (v) => { if (v == null) return ''; if (typeof v === 'string') return simplifyUpload(v); if (typeof v === 'number' || typeof v === 'boolean') return String(v); return String(v); }; %>
                 <% const metaSafe = ev && ev.meta && typeof ev.meta === 'object' ? ev.meta : {}; %>
                 <% const entity = String(metaSafe.entity || '').trim(); %>
                 <% const variantId = metaSafe.variantId != null ? Number(metaSafe.variantId) : null; %>
@@ -109,6 +110,19 @@
                       <div>… (+<%= ch.length - 8 %> more)</div>
                     <% } %>
                   </div>
+                <% } else if (metaSafe && metaSafe.body && typeof metaSafe.body === 'object') { %>
+                  <% const bodyEntries = Object.entries(metaSafe.body || {}).filter(([k, v]) => String(k || '').trim()); %>
+                  <% if (bodyEntries.length) { %>
+                    <div class="muted small" style="margin-top:6px">
+                      <% bodyEntries.slice(0, 8).forEach(([k, v]) => { %>
+                        <% const shown = formatMetaValue(v); %>
+                        <div><strong><%= k %></strong>: <%= shown === '' ? '—' : shown %></div>
+                      <% }) %>
+                      <% if (bodyEntries.length > 8) { %>
+                        <div>… (+<%= bodyEntries.length - 8 %> more)</div>
+                      <% } %>
+                    </div>
+                  <% } %>
                 <% } %>
               </td>
               <td>

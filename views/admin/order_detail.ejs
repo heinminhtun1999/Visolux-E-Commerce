@@ -24,6 +24,11 @@
       <div style="font-weight:800"><%= paymentSummaryLabel(order) %></div>
       <div class="muted small" style="margin-top:8px">Payment status</div>
       <div style="font-weight:800"><%= order.payment_status %></div>
+      <% const fiuuTxnId = String(typeof latestFiuuTxnId !== 'undefined' ? latestFiuuTxnId : '').trim(); %>
+      <% if (fiuuTxnId) { %>
+        <div class="muted small" style="margin-top:8px">Transaction ID (FIUU)</div>
+        <div style="font-weight:800"><%= fiuuTxnId %></div>
+      <% } %>
       <div class="muted small" style="margin-top:8px">Refund status</div>
       <div style="font-weight:800">
         <%= order.refund_status || 'NONE' %>

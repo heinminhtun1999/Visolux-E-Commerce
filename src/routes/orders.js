@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -31,6 +32,71 @@ const paymentDisplay = require('../utils/paymentDisplay');
 const categoryRepo = require('../repositories/categoryRepo');
 
 const router = express.Router();
+
+function isValidConfirmationToken({ orderId, token, ts }) {
+  const rawToken = String(token || '').trim();
+  const rawTs = String(ts || '').trim();
+  if (!rawToken || !rawTs) return false;
+
+  const tsNum = Number(rawTs);
+  if (!Number.isFinite(tsNum) || tsNum <= 0) return false;
+
+  const now = Date.now();
+  const maxAgeMs = 15 * 60 * 1000;
+  const skewMs = 5 * 60 * 1000;
+  if (tsNum > now + skewMs) return false;
+  if (now - tsNum > maxAgeMs) return false;
+
+  const snap = orderRepo.getOnlinePaymentSnapshot(orderId);
+  const secretKey = String(snap?.online_payment_secret_key || '').trim();
+  if (!secretKey) return false;
+
+  const expected = crypto
+    .createHmac('sha256', secretKey)
+    .update(`confirm:${orderId}:${rawTs}`)
+    .digest('hex');
+
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(rawToken));
+  } catch (_) {
+    return false;
+  }
+}
+
+function allowConfirmationWithoutLogin(req, order) {
+  if (!order || String(order.payment_method || '') !== 'ONLINE') return false;
+  const token = req.query?.confirm;
+  const ts = req.query?.ts;
+  return isValidConfirmationToken({ orderId: Number(order.order_id), token, ts });
+}
+
+function getAllowedGatewayOrigins() {
+  const allowed = new Set(['https://pay.fiuu.com', 'https://sandbox-payment.fiuu.com']);
+  const raw = String(env.fiuu?.gatewayUrl || '').trim();
+  if (raw) {
+    try {
+      const candidate = raw
+        .replaceAll('{MerchantID}', 'merchant')
+        .replaceAll('{Payment_Method}', 'method');
+      const origin = new URL(candidate).origin;
+      if (origin) allowed.add(origin);
+    } catch (_) {
+      // ignore
+    }
+  }
+  return allowed;
+}
+
+function isAllowedGatewayUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return false;
+  try {
+    const origin = new URL(raw).origin;
+    return getAllowedGatewayOrigins().has(origin);
+  } catch (_) {
+    return false;
+  }
+}
 
 function resolveOrderParamToId(param) {
   const raw = String(param || '').trim();
@@ -548,7 +614,13 @@ router.post(
       // When using GET-mode integration, we can redirect directly to the gateway URL.
       // This preserves the user's "Place order" flow without requiring a JS auto-submit page.
       if ((reqInfo.method || 'POST') === 'GET' && reqInfo.fullUrl) {
-        return res.redirect(303, reqInfo.fullUrl);
+        if (isAllowedGatewayUrl(reqInfo.fullUrl)) {
+          return res.redirect(303, reqInfo.fullUrl);
+        }
+        logger.warn(
+          { event: 'gateway_redirect_blocked', url: reqInfo.fullUrl, orderId: order.order_id },
+          'blocked gateway redirect to untrusted origin'
+        );
       }
 
       return res.render('orders/redirect_to_gateway', {
@@ -587,6 +659,9 @@ router.get('/orders/:id/confirmation', (req, res) => {
   const order = id ? orderRepo.getWithItems(id) : null;
   if (!order) {
     return res.status(404).render('shared/error', { title: 'Not Found', message: 'Order not found.' });
+  }
+  if (!req.session?.user && allowConfirmationWithoutLogin(req, order)) {
+    return res.render('orders/confirmation', { title: 'Order Confirmation', order, promo: orderRepo.getPromoForOrder(id) });
   }
   const ok = requireCustomerOrderAccess(req, res, order);
   if (ok !== true) {
@@ -758,11 +833,15 @@ router.post(
         throw err;
       }
 
-      const optimizedPath = await imageService.optimizeAndSaveSlipImage(req.file.path, order.order_id);
+      let optimizedPath;
       try {
-        fs.unlinkSync(req.file.path);
-      } catch (_) {
-        // ignore
+        optimizedPath = await imageService.optimizeAndSaveSlipImage(req.file.path, order.order_id);
+      } finally {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (_) {
+          // ignore
+        }
       }
 
       let upserted;

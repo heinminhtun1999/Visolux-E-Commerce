@@ -42,6 +42,7 @@ function getFiuuGatewayOrigin() {
 
 function createApp() {
   const app = express();
+  app.disable('x-powered-by');
 
   // CSP nonce: allows inline scripts without relying on 'unsafe-inline'.
   // Exposed to EJS templates as `cspNonce`.

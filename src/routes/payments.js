@@ -1,7 +1,10 @@
 const express = require('express');
+const crypto = require('crypto');
 
 const { env } = require('../config/env');
 const orderRepo = require('../repositories/orderRepo');
+const userRepo = require('../repositories/userRepo');
+const { computeIsAdmin, computeIsSuperAdmin } = require('../middleware/auth');
 const paymentEventRepo = require('../repositories/paymentEventRepo');
 const adminNotificationRepo = require('../repositories/adminNotificationRepo');
 const emailService = require('../services/emailService');
@@ -14,6 +17,55 @@ const { logger } = require('../utils/logger');
 const paymentDisplay = require('../utils/paymentDisplay');
 
 const router = express.Router();
+
+function buildConfirmationToken(orderId) {
+  const snap = orderRepo.getOnlinePaymentSnapshot(orderId);
+  const secretKey = String(snap?.online_payment_secret_key || '').trim();
+  if (!secretKey) return null;
+
+  const ts = String(Date.now());
+  const token = crypto
+    .createHmac('sha256', secretKey)
+    .update(`confirm:${orderId}:${ts}`)
+    .digest('hex');
+
+  return { token, ts };
+}
+
+function regenerateSession(req) {
+  return new Promise((resolve, reject) => {
+    const preserved = {
+      cart: req.session?.cart,
+    };
+
+    req.session.regenerate((err) => {
+      if (err) return reject(err);
+      if (preserved.cart) req.session.cart = preserved.cart;
+      return resolve();
+    });
+  });
+}
+
+async function ensureOrderUserSession(req, order) {
+  if (!req.session || !order || !order.user_id) return;
+  if (req.session.user && req.session.user.user_id === order.user_id) return;
+
+  const user = userRepo.getById(order.user_id);
+  if (!user || user.is_closed) return;
+
+  await regenerateSession(req);
+  req.session.user = {
+    user_id: user.user_id,
+    username: user.username,
+    email: user.email,
+    isAdmin: computeIsAdmin(user),
+    isSuperAdmin: computeIsSuperAdmin(user),
+  };
+
+  if (typeof req.session.save === 'function') {
+    await new Promise((resolve) => req.session.save(() => resolve()));
+  }
+}
 
 function getField(payload, names) {
   for (const name of names) {
@@ -261,12 +313,27 @@ function processPaymentPayload(payload, source) {
   return { orderId, statusCode, isDuplicate, outcome: 'FAILED' };
 }
 
-router.all('/payment/return', (req, res, next) => {
+router.all('/payment/return', async (req, res, next) => {
   try {
     const payload = { ...req.query, ...req.body };
     const r = processPaymentPayload(payload, 'return');
 
+    if (r && r.outcome === 'PAID') {
+      const order = orderRepo.getById(r.orderId);
+      if (order) {
+        try {
+          await ensureOrderUserSession(req, order);
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
+
     // For iframe embedding: show confirmation inside iframe; gateway itself should open in _top.
+    const confirm = buildConfirmationToken(r.orderId);
+    if (confirm && confirm.token && confirm.ts) {
+      return res.redirect(`/orders/${r.orderId}/confirmation?confirm=${encodeURIComponent(confirm.token)}&ts=${encodeURIComponent(confirm.ts)}`);
+    }
     return res.redirect(`/orders/${r.orderId}/confirmation`);
   } catch (e) {
     return next(e);

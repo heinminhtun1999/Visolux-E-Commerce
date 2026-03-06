@@ -15,6 +15,7 @@ const categoryRepo = require('../repositories/categoryRepo');
 const productImageRepo = require('../repositories/productImageRepo');
 const productVariantRepo = require('../repositories/productVariantRepo');
 const orderRepo = require('../repositories/orderRepo');
+const paymentEventRepo = require('../repositories/paymentEventRepo');
 const userRepo = require('../repositories/userRepo');
 const imageService = require('../services/imageService');
 const orderService = require('../services/orderService');
@@ -44,6 +45,16 @@ const crypto = require('crypto');
 const router = express.Router();
 
 const ONLINE_REFUND_WINDOW_MONTHS = 3;
+
+function safeAdminRedirect(link, fallbackPath) {
+  const fallback = fallbackPath || '/admin/notifications';
+  const raw = String(link || '').trim();
+  if (!raw) return fallback;
+  if (!raw.startsWith('/')) return fallback;
+  if (raw.startsWith('//')) return fallback;
+  if (raw.includes('://')) return fallback;
+  return raw;
+}
 
 function isOnlineRefundWindowExpired(order) {
   try {
@@ -2226,11 +2237,15 @@ router.post(
         throw err;
       }
 
-      const url = await imageService.optimizeAndSaveSiteContentImage(req.file.path, 'page');
+      let url;
       try {
-        fs.unlinkSync(req.file.path);
-      } catch (_) {
-        // ignore
+        url = await imageService.optimizeAndSaveSiteContentImage(req.file.path, 'page');
+      } finally {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (_) {
+          // ignore
+        }
       }
 
       return res.json({ location: url });
@@ -2460,12 +2475,15 @@ router.post(
       }
 
       if (req.file) {
-        const optimized = await imageService.optimizeAndSaveSiteImage(req.file.path, 'logo');
-        settingsRepo.set('site.logo.image', optimized);
         try {
-          fs.unlinkSync(req.file.path);
-        } catch (_) {
-          // ignore
+          const optimized = await imageService.optimizeAndSaveSiteImage(req.file.path, 'logo');
+          settingsRepo.set('site.logo.image', optimized);
+        } finally {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (_) {
+            // ignore
+          }
         }
       }
 
@@ -3290,8 +3308,18 @@ router.post(
 
       // Use versioned filenames for categories so updates don't get stuck behind
       // long-lived immutable caching in production.
-      const optimized = await imageService.optimizeAndSaveSiteContentImage(req.file.path, `category_${id}`);
-      const updated = categoryRepo.setImageUrl(id, optimized);
+      let optimized;
+      let updated;
+      try {
+        optimized = await imageService.optimizeAndSaveSiteContentImage(req.file.path, `category_${id}`);
+        updated = categoryRepo.setImageUrl(id, optimized);
+      } finally {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (_) {
+          // ignore
+        }
+      }
 
       try {
         const changes = computeFieldChanges({
@@ -3834,12 +3862,16 @@ router.post(
 
       if (galleryFiles.length) {
         const primary = galleryFiles[0];
-        const primaryUrl = await imageService.optimizeAndSaveProductImage(primary.path, created.product_id);
-        inventoryRepo.update(created.product_id, { product_image: primaryUrl });
+        let primaryUrl;
         try {
-          fs.unlinkSync(primary.path);
-        } catch (_) {
-          // ignore
+          primaryUrl = await imageService.optimizeAndSaveProductImage(primary.path, created.product_id);
+          inventoryRepo.update(created.product_id, { product_image: primaryUrl });
+        } finally {
+          try {
+            fs.unlinkSync(primary.path);
+          } catch (_) {
+            // ignore
+          }
         }
       }
 
@@ -4398,11 +4430,14 @@ router.post(
 
       if (galleryFiles.length) {
         const primary = galleryFiles[0];
-        imagePath = await imageService.optimizeAndSaveProductImage(primary.path, id);
         try {
-          fs.unlinkSync(primary.path);
-        } catch (_) {
-          // ignore
+          imagePath = await imageService.optimizeAndSaveProductImage(primary.path, id);
+        } finally {
+          try {
+            fs.unlinkSync(primary.path);
+          } catch (_) {
+            // ignore
+          }
         }
       }
 
@@ -4663,6 +4698,7 @@ router.get('/orders/:id', (req, res) => {
   const refundByItemConfirmed = orderRefundRepo.summariesConfirmedByOrder(id);
 
   const onlineRefundAgeBlocked = isOnlineRefundWindowExpired(order);
+  const latestFiuuTxnId = paymentEventRepo.getLatestProviderTxnIdByOrder({ orderId: id, provider: 'FIUU' });
 
   return res.render('admin/order_detail', {
     title: `Admin – Order ${order.order_code || `#${order.order_id}`}`,
@@ -4683,6 +4719,7 @@ router.get('/orders/:id', (req, res) => {
     refundByItemConfirmed,
     onlineRefundAgeBlocked,
     onlineRefundWindowMonths: ONLINE_REFUND_WINDOW_MONTHS,
+    latestFiuuTxnId,
   });
 });
 
@@ -5784,7 +5821,7 @@ router.get('/notifications/:id/open', (req, res) => {
   adminNotificationRepo.markRead(id);
 
   const link = String(n.link || '').trim();
-  if (link) return res.redirect(link);
+  if (link) return res.redirect(safeAdminRedirect(link, '/admin/notifications'));
   return res.redirect('/admin/notifications');
 });
 

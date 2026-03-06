@@ -55,7 +55,10 @@ function sanitizeHtmlFragment(html) {
         'text-align': [/^left$/i, /^right$/i, /^center$/i, /^justify$/i],
       },
     },
-    allowedSchemes: ['http', 'https', 'mailto', 'tel', 'data'],
+    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    allowedSchemesByTag: {
+      img: ['http', 'https', 'data'],
+    },
     transformTags: {
       a: (tagName, attribs) => {
         const next = { ...attribs };
@@ -67,6 +70,11 @@ function sanitizeHtmlFragment(html) {
       },
       img: (tagName, attribs) => {
         const next = { ...attribs };
+        const src = String(next.src || '');
+        if (src.startsWith('data:')) {
+          const safe = /^data:image\/(png|jpeg|webp);base64,/i.test(src);
+          if (!safe) delete next.src;
+        }
         if (!next.alt) next.alt = '';
         return { tagName, attribs: next };
       },

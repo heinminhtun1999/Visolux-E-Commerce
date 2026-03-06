@@ -27,6 +27,40 @@ function mapProduct(row) {
   };
 }
 
+const PUBLIC_SORT_MAP = {
+  NEWEST: 'i.created_at DESC',
+  PRICE_ASC: 'i.price ASC, i.created_at DESC',
+  PRICE_DESC: 'i.price DESC, i.created_at DESC',
+  NAME_ASC: 'i.name ASC, i.created_at DESC',
+  NAME_DESC: 'i.name DESC, i.created_at DESC',
+};
+
+const ADMIN_SORT_MAP = {
+  NEWEST: 'i.created_at DESC',
+  OLDEST: 'i.created_at ASC',
+  ID_ASC: 'i.product_id ASC',
+  ID_DESC: 'i.product_id DESC',
+  UPDATED_DESC: 'i.updated_at DESC, i.created_at DESC',
+  UPDATED_ASC: 'i.updated_at ASC, i.created_at DESC',
+  PRICE_ASC: 'i.price ASC, i.created_at DESC',
+  PRICE_DESC: 'i.price DESC, i.created_at DESC',
+  NAME_ASC: 'i.name ASC, i.created_at DESC',
+  NAME_DESC: 'i.name DESC, i.created_at DESC',
+  CATEGORY_ASC: 'COALESCE(c.name, i.category) ASC, i.name ASC, i.created_at DESC',
+  CATEGORY_DESC: 'COALESCE(c.name, i.category) DESC, i.name ASC, i.created_at DESC',
+  STOCK_ASC: 'i.stock ASC, i.created_at DESC',
+  STOCK_DESC: 'i.stock DESC, i.created_at DESC',
+  VISIBILITY_ASC: 'i.visibility ASC, i.created_at DESC',
+  VISIBILITY_DESC: 'i.visibility DESC, i.created_at DESC',
+  ARCHIVED_ASC: 'i.archived ASC, i.created_at DESC',
+  ARCHIVED_DESC: 'i.archived DESC, i.created_at DESC',
+};
+
+function resolveOrderBy(sort, map, fallbackKey) {
+  const key = String(sort || '').trim().toUpperCase();
+  return map[key] || map[fallbackKey];
+}
+
 function countPublic({ q, category, availability, minPriceCents, maxPriceCents }) {
   const db = getDb();
   const where = ['i.archived=0', 'i.visibility=1', 'c.archived=0', 'c.visible=1'];
@@ -101,23 +135,7 @@ function listPublic({ q, category, availability, minPriceCents, maxPriceCents, s
     params.maxPrice = maxPriceCents;
   }
 
-  let orderBy = 'created_at DESC';
-  switch (String(sort || 'NEWEST')) {
-    case 'PRICE_ASC':
-      orderBy = 'i.price ASC, i.created_at DESC';
-      break;
-    case 'PRICE_DESC':
-      orderBy = 'i.price DESC, i.created_at DESC';
-      break;
-    case 'NAME_ASC':
-      orderBy = 'i.name ASC, i.created_at DESC';
-      break;
-    case 'NAME_DESC':
-      orderBy = 'i.name DESC, i.created_at DESC';
-      break;
-    default:
-      orderBy = 'i.created_at DESC';
-  }
+  const orderBy = resolveOrderBy(sort, PUBLIC_SORT_MAP, 'NEWEST');
 
   const stmt = db.prepare(
     `SELECT i.*, c.name as category_name
@@ -247,62 +265,7 @@ function listAdmin({ q, includeArchived, archived, category, visibility, stock, 
     params.q = `%${q}%`;
   }
 
-  let orderBy = 'created_at DESC';
-  switch (String(sort || 'NEWEST').toUpperCase()) {
-    case 'OLDEST':
-      orderBy = 'i.created_at ASC';
-      break;
-    case 'ID_ASC':
-      orderBy = 'i.product_id ASC';
-      break;
-    case 'ID_DESC':
-      orderBy = 'i.product_id DESC';
-      break;
-    case 'UPDATED_DESC':
-      orderBy = 'i.updated_at DESC, i.created_at DESC';
-      break;
-    case 'UPDATED_ASC':
-      orderBy = 'i.updated_at ASC, i.created_at DESC';
-      break;
-    case 'PRICE_ASC':
-      orderBy = 'i.price ASC, i.created_at DESC';
-      break;
-    case 'PRICE_DESC':
-      orderBy = 'i.price DESC, i.created_at DESC';
-      break;
-    case 'NAME_ASC':
-      orderBy = 'i.name ASC, i.created_at DESC';
-      break;
-    case 'NAME_DESC':
-      orderBy = 'i.name DESC, i.created_at DESC';
-      break;
-    case 'CATEGORY_ASC':
-      orderBy = 'COALESCE(c.name, i.category) ASC, i.name ASC, i.created_at DESC';
-      break;
-    case 'CATEGORY_DESC':
-      orderBy = 'COALESCE(c.name, i.category) DESC, i.name ASC, i.created_at DESC';
-      break;
-    case 'STOCK_ASC':
-      orderBy = 'i.stock ASC, i.created_at DESC';
-      break;
-    case 'STOCK_DESC':
-      orderBy = 'i.stock DESC, i.created_at DESC';
-      break;
-    case 'VISIBILITY_ASC':
-      orderBy = 'i.visibility ASC, i.created_at DESC';
-      break;
-    case 'VISIBILITY_DESC':
-      orderBy = 'i.visibility DESC, i.created_at DESC';
-      break;
-    case 'ARCHIVED_ASC':
-      orderBy = 'i.archived ASC, i.created_at DESC';
-      break;
-    case 'ARCHIVED_DESC':
-      orderBy = 'i.archived DESC, i.created_at DESC';
-      break;
-    default:
-      orderBy = 'i.created_at DESC';
-  }
+  const orderBy = resolveOrderBy(sort, ADMIN_SORT_MAP, 'NEWEST');
 
   const sql = `SELECT
                  i.*,

@@ -9,7 +9,33 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+function ensureAllowedImageSignature(inputPath) {
+  const fd = fs.openSync(inputPath, 'r');
+  try {
+    const header = Buffer.alloc(12);
+    const bytes = fs.readSync(fd, header, 0, header.length, 0);
+    if (bytes < 12) {
+      const err = new Error('Unsupported image format');
+      err.status = 400;
+      throw err;
+    }
+
+    const isPng = header.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    const isJpeg = header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+    const isWebp = header.toString('ascii', 0, 4) === 'RIFF' && header.toString('ascii', 8, 12) === 'WEBP';
+
+    if (!isPng && !isJpeg && !isWebp) {
+      const err = new Error('Unsupported image format');
+      err.status = 400;
+      throw err;
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 async function optimizeAndSaveProductImage(inputPath, productId) {
+  ensureAllowedImageSignature(inputPath);
   const outDir = path.join(process.cwd(), 'storage', 'uploads', 'products');
   ensureDir(outDir);
 
@@ -26,6 +52,7 @@ async function optimizeAndSaveProductImage(inputPath, productId) {
 }
 
 async function optimizeAndSaveProductGalleryImage(inputPath, productId) {
+  ensureAllowedImageSignature(inputPath);
   const outDir = path.join(process.cwd(), 'storage', 'uploads', 'products');
   ensureDir(outDir);
 
@@ -43,6 +70,7 @@ async function optimizeAndSaveProductGalleryImage(inputPath, productId) {
 }
 
 async function optimizeAndSaveVariantImage(inputPath, { productId, variantId }) {
+  ensureAllowedImageSignature(inputPath);
   const outDir = path.join(process.cwd(), 'storage', 'uploads', 'products');
   ensureDir(outDir);
 
@@ -60,6 +88,7 @@ async function optimizeAndSaveVariantImage(inputPath, { productId, variantId }) 
 }
 
 async function optimizeAndSaveSlipImage(inputPath, orderId) {
+  ensureAllowedImageSignature(inputPath);
   const outDir = path.join(process.cwd(), 'storage', 'uploads', 'slips');
   ensureDir(outDir);
 
@@ -78,6 +107,7 @@ async function optimizeAndSaveSlipImage(inputPath, orderId) {
 }
 
 async function optimizeAndSaveSiteImage(inputPath, key) {
+  ensureAllowedImageSignature(inputPath);
   const outDir = path.join(process.cwd(), 'storage', 'uploads', 'site');
   ensureDir(outDir);
 
@@ -95,6 +125,7 @@ async function optimizeAndSaveSiteImage(inputPath, key) {
 }
 
 async function optimizeAndSaveSiteContentImage(inputPath, key) {
+  ensureAllowedImageSignature(inputPath);
   const outDir = path.join(process.cwd(), 'storage', 'uploads', 'site');
   ensureDir(outDir);
 
