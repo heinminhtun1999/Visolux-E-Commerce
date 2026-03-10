@@ -1,6 +1,7 @@
 const { createApp } = require('./app');
 const { env } = require('./config/env');
 const { getDb } = require('./db/db');
+const orderRepo = require('./repositories/orderRepo');
 const { logger } = require('./utils/logger');
 
 process.on('unhandledRejection', (reason) => {
@@ -27,6 +28,21 @@ function main() {
   app.listen(env.port, () => {
     logger.info({ port: env.port }, `[visolux|arvending] listening on http://localhost:${env.port} (${env.nodeEnv})`);
   });
+
+  const runAutoCompleteShippedOrders = () => {
+    try {
+      const updated = orderRepo.autoCompleteShippedOrders({ days: 30 });
+      if (updated.length) {
+        logger.info({ count: updated.length }, 'Auto-completed shipped orders');
+      }
+    } catch (err) {
+      logger.error({ err }, 'Failed to auto-complete shipped orders');
+    }
+  };
+
+  // Run once on boot and then daily.
+  runAutoCompleteShippedOrders();
+  setInterval(runAutoCompleteShippedOrders, 24 * 60 * 60 * 1000);
 }
 
 main();

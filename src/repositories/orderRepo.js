@@ -681,6 +681,50 @@ function updateFulfilmentStatus(orderId, newStatus, note, actor) {
   return getById(orderId);
 }
 
+function autoCompleteShippedOrders({ days = 30, note } = {}) {
+  const db = getDb();
+  const cutoffDays = Math.max(1, Math.floor(Number(days || 30)));
+  const cutoff = `-${cutoffDays} days`;
+
+  const rows = db
+    .prepare(
+      `SELECT o.order_id, h.changed_at
+       FROM orders o
+       JOIN (
+         SELECT order_id, MAX(datetime(changed_at)) AS last_changed_at
+         FROM order_status_history
+         WHERE status_type='FULFILMENT'
+         GROUP BY order_id
+       ) last ON last.order_id = o.order_id
+       JOIN order_status_history h
+         ON h.order_id = o.order_id
+        AND datetime(h.changed_at) = last.last_changed_at
+       WHERE o.fulfilment_status = 'SHIPPED'
+         AND h.status_type = 'FULFILMENT'
+         AND h.new_status = 'SHIPPED'
+         AND datetime(h.changed_at) <= datetime('now', @cutoff)`
+    )
+    .all({ cutoff });
+
+  const noteText = note || `Auto-completed after ${cutoffDays} days in SHIPPED status.`;
+
+  const tx = db.transaction(() => {
+    const updated = [];
+    for (const row of rows) {
+      const res = db
+        .prepare('UPDATE orders SET fulfilment_status=? WHERE order_id=? AND fulfilment_status=?')
+        .run('COMPLETED', row.order_id, 'SHIPPED');
+      if (res.changes === 1) {
+        insertStatusHistory(row.order_id, 'FULFILMENT', 'SHIPPED', 'COMPLETED', noteText, null);
+        updated.push(Number(row.order_id));
+      }
+    }
+    return updated;
+  });
+
+  return tx();
+}
+
 function getPromoForOrder(orderId) {
   const db = getDb();
   const r = db.prepare('SELECT * FROM order_promos WHERE order_id=?').get(orderId);
@@ -990,6 +1034,7 @@ module.exports = {
   createOrder,
   updatePaymentStatus,
   updateFulfilmentStatus,
+  autoCompleteShippedOrders,
   insertStatusHistory,
   listStatusHistory,
   updatePaymentChannel,
