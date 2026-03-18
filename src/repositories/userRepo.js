@@ -6,6 +6,7 @@ function mapUser(row) {
     user_id: row.user_id,
     username: row.username,
     email: row.email,
+    company_name: row.company_name,
     password_hash: row.password_hash,
     local_password_set: row.local_password_set == null ? 1 : (Number(row.local_password_set || 0) ? 1 : 0),
     google_sub: row.google_sub || null,
@@ -61,6 +62,7 @@ function create({
   email,
   password_hash,
   local_password_set,
+  company_name,
   phone,
   address,
   address_line1,
@@ -73,14 +75,15 @@ function create({
 }) {
   const db = getDb();
   const stmt = db.prepare(
-    `INSERT INTO users (username, email, password_hash, local_password_set, phone, address, address_line1, address_line2, city, state, postcode, is_admin, is_super_admin)
-     VALUES (@username, @email, @password_hash, @local_password_set, @phone, @address, @address_line1, @address_line2, @city, @state, @postcode, @is_admin, @is_super_admin)`
+    `INSERT INTO users (username, email, password_hash, local_password_set, company_name, phone, address, address_line1, address_line2, city, state, postcode, is_admin, is_super_admin)
+     VALUES (@username, @email, @password_hash, @local_password_set, @company_name, @phone, @address, @address_line1, @address_line2, @city, @state, @postcode, @is_admin, @is_super_admin)`
   );
   const result = stmt.run({
     username,
     email,
     password_hash,
     local_password_set: local_password_set == null ? 1 : (local_password_set ? 1 : 0),
+    company_name: company_name || null,
     phone: phone || null,
     address: address || null,
     address_line1: address_line1 || null,
@@ -128,14 +131,15 @@ function countAdminAccounts({ q } = {}) {
   return db.prepare(sql).get(params).c;
 }
 
-function updateProfile(userId, { username, email, phone, address, address_line1, address_line2, city, state, postcode }) {
+function updateProfile(userId, { username, email, company_name, phone, address, address_line1, address_line2, city, state, postcode }) {
   const db = getDb();
   db.prepare(
-    'UPDATE users SET username=@u, email=@e, phone=@p, address=@a, address_line1=@l1, address_line2=@l2, city=@c, state=@s, postcode=@pc WHERE user_id=@id'
+    'UPDATE users SET username=@u, email=@e, company_name=@cn, phone=@p, address=@a, address_line1=@l1, address_line2=@l2, city=@c, state=@s, postcode=@pc WHERE user_id=@id'
   ).run({
     id: userId,
     u: username,
     e: email,
+    cn: company_name || null,
     p: phone || null,
     a: address || null,
     l1: address_line1 || null,

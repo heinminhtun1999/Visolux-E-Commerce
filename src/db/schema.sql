@@ -142,6 +142,7 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  company_name TEXT,
   -- Tracks whether the user has set a known local password (vs OAuth placeholder/random).
   -- For local registrations this is 1; for OAuth-created accounts this starts at 0 and flips to 1 once they set a password.
   local_password_set INTEGER NOT NULL DEFAULT 1 CHECK (local_password_set IN (0,1)),
@@ -175,6 +176,7 @@ CREATE TABLE IF NOT EXISTS orders (
   order_code TEXT,
   user_id INTEGER,
   customer_name TEXT NOT NULL,
+  customer_company TEXT,
   phone TEXT NOT NULL,
   email TEXT NOT NULL,
   address TEXT NOT NULL,

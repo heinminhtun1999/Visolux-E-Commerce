@@ -46,9 +46,53 @@
     formMsg.classList.toggle('muted', !Boolean(isError) && Boolean(text));
   }
 
+  function getFieldErrorEl(field) {
+    const next = field.nextElementSibling;
+    if (next && next.classList && next.classList.contains('field-error')) return next;
+    const el = document.createElement('div');
+    el.className = 'field-error';
+    field.insertAdjacentElement('afterend', el);
+    return el;
+  }
+
+  function clearFieldError(field) {
+    field.classList.remove('is-invalid');
+    field.removeAttribute('aria-invalid');
+    const next = field.nextElementSibling;
+    if (next && next.classList && next.classList.contains('field-error')) next.remove();
+  }
+
+  function updateFieldError(field) {
+    if (!field || field.disabled || field.type === 'hidden') return;
+    if (typeof field.checkValidity !== 'function') return;
+    if (field.checkValidity()) {
+      clearFieldError(field);
+      return;
+    }
+    const msg = field.validationMessage || 'This field is required.';
+    const errEl = getFieldErrorEl(field);
+    errEl.textContent = msg;
+    field.classList.add('is-invalid');
+    field.setAttribute('aria-invalid', 'true');
+  }
+
+  function showFieldErrors() {
+    if (!form || !form.elements) return;
+    const fields = Array.from(form.elements).filter((el) =>
+      el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')
+    );
+    let firstInvalid = null;
+    for (const field of fields) {
+      updateFieldError(field);
+      if (!firstInvalid && typeof field.checkValidity === 'function' && !field.checkValidity()) {
+        firstInvalid = field;
+      }
+    }
+    if (firstInvalid && typeof firstInvalid.focus === 'function') firstInvalid.focus();
+  }
+
   function updatePlaceOrderEnabled() {
-    const basicValid = form && typeof form.checkValidity === 'function' ? form.checkValidity() : true;
-    const ok = basicValid && lastShippingOk && !quoteInFlight;
+    const ok = lastShippingOk && !quoteInFlight;
     if (placeOrderBtn) placeOrderBtn.disabled = !ok;
   }
 
@@ -178,8 +222,14 @@
   if (bankSelect) bankSelect.addEventListener('change', updateOfflineBankSnapshot);
 
   if (form) {
-    form.addEventListener('input', updatePlaceOrderEnabled);
-    form.addEventListener('change', updatePlaceOrderEnabled);
+    form.addEventListener('input', function (e) {
+      updatePlaceOrderEnabled();
+      if (e && e.target) updateFieldError(e.target);
+    });
+    form.addEventListener('change', function (e) {
+      updatePlaceOrderEnabled();
+      if (e && e.target) updateFieldError(e.target);
+    });
     form.addEventListener('submit', function (e) {
       setFormMessage('', false);
       const valid = typeof form.checkValidity === 'function' ? form.checkValidity() : true;
@@ -187,6 +237,7 @@
       if (!valid) {
         e.preventDefault();
         setFormMessage('Please fill in all required fields correctly.', true);
+        showFieldErrors();
         if (typeof form.reportValidity === 'function') form.reportValidity();
         return;
       }

@@ -667,6 +667,8 @@ html.admin-sidebar-collapsed .admin-nav__item{justify-content:center}
 .input:focus, select:focus, textarea:focus{outline:none; border-color:rgba(32,152,209,.65); background:var(--card)}
 .input:focus-visible, select:focus-visible, textarea:focus-visible{box-shadow:var(--ring)}
 .input::placeholder, textarea::placeholder{color:color-mix(in srgb, var(--muted) 80%, transparent)}
+.input.is-invalid, select.is-invalid, textarea.is-invalid{border-color:var(--danger); box-shadow:0 0 0 2px rgba(239,68,68,.15)}
+.field-error{color:var(--danger); font-size:12px; font-weight:700; margin-top:4px}
 label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px}
 .required-star{color:var(--danger); font-weight:950; margin-left:4px}
 .password-field{display:flex; gap:10px; align-items:center}

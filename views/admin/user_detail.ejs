@@ -56,6 +56,12 @@
         </div>
       </div>
       <div class="col" style="min-width:240px">
+        <div class="muted small">Company / Store</div>
+        <div>
+          <%= user.company_name || '—' %>
+        </div>
+      </div>
+      <div class="col" style="min-width:240px">
         <div class="muted small">Created</div>
         <div>
           <%= formatDateTime(user.created_at) %>

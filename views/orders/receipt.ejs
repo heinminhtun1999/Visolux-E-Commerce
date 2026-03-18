@@ -37,6 +37,9 @@
     <div class="receipt-block">
       <div class="muted small">Bill to</div>
       <div class="receipt-strong"><%= order.customer_name %></div>
+      <% if (order.customer_company) { %>
+        <div class="muted small"><%= order.customer_company %></div>
+      <% } %>
       <div class="muted small"><%= order.email %> · <%= order.phone %></div>
       <div class="muted small" style="margin-top:6px"><%= order.address %></div>
     </div>

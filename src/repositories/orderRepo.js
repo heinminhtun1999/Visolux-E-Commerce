@@ -8,6 +8,7 @@ function mapOrder(row) {
     order_code: row.order_code || null,
     user_id: row.user_id,
     customer_name: row.customer_name,
+    customer_company: row.customer_company || null,
     phone: row.phone,
     email: row.email,
     address: row.address,
@@ -399,6 +400,7 @@ function listStatusHistory(orderId) {
 function createOrder({
   user_id,
   customer_name,
+  customer_company,
   phone,
   email,
   address,
@@ -542,7 +544,7 @@ function createOrder({
         inserted = db
           .prepare(
             `INSERT INTO orders (
-              order_code, user_id, customer_name, phone, email, address,
+              order_code, user_id, customer_name, customer_company, phone, email, address,
               delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region, delivery_zone_name,
               payment_method, payment_status, fulfilment_status,
               online_payment_provider, online_payment_account_id, online_payment_merchant_id, online_payment_verify_key, online_payment_secret_key, online_payment_gateway_url, online_payment_currency,
@@ -552,7 +554,7 @@ function createOrder({
               customer_note
             )
              VALUES (
-              @order_code, @user_id, @customer_name, @phone, @email, @address,
+              @order_code, @user_id, @customer_name, @customer_company, @phone, @email, @address,
               @delivery_address_line1, @delivery_address_line2, @delivery_city, @delivery_state, @delivery_postcode, @delivery_region, @delivery_zone_name,
               @payment_method, @payment_status, @fulfilment_status,
               @online_payment_provider, @online_payment_account_id, @online_payment_merchant_id, @online_payment_verify_key, @online_payment_secret_key, @online_payment_gateway_url, @online_payment_currency,
@@ -566,6 +568,7 @@ function createOrder({
             order_code: orderCode,
             user_id: user_id || null,
             customer_name,
+            customer_company: customer_company || null,
             phone,
             email,
             address,

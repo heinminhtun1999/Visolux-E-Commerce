@@ -25,6 +25,9 @@
         <label>Email</label>
         <input class="input" type="email" name="email" value="<%= user.email %>" required />
 
+        <label>Company / Store name</label>
+        <input class="input" name="company_name" value="<%= user.company_name || '' %>" maxlength="200" />
+
         <label>Phone</label>
         <input class="input" name="phone" value="<%= user.phone || '' %>" />
 

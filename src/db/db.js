@@ -44,6 +44,7 @@ function initializeSchema(database) {
 
   // Lightweight migrations for existing DB files.
   ensureUsersPasswordReset(database);
+  ensureUsersCompanyName(database);
   ensureUsersAddressColumns(database);
   ensureUsersAccountClosure(database);
   ensureUsersAdminRoles(database);
@@ -57,6 +58,7 @@ function initializeSchema(database) {
   ensureOrdersPricingColumns(database);
   ensureOrdersPaymentChannel(database);
   ensureOrdersPaymentStatusEnum(database);
+  ensureOrdersCustomerCompany(database);
   ensureOrdersCustomerNote(database);
   ensureOrdersAdminNote(database);
   ensureOrdersOfflineTransferRecipient(database);
@@ -947,6 +949,12 @@ function ensureUsersAddressColumns(database) {
   if (!has('postcode')) database.exec('ALTER TABLE users ADD COLUMN postcode TEXT');
 }
 
+function ensureUsersCompanyName(database) {
+  const cols = database.prepare("PRAGMA table_info('users')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+  if (!has('company_name')) database.exec('ALTER TABLE users ADD COLUMN company_name TEXT');
+}
+
 function ensureOrdersAdminNote(database) {
   const cols = database.prepare("PRAGMA table_info('orders')").all();
   const has = (name) => cols.some((c) => c.name === name);
@@ -960,6 +968,14 @@ function ensureOrdersCustomerNote(database) {
   const has = (name) => cols.some((c) => c.name === name);
   if (!has('customer_note')) {
     database.exec("ALTER TABLE orders ADD COLUMN customer_note TEXT NOT NULL DEFAULT ''");
+  }
+}
+
+function ensureOrdersCustomerCompany(database) {
+  const cols = database.prepare("PRAGMA table_info('orders')").all();
+  const has = (name) => cols.some((c) => c.name === name);
+  if (!has('customer_company')) {
+    database.exec('ALTER TABLE orders ADD COLUMN customer_company TEXT');
   }
 }
 
@@ -1030,6 +1046,7 @@ function ensureOrdersPaymentStatusEnum(database) {
         order_code TEXT,
         user_id INTEGER,
         customer_name TEXT NOT NULL,
+        customer_company TEXT,
         phone TEXT NOT NULL,
         email TEXT NOT NULL,
         address TEXT NOT NULL,
@@ -1056,13 +1073,13 @@ function ensureOrdersPaymentStatusEnum(database) {
 
     database.exec(
       `INSERT INTO orders_new (
-        order_id, order_code, user_id, customer_name, phone, email, address,
+        order_id, order_code, user_id, customer_name, customer_company, phone, email, address,
         delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region, delivery_zone_name,
         payment_method, payment_channel, payment_status, refund_status, fulfilment_status,
         items_subtotal, discount_amount, shipping_fee, total_amount, created_at
       )
       SELECT
-        order_id, order_code, user_id, customer_name, phone, email, address,
+        order_id, order_code, user_id, customer_name, COALESCE(customer_company, NULL), phone, email, address,
         delivery_address_line1, delivery_address_line2, delivery_city, delivery_state, delivery_postcode, delivery_region,
         COALESCE(delivery_zone_name, NULL),
         payment_method, payment_channel,

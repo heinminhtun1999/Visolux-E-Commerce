@@ -155,6 +155,7 @@ router.get('/checkout', requireUser, async (req, res) => {
       const u = userRepo.getById(req.session.user.user_id);
       prefill = {
         customer_name: u?.username || req.session.user.username || '',
+        company_name: u?.company_name || '',
         phone: u?.phone || '',
         email: u?.email || req.session.user.email || '',
         address_line1: u?.address_line1 || u?.address || '',
@@ -166,6 +167,7 @@ router.get('/checkout', requireUser, async (req, res) => {
     } catch (_) {
       prefill = {
         customer_name: req.session.user.username || '',
+        company_name: '',
         phone: '',
         email: req.session.user.email || '',
         address_line1: '',
@@ -439,6 +441,7 @@ router.post(
     z.object({
       body: z.object({
         customer_name: z.string().trim().min(2).max(128),
+        company_name: z.string().trim().min(2).max(200),
         phone: z.string().trim().min(6).max(32),
         email: z.string().trim().email().max(128),
         address_line1: z.string().trim().min(3).max(200),
@@ -467,6 +470,7 @@ router.post(
 
       const customer = {
         customer_name: req.validated.body.customer_name,
+        company_name: req.validated.body.company_name,
         phone: req.validated.body.phone,
         email: req.validated.body.email,
         address_line1: req.validated.body.address_line1,

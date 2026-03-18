@@ -142,6 +142,7 @@ function placeOrder({
   const order = orderRepo.createOrder({
     user_id: Number(user.user_id),
     customer_name: customer.customer_name,
+    customer_company: customer.company_name || null,
     phone: customer.phone,
     email: customer.email,
     address: customer.address,

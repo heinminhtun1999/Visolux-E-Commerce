@@ -12,6 +12,9 @@
     <div class="col">
       <div class="muted small">Customer</div>
       <div style="font-weight:700"><%= order.customer_name %></div>
+      <% if (order.customer_company) { %>
+        <div class="muted small"><%= order.customer_company %></div>
+      <% } %>
       <div class="muted small"><%= order.email %> • <%= order.phone %></div>
       <div class="muted small" style="margin-top:6px"><%= order.address %></div>
       <% const customerNote = String(order.customer_note || '').trim(); %>

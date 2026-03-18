@@ -393,6 +393,7 @@ router.post(
           username: z.string().trim().min(3).max(32),
           email: z.string().trim().email().max(128),
           password: z.string().min(8).max(200),
+          company_name: z.string().trim().min(2).max(200).optional().or(z.literal('')),
           phone: z.string().trim().max(32).optional().or(z.literal('')),
 
           address_line1: z.string().trim().max(200).optional().or(z.literal('')),
@@ -415,7 +416,7 @@ router.post(
   ),
   async (req, res, next) => {
     try {
-      const { username, email, password, phone, address_line1, address_line2, city, state, postcode } = req.validated.body;
+      const { username, email, password, company_name, phone, address_line1, address_line2, city, state, postcode } = req.validated.body;
 
       // Security: prevent users from self-assigning admin identity via allowlisted username/email.
       if (computeIsAdmin({ username, email })) {
@@ -441,6 +442,7 @@ router.post(
         username,
         email,
         password_hash,
+        company_name: company_name || null,
         phone,
         address,
         address_line1: address_line1 || null,
@@ -561,6 +563,7 @@ router.post(
         .object({
           username: z.string().trim().min(3).max(32),
           email: z.string().trim().email().max(128),
+          company_name: z.string().trim().min(2).max(200).optional().or(z.literal('')),
           phone: z.string().trim().max(32).optional().or(z.literal('')),
 
           address_line1: z.string().trim().max(200).optional().or(z.literal('')),
@@ -588,7 +591,7 @@ router.post(
         return res.redirect(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
 
-      const { username, email, phone, address_line1, address_line2, city, state, postcode } = req.validated.body;
+      const { username, email, company_name, phone, address_line1, address_line2, city, state, postcode } = req.validated.body;
 
       const nextUsername = String(username || '').trim();
 
@@ -614,6 +617,7 @@ router.post(
       const updated = userRepo.updateProfile(req.session.user.user_id, {
         username: nextUsername,
         email,
+        company_name: company_name || null,
         phone,
         address,
         address_line1: address_line1 || null,
