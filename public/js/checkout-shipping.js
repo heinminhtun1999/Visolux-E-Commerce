@@ -64,16 +64,26 @@
 
   function updateFieldError(field) {
     if (!field || field.disabled || field.type === 'hidden') return;
-    if (typeof field.checkValidity !== 'function') return;
-    if (field.checkValidity()) {
-      clearFieldError(field);
+    const value = String(field.value || '').trim();
+    const isRequired = field.dataset && field.dataset.required === '1';
+    if (isRequired && !value) {
+      const errEl = getFieldErrorEl(field);
+      errEl.textContent = 'This field is required.';
+      field.classList.add('is-invalid');
+      field.setAttribute('aria-invalid', 'true');
       return;
     }
-    const msg = field.validationMessage || 'This field is required.';
-    const errEl = getFieldErrorEl(field);
-    errEl.textContent = msg;
-    field.classList.add('is-invalid');
-    field.setAttribute('aria-invalid', 'true');
+    if (typeof field.checkValidity === 'function' && !field.checkValidity()) {
+      const msg = field.validationMessage || 'Please enter a valid value.';
+      const errEl = getFieldErrorEl(field);
+      errEl.textContent = msg;
+      field.classList.add('is-invalid');
+      field.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    if (value || !isRequired) {
+      clearFieldError(field);
+    }
   }
 
   function showFieldErrors() {
@@ -82,18 +92,24 @@
       el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')
     );
     let firstInvalid = null;
+    let allValid = true;
     for (const field of fields) {
-      updateFieldError(field);
-      if (!firstInvalid && typeof field.checkValidity === 'function' && !field.checkValidity()) {
-        firstInvalid = field;
+      const value = String(field.value || '').trim();
+      const isRequired = field.dataset && field.dataset.required === '1';
+      const missingRequired = isRequired && !value;
+      const invalidFormat = !missingRequired && typeof field.checkValidity === 'function' && !field.checkValidity();
+      if (missingRequired || invalidFormat) {
+        allValid = false;
+        if (!firstInvalid) firstInvalid = field;
       }
+      updateFieldError(field);
     }
     if (firstInvalid && typeof firstInvalid.focus === 'function') firstInvalid.focus();
+    return allValid;
   }
 
   function updatePlaceOrderEnabled() {
-    const ok = lastShippingOk && !quoteInFlight;
-    if (placeOrderBtn) placeOrderBtn.disabled = !ok;
+    if (placeOrderBtn) placeOrderBtn.disabled = Boolean(quoteInFlight);
   }
 
   function formatMoneyCents(cents) {
@@ -234,10 +250,10 @@
       setFormMessage('', false);
       const valid = typeof form.checkValidity === 'function' ? form.checkValidity() : true;
 
-      if (!valid) {
+      const customValid = showFieldErrors();
+      if (!valid || !customValid) {
         e.preventDefault();
         setFormMessage('Please fill in all required fields correctly.', true);
-        showFieldErrors();
         if (typeof form.reportValidity === 'function') form.reportValidity();
         return;
       }

@@ -7,30 +7,30 @@
       <form method="post" action="/checkout" id="checkoutForm">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
         <label>Customer name <span class="required-star" aria-hidden="true">*</span></label>
-        <input class="input" name="customer_name" minlength="2" required value="<%= prefill ? (prefill.customer_name || '') : '' %>" />
+        <input class="input" name="customer_name" minlength="2" data-required="1" value="<%= prefill ? (prefill.customer_name || '') : '' %>" />
 
         <label>Company / Store name <span class="required-star" aria-hidden="true">*</span></label>
-        <input class="input" name="company_name" minlength="2" required value="<%= prefill ? (prefill.company_name || '') : '' %>" />
+        <input class="input" name="company_name" minlength="2" data-required="1" value="<%= prefill ? (prefill.company_name || '') : '' %>" />
 
         <label>Phone <span class="required-star" aria-hidden="true">*</span></label>
-        <input class="input" name="phone" minlength="6" required value="<%= prefill ? (prefill.phone || '') : '' %>" />
+        <input class="input" name="phone" minlength="6" data-required="1" value="<%= prefill ? (prefill.phone || '') : '' %>" />
 
         <label>Email <span class="required-star" aria-hidden="true">*</span></label>
-        <input class="input" name="email" type="email" required value="<%= prefill ? (prefill.email || '') : '' %>" />
+        <input class="input" name="email" type="email" data-required="1" value="<%= prefill ? (prefill.email || '') : '' %>" />
 
         <h2 class="h2" style="margin-top: 15px;">Delivery address (Malaysia)</h2>
 
         <label>Address line 1 <span class="required-star" aria-hidden="true">*</span></label>
-        <input class="input" name="address_line1" minlength="3" required value="<%= prefill ? (prefill.address_line1 || '') : '' %>" />
+        <input class="input" name="address_line1" minlength="3" data-required="1" value="<%= prefill ? (prefill.address_line1 || '') : '' %>" />
 
         <label>Address line 2 (optional)</label>
         <input class="input" name="address_line2" value="<%= prefill ? (prefill.address_line2 || '') : '' %>" />
 
         <label>City <span class="required-star" aria-hidden="true">*</span></label>
-        <input class="input" name="city" minlength="2" required value="<%= prefill ? (prefill.city || '') : '' %>" />
+        <input class="input" name="city" minlength="2" data-required="1" value="<%= prefill ? (prefill.city || '') : '' %>" />
 
         <label>State <span class="required-star" aria-hidden="true">*</span></label>
-        <select class="input" name="state" id="stateSelect" required>
+        <select class="input" name="state" id="stateSelect" data-required="1">
           <option value="">Select state</option>
           <% (malaysiaStates || []).forEach(s => { %>
             <option value="<%= s %>" <%= (prefill && prefill.state === s ? 'selected' : '') %>><%= s %></option>
@@ -38,7 +38,7 @@
         </select>
 
         <label>Postcode <span class="required-star" aria-hidden="true">*</span></label>
-        <input class="input" name="postcode" inputmode="numeric" pattern="\d{5}" required value="<%= prefill ? (prefill.postcode || '') : '' %>" />
+        <input class="input" name="postcode" inputmode="numeric" pattern="\d{5}" data-required="1" value="<%= prefill ? (prefill.postcode || '') : '' %>" />
 
         <div class="muted small u-mt-6">
           Delivery zone: <strong id="regionLabel"><%= (typeof prefillShippingLabel !== 'undefined' && prefillShippingLabel) ? prefillShippingLabel : '-' %></strong>
@@ -64,7 +64,7 @@
         ></textarea>
 
         <label>Payment method</label>
-        <select name="payment_method" id="paymentMethodSelect" required>
+        <select name="payment_method" id="paymentMethodSelect" data-required="1">
           <% if (canOnlinePay) { %>
             <option value="ONLINE">Online payment</option>
           <% } %>
