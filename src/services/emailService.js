@@ -385,7 +385,7 @@ async function sendOrderReceivedEmail({ order, promo }) {
   const transport = createTransport();
   try {
     await transport.sendMail({
-      from: env.email.from,
+      from: `"AR Vending" <${env.email.from}>`,
       to: notify.to,
       cc: notify.cc || undefined,
       subject: msg.subject,
@@ -421,7 +421,7 @@ async function sendOrderPlacedEmailToCustomer({ order, promo }) {
   const transport = createTransport();
   try {
     await transport.sendMail({
-      from: env.email.from,
+      from: `"AR Vending" <${env.email.from}>`,
       to,
       subject: msg.subject,
       text: msg.text,
@@ -456,7 +456,7 @@ async function sendOrderStatusChangedEmailToCustomer({ order, event, note }) {
   const transport = createTransport();
   try {
     await transport.sendMail({
-      from: env.email.from,
+      from: `"AR Vending" <${env.email.from}>`,
       to,
       subject: msg.subject,
       text: msg.text,
@@ -486,7 +486,7 @@ async function sendPasswordResetEmail({ to, username, resetLink, ttlMinutes }) {
   const transport = createTransport();
   try {
     await transport.sendMail({
-      from: env.email.from,
+      from: `"AR Vending" <${env.email.from}>`,
       to: recipient,
       subject: msg.subject,
       text: msg.text,
@@ -621,7 +621,7 @@ async function sendAdminOrderEventEmail({ order, subject, heading, lines, linkLa
   const transport = createTransport();
   try {
     await transport.sendMail({
-      from: env.email.from,
+      from: `"AR Vending" <${env.email.from}>`,
       to: notify.to,
       cc: notify.cc || undefined,
       subject: msg.subject,
@@ -732,7 +732,7 @@ async function sendAdminPaymentReceivedEmail({ order, note, stockDeducted, stock
   const transport = createTransport();
   try {
     await transport.sendMail({
-      from: env.email.from,
+      from: `"AR Vending" <${env.email.from}>`,
       to: notify.to,
       cc: notify.cc || undefined,
       subject: msg.subject,
@@ -787,7 +787,7 @@ async function sendAdminOfflineSlipUploadedEmail({ order, bankName, referenceNum
   const transport = createTransport();
   try {
     await transport.sendMail({
-      from: env.email.from,
+      from: `"AR Vending" <${env.email.from}>`,
       to: notify.to,
       cc: notify.cc || undefined,
       subject: msg.subject,
@@ -827,7 +827,7 @@ async function sendRefundRequestFailedEmail({ order, toCustomerEmail, itemLabel,
   const transport = createTransport();
   try {
     await transport.sendMail({
-      from: env.email.from,
+      from: `"AR Vending" <${env.email.from}>`,
       to,
       cc: notify.cc || undefined,
       subject: msg.subject,
