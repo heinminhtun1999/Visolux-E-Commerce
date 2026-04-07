@@ -79,6 +79,9 @@
             <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
             <input type="hidden" name="return_to" value="<%= currentUrl || '/' %>" />
             <input class="input footer-input" name="name" placeholder="Name" required maxlength="80" />
+            <input class="input footer-input" name="company_name" placeholder="Company name" required maxlength="120" />
+            <input class="input footer-input" name="email" placeholder="Email" type="email" required maxlength="160" />
+            <input class="input footer-input" name="contact_number" placeholder="Contact number" type="tel" required maxlength="40" />
             <input class="input footer-input" name="subject" placeholder="Subject" required maxlength="160" />
             <textarea class="input footer-input" name="message" placeholder="Message" rows="3" required maxlength="2000"></textarea>
             <div class="footer-form__actions">

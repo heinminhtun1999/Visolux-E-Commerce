@@ -159,6 +159,9 @@ router.post(
     z.object({
       body: z.object({
         name: z.string().trim().min(2).max(80),
+        company_name: z.string().trim().min(2).max(120),
+        email: z.string().trim().email().max(160),
+        contact_number: z.string().trim().min(3).max(40),
         subject: z.string().trim().min(2).max(160),
         message: z.string().trim().min(2).max(2000),
         return_to: z.string().trim().max(500).optional().or(z.literal('')),
@@ -172,6 +175,9 @@ router.post(
       const pageUrl = String(req.get('referer') || '').trim();
       contactMessageRepo.create({
         name: req.validated.body.name,
+        company_name: req.validated.body.company_name,
+        email: req.validated.body.email,
+        contact_number: req.validated.body.contact_number,
         subject: req.validated.body.subject,
         message: req.validated.body.message,
         page_url: pageUrl,

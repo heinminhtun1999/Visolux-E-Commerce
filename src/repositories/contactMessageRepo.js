@@ -6,6 +6,11 @@ function mapRow(r) {
     id: r.id,
     phone: r.phone,
     location: r.location,
+    name: r.phone,
+    subject: r.location,
+    company_name: r.company_name || '',
+    email: r.email || '',
+    contact_number: r.contact_number || '',
     message: r.message,
     page_url: r.page_url,
     ip: r.ip,
@@ -15,15 +20,18 @@ function mapRow(r) {
   };
 }
 
-function create({ phone, location, name, subject, message, page_url, ip, user_agent }) {
+function create({ phone, location, name, subject, company_name, email, contact_number, message, page_url, ip, user_agent }) {
   const db = getDb();
   const stmt = db.prepare(
-    `INSERT INTO contact_messages (phone, location, message, page_url, ip, user_agent)
-     VALUES (@phone, @location, @message, @page_url, @ip, @user_agent)`
+    `INSERT INTO contact_messages (phone, location, company_name, email, contact_number, message, page_url, ip, user_agent)
+     VALUES (@phone, @location, @company_name, @email, @contact_number, @message, @page_url, @ip, @user_agent)`
   );
   const result = stmt.run({
     phone: String((name != null ? name : phone) || '').trim(),
     location: String((subject != null ? subject : location) || '').trim() || null,
+    company_name: String(company_name || '').trim() || null,
+    email: String(email || '').trim() || null,
+    contact_number: String(contact_number || '').trim() || null,
     message: String(message || '').trim(),
     page_url: String(page_url || '').trim() || null,
     ip: String(ip || '').trim() || null,
@@ -58,7 +66,7 @@ function countAdmin({ q, status } = {}) {
 
   const query = String(q || '').trim();
   if (query) {
-    where.push('(phone LIKE @q OR location LIKE @q OR message LIKE @q)');
+    where.push('(phone LIKE @q OR location LIKE @q OR company_name LIKE @q OR email LIKE @q OR contact_number LIKE @q OR message LIKE @q)');
     params.q = `%${query}%`;
   }
 
@@ -77,7 +85,7 @@ function listAdmin({ q, status, limit, offset } = {}) {
 
   const query = String(q || '').trim();
   if (query) {
-    where.push('(phone LIKE @q OR location LIKE @q OR message LIKE @q)');
+    where.push('(phone LIKE @q OR location LIKE @q OR company_name LIKE @q OR email LIKE @q OR contact_number LIKE @q OR message LIKE @q)');
     params.q = `%${query}%`;
   }
 

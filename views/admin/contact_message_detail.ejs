@@ -36,8 +36,35 @@
 
     <div class="col" style="min-width:280px">
       <div class="muted small">Name</div>
-      <% if (message.phone) { %>
-        <div><%= message.phone %></div>
+      <% if (message.name || message.phone) { %>
+        <div><%= message.name || message.phone %></div>
+      <% } else { %>
+        <div class="muted">(not provided)</div>
+      <% } %>
+    </div>
+
+    <div class="col" style="min-width:280px">
+      <div class="muted small">Company</div>
+      <% if (message.company_name) { %>
+        <div><%= message.company_name %></div>
+      <% } else { %>
+        <div class="muted">(not provided)</div>
+      <% } %>
+    </div>
+
+    <div class="col" style="min-width:280px">
+      <div class="muted small">Email</div>
+      <% if (message.email) { %>
+        <div><a href="mailto:<%= message.email %>"><%= message.email %></a></div>
+      <% } else { %>
+        <div class="muted">(not provided)</div>
+      <% } %>
+    </div>
+
+    <div class="col" style="min-width:280px">
+      <div class="muted small">Contact number</div>
+      <% if (message.contact_number) { %>
+        <div><a href="tel:<%= String(message.contact_number).replace(/\s+/g, '') %>"><%= message.contact_number %></a></div>
       <% } else { %>
         <div class="muted">(not provided)</div>
       <% } %>
@@ -45,8 +72,8 @@
 
     <div class="col" style="min-width:280px">
       <div class="muted small">Subject</div>
-      <% if (message.location) { %>
-        <div><%= message.location %></div>
+      <% if (message.subject || message.location) { %>
+        <div><%= message.subject || message.location %></div>
       <% } else { %>
         <div class="muted">(not provided)</div>
       <% } %>

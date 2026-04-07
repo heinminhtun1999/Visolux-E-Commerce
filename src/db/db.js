@@ -537,6 +537,9 @@ function ensureContactMessages(database) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       phone TEXT NOT NULL,
       location TEXT,
+      company_name TEXT,
+      email TEXT,
+      contact_number TEXT,
       message TEXT NOT NULL,
       page_url TEXT,
       ip TEXT,
@@ -546,6 +549,23 @@ function ensureContactMessages(database) {
     )`
   );
   database.exec('CREATE INDEX IF NOT EXISTS idx_contact_messages_status ON contact_messages(is_read, created_at)');
+
+  // Lightweight migration for existing DB files.
+  try {
+    const cols = database.prepare("PRAGMA table_info('contact_messages')").all();
+    const has = (name) => cols.some((c) => c.name === name);
+    if (!has('company_name')) {
+      database.exec('ALTER TABLE contact_messages ADD COLUMN company_name TEXT');
+    }
+    if (!has('email')) {
+      database.exec('ALTER TABLE contact_messages ADD COLUMN email TEXT');
+    }
+    if (!has('contact_number')) {
+      database.exec('ALTER TABLE contact_messages ADD COLUMN contact_number TEXT');
+    }
+  } catch (_) {
+    // ignore
+  }
 }
 
 function ensureCategorySections(database) {
