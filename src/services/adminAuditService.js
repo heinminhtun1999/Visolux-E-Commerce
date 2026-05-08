@@ -36,6 +36,21 @@ function computeFieldChanges({ before = {}, after = {}, fields = [] }) {
     const beforeRaw = before ? before[key] : undefined;
     const afterRaw = after ? after[key] : undefined;
 
+    if (key === 'description_html') {
+      // Special case for description_html: strip tags for comparison and display
+      const beforeNoHtml = beforeRaw ? String(beforeRaw).replace(/<[^>]+>/g, '') : '';
+      const afterNoHtml = afterRaw ? String(afterRaw).replace(/<[^>]+>/g, '') : '';
+      if (beforeNoHtml !== afterNoHtml) {
+        changes.push({
+          field: key,
+          label,
+          before: previewValue(beforeNoHtml),
+          after: previewValue(afterNoHtml),
+        });
+      }
+      continue;
+    }
+
     const beforeCmp = f.compare ? f.compare(beforeRaw) : normalizeForCompare(beforeRaw);
     const afterCmp = f.compare ? f.compare(afterRaw) : normalizeForCompare(afterRaw);
 
@@ -59,12 +74,8 @@ function buildActionSummary({ verb = 'Updated', entityLabel, entityId, changes }
   const subject = entityLabel ? `${entityLabel}${entityId != null ? ` #${entityId}` : ''}` : 'settings';
   if (!changes || !changes.length) return `${verb} ${subject}`;
 
-  const parts = changes
-    .slice(0, 4)
-    .map((c) => `${c.label}: ${c.before || '—'} → ${c.after || '—'}`);
-
-  const more = changes.length > 4 ? ` (+${changes.length - 4} more)` : '';
-  return `${verb} ${subject}: ${parts.join('; ')}${more}`;
+  const fieldsChanged = changes.length === 1 ? '1 field changed' : `${changes.length} fields changed`;
+  return `${verb} ${subject} (${fieldsChanged})`;
 }
 
 function logAdminChange({

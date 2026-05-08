@@ -111,7 +111,7 @@
                     <% } %>
                   </div>
                 <% } else if (metaSafe && metaSafe.body && typeof metaSafe.body === 'object') { %>
-                  <% const bodyEntries = Object.entries(metaSafe.body || {}).filter(([k, v]) => String(k || '').trim()); %>
+                  <% const bodyEntries = Object.entries(metaSafe.body || {}).filter(([k, v]) => String(k || '').trim() && k !== '_csrf'); %>
                   <% if (bodyEntries.length) { %>
                     <div class="muted small" style="margin-top:6px">
                       <% bodyEntries.slice(0, 8).forEach(([k, v]) => { %>
