@@ -39,7 +39,6 @@ jobs:
             mkdir -p "$BK_DIR"
 
             if [ -d "$APP_DIR" ]; then
-              # Code/config backup (excludes node_modules, uploads and DB files)
               tar -czf "$BK_DIR/app_${TS}.tgz" \
                 --exclude='app/.git' \
                 --exclude='app/node_modules' \
@@ -48,16 +47,15 @@ jobs:
                 --exclude='app/storage/data/*.sqlite*' \
                 -C "$BASE" app || true
 
-              # SQLite DB backup (fast copy; keep a few generations)
               if [ -f "$APP_DIR/storage/data/app.db" ]; then
                 cp -f "$APP_DIR/storage/data/app.db" "$BK_DIR/appdb_${TS}.db"
               fi
+
               if [ -f "$APP_DIR/storage/data/sessions.db" ]; then
                 cp -f "$APP_DIR/storage/data/sessions.db" "$BK_DIR/sessions_${TS}.db"
               fi
             fi
 
-            # Retain only the newest 10 backups
             ls -1t "$BK_DIR"/app_*.tgz 2>/dev/null | tail -n +11 | xargs -r rm -f || true
             ls -1t "$BK_DIR"/appdb_*.db 2>/dev/null | tail -n +11 | xargs -r rm -f || true
             ls -1t "$BK_DIR"/sessions_*.db 2>/dev/null | tail -n +11 | xargs -r rm -f || true
@@ -77,75 +75,94 @@ jobs:
             --exclude 'storage/uploads/**' \
             ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ secrets.VPS_PATH }}/app/"
 
-      - name: Install deps + restart (PM2)
+      - name: Install deps + restart (PM2 SAFE MODE)
         run: |
           ssh -p "${{ secrets.VPS_PORT }}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" << 'EOF'
             set -e
+
             cd "${{ secrets.VPS_PATH }}/app"
 
-            node -v
-            npm -v
+            echo "Node: $(node -v)"
+            echo "NPM: $(npm -v)"
 
             npm ci --omit=dev
             node scripts/ensure-storage.js
 
-            if command -v pm2 >/dev/null 2>&1; then
-              # Ensure PM2 log rotation is installed/configured (best-effort).
-              pm2 describe pm2-logrotate >/dev/null 2>&1 || pm2 install pm2-logrotate || true
-              pm2 set pm2-logrotate:max_size 10M || true
-              pm2 set pm2-logrotate:retain 10 || true
-              pm2 set pm2-logrotate:compress true || true
-              pm2 set pm2-logrotate:dateFormat YYYY-MM-DD_HH-mm-ss || true
-
-              pm2 startOrReload ecosystem.config.cjs --env production
-              pm2 save
-
-              # Post-restart health check (no external DNS/HTTPS required).
-              PORT="$(grep -E '^PORT=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d '\r' | tr -d '"' | tr -d "'")"
-              case "$PORT" in
-                ''|*[!0-9]*) PORT=3000 ;;
-              esac
-              echo "Checking /healthz on 127.0.0.1:${PORT}"
-              ok=""
-              for i in $(seq 1 20); do
-                if command -v curl >/dev/null 2>&1; then
-                  if curl -fsS "http://127.0.0.1:${PORT}/healthz" >/dev/null; then ok="yes"; break; fi
-                elif command -v wget >/dev/null 2>&1; then
-                  if wget -qO- "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1; then ok="yes"; break; fi
-                else
-                  if PORT="$PORT" node -e "const http=require('http');const port=Number(process.env.PORT||3000);const req=http.get({host:'127.0.0.1',port,path:'/healthz',timeout:1500},(res)=>{process.exit(res.statusCode===200?0:1)});req.on('timeout',()=>{req.destroy();process.exit(1)});req.on('error',()=>process.exit(1));" >/dev/null 2>&1; then ok="yes"; break; fi
-                fi
-                sleep 1
-              done
-
-              if [ -z "$ok" ]; then
-                echo "Health check failed; showing last logs"
-                pm2 logs visolux --lines 80 --nostream || true
-                exit 1
-              fi
-
-              if command -v curl >/dev/null 2>&1; then
-                curl -fsS "http://127.0.0.1:${PORT}/healthz" | head -c 2000
-                echo ""
-              elif command -v wget >/dev/null 2>&1; then
-                wget -qO- "http://127.0.0.1:${PORT}/healthz" | head -c 2000
-                echo ""
-              else
-                PORT="$PORT" node -e "const http=require('http');const port=Number(process.env.PORT||3000);http.get({host:'127.0.0.1',port,path:'/healthz'},(res)=>{let d='';res.setEncoding('utf8');res.on('data',c=>d+=c);res.on('end',()=>{process.stdout.write(d.slice(0,2000)+'\\n');process.exit(res.statusCode===200?0:1);});}).on('error',(e)=>{console.error(e.message);process.exit(1);});"
-              fi
-
-              # Ensure a daily backup cron job exists (best-effort).
-              # Installs into the current user's crontab.
-              # If cron isn't available, it will warn but not fail the deploy.
-              PROJECT_DIR="${{ secrets.VPS_PATH }}/app" \
-              BACKUPS_DIR="/var/www/visolux_store/backups" \
-              BACKUP_RETENTION_DAYS="7" \
-              CRON_HOUR="23" CRON_MIN="59" \
-              SOFT_FAIL="1" \
-              npm run backup:cron:install || true
-            else
-              echo "pm2 not found on VPS. Install it once: npm i -g pm2"
-              echo "Then run: pm2 startOrReload ecosystem.config.cjs --env production && pm2 save"
+            if ! command -v pm2 >/dev/null 2>&1; then
+              echo "PM2 not installed"
               exit 1
             fi
+
+            # PM2 logrotate safe install
+            pm2 describe pm2-logrotate >/dev/null 2>&1 || pm2 install pm2-logrotate || true
+
+            pm2 set pm2-logrotate:max_size 10M || true
+            pm2 set pm2-logrotate:retain 10 || true
+            pm2 set pm2-logrotate:compress true || true
+
+            # Validate ecosystem BEFORE restart
+            node -c ecosystem.config.cjs
+
+            echo "Starting/Reloading PM2 app..."
+
+            pm2 startOrReload ecosystem.config.cjs --env production
+
+            # 🔥 CRITICAL SAFETY CHECK: ensure app is actually running
+            RUNNING=$(pm2 jlist | node -e "
+              let data='';
+              process.stdin.on('data',c=>data+=c);
+              process.stdin.on('end',()=>{
+                const j=JSON.parse(data||'[]');
+                const ok=j.filter(p=>p.pm2_env && p.pm2_env.status==='online');
+                console.log(ok.length);
+              });
+            ")
+
+            sleep 3
+            RUNNING=$(pm2 jlist | node -e "
+              let data='';
+              process.stdin.on('data',c=>data+=c);
+              process.stdin.on('end',()=>{
+                const j=JSON.parse(data||'[]');
+                const ok=j.filter(p=>p.pm2_env && p.pm2_env.status==='online');
+                console.log(ok.length);
+              });
+            ")
+
+            if [ "$RUNNING" -eq 0 ]; then
+              echo "❌ No PM2 apps running after deploy. Aborting save."
+              pm2 logs --lines 100 || true
+              exit 1
+            fi
+
+            echo "✅ PM2 apps running: $RUNNING"
+
+            pm2 save
+
+            # Health check
+            PORT="$(grep -E '^PORT=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d '\r' | tr -d '"' | tr -d "'")"
+            case "$PORT" in
+              ''|*[!0-9]*) PORT=3000 ;;
+            esac
+
+            echo "Health check on 127.0.0.1:${PORT}/healthz"
+
+            ok=""
+            for i in $(seq 1 20); do
+              if curl -fsS "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1; then
+                ok="yes"
+                break
+              fi
+              sleep 1
+            done
+
+            if [ -z "$ok" ]; then
+              echo "❌ Health check failed"
+              pm2 logs --lines 100 || true
+              exit 1
+            fi
+
+            echo "✅ Health check passed"
+            curl -fsS "http://127.0.0.1:${PORT}/healthz" | head -c 2000
+            echo ""
           EOF
