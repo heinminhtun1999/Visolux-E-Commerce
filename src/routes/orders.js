@@ -539,7 +539,6 @@ router.post(
       // Notify staff about new orders (best-effort; do not block checkout).
       try {
         const promo = orderRepo.getPromoForOrder(order.order_id);
-        await emailService.sendOrderReceivedEmail({ order, promo });
         await emailService.sendOrderPlacedEmailToCustomer({ order, promo });
 
       } catch (e) {

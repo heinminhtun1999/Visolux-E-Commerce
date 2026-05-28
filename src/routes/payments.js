@@ -221,6 +221,18 @@ function processPaymentPayload(payload, source) {
         const updated = orderRepo.getById(orderId);
         const label = updated?.order_code || `#${orderId}`;
 
+        // Staff email for new paid order
+        try {
+          if (updated) {
+            const promo = orderRepo.getPromoForOrder(updated.order_id);
+            emailService.sendOrderReceivedEmail({ order: updated, promo }).catch((e) => {
+              logger.warn({ event: 'paid_order_email_failed', err: e, orderId }, 'failed to send paid order notification email');
+            });
+          }
+        } catch (e) {
+          logger.warn({ event: 'paid_order_email_failed', err: e, orderId }, 'failed to send paid order notification email');
+        }
+
         // Customer email (no staff notification)
         try {
           if (updated) {
