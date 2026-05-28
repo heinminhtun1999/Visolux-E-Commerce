@@ -913,15 +913,8 @@ router.post(
 
       // Staff email notification (best-effort)
       try {
-        Promise.resolve(
-          emailService.sendAdminOfflineSlipUploadedEmail({
-            order,
-            bankName: req.validated.body.bank_name,
-            referenceNumber: req.validated.body.reference_number,
-            slipPath: optimizedPath,
-            isReplacement: Boolean(existing),
-          })
-        ).catch(() => {});
+        const promo = orderRepo.getPromoForOrder(order.order_id);
+        Promise.resolve(emailService.sendOrderReceivedEmail({ order, promo })).catch(() => {});
       } catch (_) {
         // ignore
       }

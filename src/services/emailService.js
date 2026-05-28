@@ -109,8 +109,10 @@ function getPublicBaseUrl() {
 }
 
 function buildOrderEmail({ order, promo, orderLink }) {
-  const orderLabel = order.order_code || `#${order.order_id}`;
-  const categoryNames = getOrderCategoryNames(order);
+  const hydratedOrder = order?.items?.length ? order : order?.order_id ? orderRepo.getWithItems(order.order_id) || order : order;
+  const resolvedOrder = hydratedOrder || order;
+  const orderLabel = resolvedOrder.order_code || `#${resolvedOrder.order_id}`;
+  const categoryNames = getOrderCategoryNames(resolvedOrder);
   const categoriesLine = categoryNames.length ? `Categories: ${categoryNames.join(', ')}` : '';
   const categoriesLabel = categoryNames.join(', ');
   const singleCategoryName = categoryNames.length === 1 ? categoryNames[0] : '';
@@ -120,19 +122,19 @@ function buildOrderEmail({ order, promo, orderLink }) {
   lines.push('');
   lines.push(`Order link: ${orderLink}`);
   lines.push('');
-  lines.push(`Customer: ${order.customer_name}`);
-  lines.push(`Email: ${order.email}`);
-  lines.push(`Phone: ${order.phone}`);
-  lines.push(`Address: ${order.address}`);
+  lines.push(`Customer: ${resolvedOrder.customer_name}`);
+  lines.push(`Email: ${resolvedOrder.email}`);
+  lines.push(`Phone: ${resolvedOrder.phone}`);
+  lines.push(`Address: ${resolvedOrder.address}`);
   if (categoriesLine) lines.push(categoriesLine);
   lines.push('');
-  lines.push(`Payment method: ${paymentDisplay.paymentSummaryLabel(order)}`);
-  lines.push(`Payment status: ${order.payment_status}`);
-  lines.push(`Fulfilment status: ${order.fulfilment_status}`);
-  lines.push(`Created: ${formatDateTime(order.created_at)}`);
+  lines.push(`Payment method: ${paymentDisplay.paymentSummaryLabel(resolvedOrder)}`);
+  lines.push(`Payment status: ${resolvedOrder.payment_status}`);
+  lines.push(`Fulfilment status: ${resolvedOrder.fulfilment_status}`);
+  lines.push(`Created: ${formatDateTime(resolvedOrder.created_at)}`);
   lines.push('');
   lines.push('Items:');
-  for (const it of order.items || []) {
+  for (const it of resolvedOrder.items || []) {
     lines.push(`- ${it.product_name_snapshot} x${it.quantity} @ ${formatMoney(it.price_snapshot)} = ${formatMoney(it.subtotal)}`);
   }
   lines.push('');
@@ -144,11 +146,11 @@ function buildOrderEmail({ order, promo, orderLink }) {
     }
     lines.push(`Discount: ${formatMoney(promo.discount_amount)}`);
   }
-  lines.push(`Total: ${formatMoney(order.total_amount)}`);
+  lines.push(`Total: ${formatMoney(resolvedOrder.total_amount)}`);
 
   const text = lines.join('\n');
 
-  const itemsHtml = (order.items || [])
+  const itemsHtml = (resolvedOrder.items || [])
     .map(
       (it) =>
         `<tr>
@@ -171,15 +173,15 @@ function buildOrderEmail({ order, promo, orderLink }) {
       <p style="margin:0 0 12px"><a href="${escapeHtml(orderLink)}">View order</a></p>
 
       <h3 style="margin:16px 0 6px">Customer</h3>
-      <div>${escapeHtml(order.customer_name)}</div>
-      <div>${escapeHtml(order.email)} • ${escapeHtml(order.phone)}</div>
-      <div style="margin-top:6px">${escapeHtml(order.address)}</div>
+      <div>${escapeHtml(resolvedOrder.customer_name)}</div>
+      <div>${escapeHtml(resolvedOrder.email)} • ${escapeHtml(resolvedOrder.phone)}</div>
+      <div style="margin-top:6px">${escapeHtml(resolvedOrder.address)}</div>
       ${categoriesLine ? `<div style="margin-top:6px"><strong>Categories:</strong> ${escapeHtml(categoriesLabel)}</div>` : ''}
 
       <h3 style="margin:16px 0 6px">Status</h3>
-      <div><strong>Payment:</strong> ${escapeHtml(order.payment_status)} (${escapeHtml(paymentDisplay.paymentSummaryLabel(order))})</div>
-      <div><strong>Fulfilment:</strong> ${escapeHtml(order.fulfilment_status)}</div>
-      <div><strong>Created:</strong> ${escapeHtml(formatDateTime(order.created_at))}</div>
+      <div><strong>Payment:</strong> ${escapeHtml(resolvedOrder.payment_status)} (${escapeHtml(paymentDisplay.paymentSummaryLabel(resolvedOrder))})</div>
+      <div><strong>Fulfilment:</strong> ${escapeHtml(resolvedOrder.fulfilment_status)}</div>
+      <div><strong>Created:</strong> ${escapeHtml(formatDateTime(resolvedOrder.created_at))}</div>
 
       <h3 style="margin:16px 0 6px">Items</h3>
       <table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse; width:100%; max-width:760px">
@@ -198,7 +200,7 @@ function buildOrderEmail({ order, promo, orderLink }) {
 
       ${promoHtml}
 
-      <p style="margin-top:12px"><strong>Total:</strong> ${escapeHtml(formatMoney(order.total_amount))}</p>
+      <p style="margin-top:12px"><strong>Total:</strong> ${escapeHtml(formatMoney(resolvedOrder.total_amount))}</p>
     </div>
   `;
 
