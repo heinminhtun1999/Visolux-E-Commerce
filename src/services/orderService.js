@@ -284,6 +284,7 @@ function markOrderPaidAndDeductStock({ orderId, note, actor }) {
           stockError: result.stockError,
         })
       ).catch(() => {});
+
     }
   } catch (_) {
     // ignore

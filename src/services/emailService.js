@@ -701,18 +701,39 @@ async function sendAdminPaymentReceivedEmail({ order, note, stockDeducted, stock
   if (!order || !order.order_id) return { sent: false, reason: 'missing_order' };
 
   const notify = getAdminNotifyConfig();
-  const orderLabel = order.order_code || `#${order.order_id}`;
-  const categoryNames = getOrderCategoryNames(order);
+  const hydratedOrder = order?.items?.length ? order : order?.order_id ? orderRepo.getWithItems(order.order_id) || order : order;
+  const resolvedOrder = hydratedOrder || order;
+  const orderLabel = resolvedOrder.order_code || `#${resolvedOrder.order_id}`;
+  const categoryNames = getOrderCategoryNames(resolvedOrder);
   const categoriesLine = categoryNames.length ? `Categories: ${categoryNames.join(', ')}` : '';
   const singleCategoryName = categoryNames.length === 1 ? categoryNames[0] : '';
-  const adminLink = `${getPublicBaseUrl()}/admin/orders/${order.order_id}`;
+  const adminLink = `${getPublicBaseUrl()}/admin/orders/${resolvedOrder.order_id}`;
+  const promo = orderRepo.getPromoForOrder(resolvedOrder.order_id);
 
   const lines = [];
   lines.push(`Order: ${orderLabel}`);
-  lines.push(`Customer: ${order.customer_name || '-'}`);
+  lines.push(`Customer: ${resolvedOrder.customer_name || '-'}`);
+  lines.push(`Email: ${resolvedOrder.email || '-'}`);
+  lines.push(`Phone: ${resolvedOrder.phone || '-'}`);
+  lines.push(`Address: ${resolvedOrder.address || '-'}`);
   if (categoriesLine) lines.push(categoriesLine);
-  lines.push(`Payment: ${order.payment_status || '-'} (${paymentDisplay.paymentSummaryLabel(order)})`);
-  lines.push(`Fulfilment: ${order.fulfilment_status || '-'}`);
+  lines.push(`Payment method: ${paymentDisplay.paymentSummaryLabel(resolvedOrder)}`);
+  lines.push(`Payment status: ${resolvedOrder.payment_status || '-'}`);
+  lines.push(`Fulfilment status: ${resolvedOrder.fulfilment_status || '-'}`);
+  lines.push(`Created: ${formatDateTime(resolvedOrder.created_at)}`);
+  lines.push('Items:');
+  for (const it of resolvedOrder.items || []) {
+    lines.push(`- ${it.product_name_snapshot} x${it.quantity} @ ${formatMoney(it.price_snapshot)} = ${formatMoney(it.subtotal)}`);
+  }
+  if (promo) {
+    if (Number(promo.percent_off || 0) > 0) {
+      lines.push(`Promo: ${promo.code} (-${promo.percent_off}%)`);
+    } else {
+      lines.push(`Promo: ${promo.code}`);
+    }
+    lines.push(`Discount: ${formatMoney(promo.discount_amount)}`);
+  }
+  lines.push(`Total: ${formatMoney(resolvedOrder.total_amount)}`);
   const safeNote = paymentDisplay.sanitizeStatusHistoryNote(note);
   if (safeNote) lines.push(`Note: ${safeNote}`);
   if (stockDeducted === false) {
@@ -723,13 +744,63 @@ async function sendAdminPaymentReceivedEmail({ order, note, stockDeducted, stock
     ? `Payment received ${singleCategoryName} - ${orderLabel}`
     : `Payment received – ${orderLabel}`;
 
-  const msg = buildAdminEventEmail({
-    subject,
-    heading: `Payment received for ${orderLabel}`,
-    lines,
-    linkUrl: adminLink,
-    linkLabel: 'View order',
-  });
+  const text = lines.join('\n');
+
+  const itemsHtml = (resolvedOrder.items || [])
+    .map(
+      (it) =>
+        `<tr>
+          <td>${escapeHtml(it.product_name_snapshot)}</td>
+          <td style="text-align:right">${escapeHtml(String(it.quantity))}</td>
+          <td style="text-align:right">${escapeHtml(formatMoney(it.price_snapshot))}</td>
+          <td style="text-align:right">${escapeHtml(formatMoney(it.subtotal))}</td>
+        </tr>`
+    )
+    .join('');
+
+  const promoHtml = promo
+    ? `<p><strong>Promo:</strong> ${escapeHtml(promo.code)}${Number(promo.percent_off || 0) > 0 ? ` (-${escapeHtml(String(promo.percent_off))}%)` : ''}<br/>
+      <strong>Discount:</strong> ${escapeHtml(formatMoney(promo.discount_amount))}</p>`
+    : '';
+
+  const html = `
+    <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; line-height:1.4">
+      <h2 style="margin:0 0 8px">Payment received: ${escapeHtml(orderLabel)}</h2>
+      <p style="margin:0 0 12px"><a href="${escapeHtml(adminLink)}">View order</a></p>
+
+      <h3 style="margin:16px 0 6px">Customer</h3>
+      <div>${escapeHtml(resolvedOrder.customer_name || '-')}</div>
+      <div>${escapeHtml(resolvedOrder.email || '-')}${resolvedOrder.phone ? ` • ${escapeHtml(resolvedOrder.phone)}` : ''}</div>
+      <div style="margin-top:6px">${escapeHtml(resolvedOrder.address || '-')}</div>
+      ${categoriesLine ? `<div style="margin-top:6px"><strong>Categories:</strong> ${escapeHtml(categoryNames.join(', '))}</div>` : ''}
+
+      <h3 style="margin:16px 0 6px">Status</h3>
+      <div><strong>Payment:</strong> ${escapeHtml(resolvedOrder.payment_status || '-')} (${escapeHtml(paymentDisplay.paymentSummaryLabel(resolvedOrder))})</div>
+      <div><strong>Fulfilment:</strong> ${escapeHtml(resolvedOrder.fulfilment_status || '-')}</div>
+      <div><strong>Created:</strong> ${escapeHtml(formatDateTime(resolvedOrder.created_at))}</div>
+      ${safeNote ? `<div><strong>Note:</strong> ${escapeHtml(safeNote)}</div>` : ''}
+      ${stockDeducted === false ? `<div><strong>Stock:</strong> NOT deducted${stockError ? ` (${escapeHtml(String(stockError).trim())})` : ''}</div>` : ''}
+
+      <h3 style="margin:16px 0 6px">Items</h3>
+      <table cellpadding="6" cellspacing="0" border="1" style="border-collapse:collapse; width:100%; max-width:760px">
+        <thead>
+          <tr>
+            <th align="left">Item</th>
+            <th align="right">Qty</th>
+            <th align="right">Price</th>
+            <th align="right">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+
+      ${promoHtml}
+
+      <p style="margin-top:12px"><strong>Total:</strong> ${escapeHtml(formatMoney(resolvedOrder.total_amount))}</p>
+    </div>
+  `;
 
   const transport = createTransport();
   try {
@@ -737,9 +808,9 @@ async function sendAdminPaymentReceivedEmail({ order, note, stockDeducted, stock
       from: `"AR Vending" <${env.email.from}>`,
       to: notify.to,
       cc: notify.cc || undefined,
-      subject: msg.subject,
-      text: msg.text,
-      html: msg.html,
+      subject,
+      text,
+      html,
     });
     return { sent: true };
   } finally {
