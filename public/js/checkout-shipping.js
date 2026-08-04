@@ -9,6 +9,8 @@
 
   const stateSelect = $('stateSelect');
   const postcodeInput = document.querySelector('input[name="postcode"]');
+   const fulfillmentRadios = document.querySelectorAll('input[name="fulfillment_method"]');
+   const deliveryAddressSection = document.getElementById('deliveryAddressSection');
   const regionLabel = $('regionLabel');
   const shippingMsg = $('shippingMessage');
   const shippingFeeEl = $('shippingFee');
@@ -118,8 +120,26 @@
   }
 
   async function requestQuote() {
-    const state = stateSelect ? stateSelect.value : '';
-    const postcode = postcodeInput ? String(postcodeInput.value || '').trim() : '';
+     const isPickup = Array.from(fulfillmentRadios || []).some(r => r.checked && String(r.value) === 'PICKUP');
+     if (isPickup) {
+       if (regionLabel) regionLabel.textContent = 'Self pickup';
+       setInlineMessage('', false);
+       const shipping = 0;
+       const discount = 0;
+       const preDiscount = itemsTotalCents;
+       const grand = itemsTotalCents;
+       if (totalsEl && totalsEl.dataset) totalsEl.dataset.discountCents = String(0);
+       if (shippingFeeEl) shippingFeeEl.textContent = formatMoneyCents(shipping);
+       if (preDiscountEl) preDiscountEl.textContent = formatMoneyCents(preDiscount);
+       if (discountEl) discountEl.textContent = formatMoneyCents(discount);
+       if (grandTotalEl) grandTotalEl.textContent = formatMoneyCents(grand);
+       lastShippingOk = true;
+       updatePlaceOrderEnabled();
+       return;
+     }
+
+     const state = stateSelect ? stateSelect.value : '';
+     const postcode = postcodeInput ? String(postcodeInput.value || '').trim() : '';
 
     if (!state || !postcode || postcode.length < 5) {
       if (regionLabel) regionLabel.textContent = '-';
@@ -230,10 +250,39 @@
     if (offlineAccountName) offlineAccountName.textContent = accountName || '-';
   }
 
-  if (stateSelect) stateSelect.addEventListener('change', requestQuote);
+  function updateFulfillmentDisplay() {
+    const isPickup = Array.from(fulfillmentRadios || []).some(r => r.checked && String(r.value) === 'PICKUP');
+    if (deliveryAddressSection) deliveryAddressSection.style.display = isPickup ? 'none' : 'block';
+
+    // Toggle required attributes for address fields when pickup selected.
+    const addrFields = deliveryAddressSection ? Array.from(deliveryAddressSection.querySelectorAll('input,select,textarea')) : [];
+    for (const f of addrFields) {
+      if (isPickup) {
+        f.disabled = true;
+        if (f.dataset) f.dataset.required = '0';
+        f.removeAttribute('required');
+      } else {
+        f.disabled = false;
+        if (f.dataset && String(f.name || '').length) {
+          // restore required flag only for those that had data-required in markup
+          if (String(f.getAttribute('data-required') || '') === '1' || f.name === 'address_line1' || f.name === 'city' || f.name === 'postcode' || f.name === 'state') {
+            f.dataset.required = '1';
+          }
+        }
+      }
+    }
+
+    // When switched, recalc quote/display
+    requestQuote();
+  }
+
+   if (stateSelect) stateSelect.addEventListener('change', requestQuote);
   if (postcodeInput) postcodeInput.addEventListener('input', function () {
     if (String(postcodeInput.value || '').trim().length >= 5) requestQuote();
   });
+   if (fulfillmentRadios && fulfillmentRadios.length) {
+     for (const r of fulfillmentRadios) r.addEventListener('change', updateFulfillmentDisplay);
+   }
   if (paymentSelect) paymentSelect.addEventListener('change', updatePaymentDetails);
   if (bankSelect) bankSelect.addEventListener('change', updateOfflineBankSnapshot);
 
@@ -273,4 +322,5 @@
   requestQuote();
   updatePaymentDetails();
   updateOfflineBankSnapshot();
+   updateFulfillmentDisplay();
 })();

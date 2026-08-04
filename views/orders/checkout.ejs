@@ -18,7 +18,15 @@
         <label>Email <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="email" type="email" data-required="1" value="<%= prefill ? (prefill.email || '') : '' %>" />
 
-        <h2 class="h2" style="margin-top: 15px;">Delivery address (Malaysia)</h2>
+        <h2 class="h2" style="margin-top: 15px;">Delivery method</h2>
+
+        <div class="row row--tight">
+          <label class="radio"><input type="radio" name="fulfillment_method" value="DELIVERY" checked /> Delivery</label>
+          <label class="radio" style="margin-left:12px"><input type="radio" name="fulfillment_method" value="PICKUP" /> Self pickup (no delivery charge)</label>
+        </div>
+
+        <div id="deliveryAddressSection">
+          <h2 class="h2" style="margin-top: 15px;">Delivery address (Malaysia)</h2>
 
         <label>Address line 1 <span class="required-star" aria-hidden="true">*</span></label>
         <input class="input" name="address_line1" minlength="3" data-required="1" value="<%= prefill ? (prefill.address_line1 || '') : '' %>" />
@@ -43,6 +51,7 @@
         <div class="muted small u-mt-6">
           Delivery zone: <strong id="regionLabel"><%= (typeof prefillShippingLabel !== 'undefined' && prefillShippingLabel) ? prefillShippingLabel : '-' %></strong>
           <span id="shippingMessage" class="muted shipping-message"></span>
+        </div>
         </div>
 
         <label>Promo code (optional)</label>

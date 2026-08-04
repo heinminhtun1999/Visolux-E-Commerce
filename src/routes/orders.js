@@ -440,20 +440,21 @@ router.post(
   validate(
     z.object({
       body: z.object({
-        customer_name: z.string().trim().min(2).max(128),
-        company_name: z.string().trim().min(2).max(200),
-        phone: z.string().trim().min(6).max(32),
-        email: z.string().trim().email().max(128),
-        address_line1: z.string().trim().min(3).max(200),
-        address_line2: z.string().trim().max(200).optional().or(z.literal('')),
-        city: z.string().trim().min(2).max(100),
-        state: z.enum(MALAYSIA_STATES),
-        postcode: z.string().trim().regex(/^\d{5}$/),
-        promo_code: z.string().trim().max(32).optional().or(z.literal('')),
-        customer_note: z.string().trim().max(500).optional().or(z.literal('')),
-        payment_method: z.enum(['ONLINE', 'OFFLINE_TRANSFER']),
-        offline_transfer_bank_id: z.string().trim().max(128).optional().or(z.literal('')),
-      }),
+          fulfillment_method: z.enum(['DELIVERY', 'PICKUP']).optional().or(z.literal('DELIVERY')),
+          customer_name: z.string().trim().min(2).max(128),
+          company_name: z.string().trim().min(2).max(200),
+          phone: z.string().trim().min(6).max(32),
+          email: z.string().trim().email().max(128),
+          address_line1: z.string().trim().min(3).max(200).optional().or(z.literal('')),
+          address_line2: z.string().trim().max(200).optional().or(z.literal('')),
+          city: z.string().trim().min(2).max(100).optional().or(z.literal('')),
+          state: z.enum(MALAYSIA_STATES).optional().or(z.literal('')),
+          postcode: z.string().trim().regex(/^\d{5}$/).optional().or(z.literal('')),
+          promo_code: z.string().trim().max(32).optional().or(z.literal('')),
+          customer_note: z.string().trim().max(500).optional().or(z.literal('')),
+          payment_method: z.enum(['ONLINE', 'OFFLINE_TRANSFER']),
+          offline_transfer_bank_id: z.string().trim().max(128).optional().or(z.literal('')),
+        }),
       query: z.any().optional(),
       params: z.any().optional(),
     })
@@ -481,6 +482,8 @@ router.post(
         customer_note: req.validated.body.customer_note,
       };
 
+      const fulfillmentMethod = String(req.validated.body.fulfillment_method || 'DELIVERY');
+
       let offline_transfer_recipient = null;
       if (req.validated.body.payment_method === 'OFFLINE_TRANSFER') {
         const banks = offlineTransferService.getBanksForCheckout();
@@ -498,13 +501,17 @@ router.post(
         }
       }
 
-      customer.address = buildMalaysiaFullAddress({
-        line1: customer.address_line1,
-        line2: customer.address_line2,
-        city: customer.city,
-        state: customer.state,
-        postcode: customer.postcode,
-      });
+      if (fulfillmentMethod === 'DELIVERY') {
+        customer.address = buildMalaysiaFullAddress({
+          line1: customer.address_line1,
+          line2: customer.address_line2,
+          city: customer.city,
+          state: customer.state,
+          postcode: customer.postcode,
+        });
+      } else {
+        customer.address = '';
+      }
 
       let online_payment_snapshot = null;
       if (req.validated.body.payment_method === 'ONLINE') {
@@ -531,6 +538,7 @@ router.post(
         customer,
         cartItems: hydrated.items,
         promoCode: req.validated.body.promo_code,
+        fulfillment_method: fulfillmentMethod,
         payment_method: req.validated.body.payment_method,
         offline_transfer_recipient,
         online_payment_snapshot,

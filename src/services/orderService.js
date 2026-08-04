@@ -87,6 +87,7 @@ function placeOrder({
   payment_method,
   offline_transfer_recipient,
   online_payment_snapshot,
+  fulfillment_method,
 }) {
   if (!user || !Number.isFinite(Number(user.user_id)) || Number(user.user_id) <= 0) {
     const err = new Error('Sign in required to place an order.');
@@ -98,26 +99,33 @@ function placeOrder({
 
   const totalWeightKg = computeTotalWeightKgFromCartItems(cartItems);
 
-  const deliveryRegion = getMalaysiaRegionForState(customer?.state);
-  if (!deliveryRegion) {
-    const err = new Error('Delivery state is required.');
-    err.status = 400;
-    throw err;
+  const isPickup = String(fulfillment_method || '').toUpperCase() === 'PICKUP';
+  let deliveryRegion = null;
+  let deliveryZoneName = '';
+  let shippingFeeCents = 0;
+
+  if (!isPickup) {
+    deliveryRegion = getMalaysiaRegionForState(customer?.state);
+    if (!deliveryRegion) {
+      const err = new Error('Delivery state is required.');
+      err.status = 400;
+      throw err;
+    }
+    const shippingQuote = shippingService.quoteShippingCents({
+      state: customer.state,
+      postcode: customer.postcode,
+      weightKg: totalWeightKg,
+    });
+    if (shippingQuote && shippingQuote.noMatch) {
+      const err = new Error('Shipping is not available for the selected delivery address.');
+      err.status = 400;
+      throw err;
+    }
+    deliveryZoneName = shippingQuote && shippingQuote.zone && shippingQuote.zone.name
+      ? String(shippingQuote.zone.name).trim()
+      : '';
+    shippingFeeCents = Number(shippingQuote?.shippingCents || 0);
   }
-  const shippingQuote = shippingService.quoteShippingCents({
-    state: customer.state,
-    postcode: customer.postcode,
-    weightKg: totalWeightKg,
-  });
-  if (shippingQuote && shippingQuote.noMatch) {
-    const err = new Error('Shipping is not available for the selected delivery address.');
-    err.status = 400;
-    throw err;
-  }
-  const deliveryZoneName = shippingQuote && shippingQuote.zone && shippingQuote.zone.name
-    ? String(shippingQuote.zone.name).trim()
-    : '';
-  const shippingFeeCents = Number(shippingQuote?.shippingCents || 0);
   const preDiscountGrandTotal = Math.max(0, built.subtotal + shippingFeeCents);
 
   let promo = null;
