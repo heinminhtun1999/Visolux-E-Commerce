@@ -12,6 +12,7 @@
     <button class="btn" type="button" data-href="/admin/categories">Categories</button>
     <button class="btn" type="button" data-href="/admin/settings/payment">Payment</button>
     <button class="btn" type="button" data-href="#branding">Branding</button>
+    <button class="btn" type="button" data-href="#self-pickup">Self pickup</button>
     <button class="btn" type="button" data-href="#shipping">Shipping</button>
     <button class="btn" type="button" data-href="#email-notifications">Email notifications</button>
     <button class="btn" type="button" data-href="#inventory">Inventory</button>
@@ -57,6 +58,25 @@
 
     <div class="row" style="justify-content:flex-end; margin-top:14px">
       <button class="btn btn-primary" type="submit">Save Branding</button>
+    </div>
+  </form>
+</section>
+
+<section id="self-pickup" class="card" style="padding:14px; margin-top:12px">
+  <h2 class="h2" style="margin-top:0">Self pickup</h2>
+  <div class="muted small">Enable or disable the self pickup delivery method during checkout.</div>
+
+  <form method="post" action="/admin/site/self-pickup" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <label style="display:flex; gap:8px; align-items:center">
+      <input type="checkbox" name="self_pickup_enabled" value="1" <%= selfPickupEnabled ? 'checked' : '' %> />
+      <span>Enable self pickup in checkout</span>
+    </label>
+    <div class="muted small" style="margin-top:6px">When disabled, customers can only place delivery orders.</div>
+
+    <div class="row" style="justify-content:flex-end; margin-top:14px">
+      <button class="btn btn-primary" type="submit">Save Self Pickup</button>
     </div>
   </form>
 </section>

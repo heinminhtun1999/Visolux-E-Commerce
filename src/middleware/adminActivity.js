@@ -45,6 +45,7 @@ function adminActionFromRequest(req) {
   if (method === 'POST' && rel === '/site/fiuu-accounts') return 'Updated Fiuu payment gateway configuration';
   if (method === 'POST' && rel === '/site/offline-transfer-banks') return 'Updated offline transfer bank accounts';
   if (method === 'POST' && rel === '/site/inventory') return 'Updated inventory settings';
+  if (method === 'POST' && rel === '/site/self-pickup') return 'Updated self pickup settings';
   if (method === 'POST' && rel === '/site/footer-pages') return 'Updated footer pages';
   if (method === 'POST' && rel === '/site/promo') return 'Updated promo settings';
 

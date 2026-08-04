@@ -52,6 +52,7 @@ function initializeSchema(database) {
   ensureUsersLocalPasswordSet(database);
   bootstrapSuperAdminsFromEnv(database);
   ensureSiteSettings(database);
+  ensureDefaultSiteSettings(database);
   ensureOrdersOrderCode(database);
   ensureOrdersRefundStatus(database);
   ensureOrdersDeliveryAddressColumns(database);
@@ -943,6 +944,13 @@ function ensureSiteSettings(database) {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`
   );
+}
+
+function ensureDefaultSiteSettings(database) {
+  database.prepare(
+    `INSERT OR IGNORE INTO site_settings (key, value, updated_at)
+     VALUES ('orders.self_pickup.enabled', '0', datetime('now'))`
+  ).run();
 }
 
 function ensureUsersPasswordReset(database) {

@@ -824,6 +824,7 @@ router.get('/promos', (req, res) => {
 
 router.get('/settings', (req, res) => {
   const siteLogoUrl = settingsRepo.get('site.logo.image', '');
+  const selfPickupEnabled = String(settingsRepo.get('orders.self_pickup.enabled', '0') || '').trim() === '1';
 
   const technicianSupportUrl = settingsRepo.get('site.footer.technician_support_url', '');
   const footerCopyright = settingsRepo.get('site.footer.copyright', '');
@@ -854,6 +855,7 @@ router.get('/settings', (req, res) => {
   return res.render('admin/settings', {
     title: 'Admin – Settings',
     siteLogoUrl,
+    selfPickupEnabled,
     technicianSupportUrl,
     footerCopyright,
     contactPhone,
@@ -1460,6 +1462,52 @@ router.post(
 
       req.session.flash = { type: 'success', message: 'Inventory settings saved.' };
       return res.redirect('/admin/settings#inventory');
+    } catch (e) {
+      return next(e);
+    }
+  }
+);
+
+router.post(
+  '/site/self-pickup',
+  csrfProtection({ ignoreMultipart: true }),
+  validate(
+    z.object({
+      body: z
+        .object({
+          self_pickup_enabled: z.string().trim().optional().or(z.literal('')),
+        })
+        .passthrough(),
+      query: z.any().optional(),
+      params: z.any().optional(),
+    })
+  ),
+  (req, res, next) => {
+    try {
+      const before = String(settingsRepo.get('orders.self_pickup.enabled', '0') || '').trim() === '1';
+      const enabled = String(req.validated.body.self_pickup_enabled || '').trim() === '1';
+
+      settingsRepo.set('orders.self_pickup.enabled', enabled ? '1' : '0');
+
+      const changes = computeFieldChanges({
+        before: { self_pickup_enabled: before ? '1' : '0' },
+        after: { self_pickup_enabled: enabled ? '1' : '0' },
+        fields: [{ key: 'self_pickup_enabled', label: 'Self pickup' }],
+      });
+      if (changes.length) {
+        logAdminChange({
+          req,
+          verb: 'Updated',
+          entity: 'settings',
+          entityLabel: 'Self pickup',
+          entityId: null,
+          changes,
+          meta: { area: 'self_pickup' },
+        });
+      }
+
+      req.session.flash = { type: 'success', message: 'Self pickup setting saved.' };
+      return res.redirect('/admin/settings#self-pickup');
     } catch (e) {
       return next(e);
     }

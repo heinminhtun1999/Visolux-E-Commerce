@@ -22,7 +22,13 @@
 
         <div class="row row--tight">
           <label class="radio"><input type="radio" name="fulfillment_method" value="DELIVERY" checked /> Delivery</label>
-          <label class="radio" style="margin-left:12px"><input type="radio" name="fulfillment_method" value="PICKUP" /> Self pickup (no delivery charge)</label>
+          
+          <% if (selfPickupEnabled) { %>
+            <label class="radio" style="margin-left:12px">
+              <input type="radio" name="fulfillment_method" value="PICKUP" <%= selfPickupEnabled ? '' : 'disabled' %> />
+              Self pickup (no delivery charge)
+            </label>
+          <% } %>
         </div>
 
         <div id="deliveryAddressSection">

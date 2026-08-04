@@ -30,6 +30,7 @@ const fiuuAccountsService = require('../services/fiuuAccountsService');
 const { logger } = require('../utils/logger');
 const paymentDisplay = require('../utils/paymentDisplay');
 const categoryRepo = require('../repositories/categoryRepo');
+const settingsRepo = require('../repositories/settingsRepo');
 
 const router = express.Router();
 
@@ -135,6 +136,10 @@ function requireCustomerOrderAccess(req, res, order) {
   return true;
 }
 
+function isSelfPickupEnabled() {
+  return String(settingsRepo.get('orders.self_pickup.enabled', '0') || '').trim() === '1';
+}
+
 router.get('/checkout', requireUser, async (req, res) => {
   if (req.session.user?.isAdmin) {
     req.session.flash = { type: 'error', message: 'Admin accounts are not allowed to place orders.' };
@@ -195,6 +200,7 @@ router.get('/checkout', requireUser, async (req, res) => {
     : '-';
 
   const offlineTransferBanks = offlineTransferService.getBanksForCheckout();
+  const selfPickupEnabled = isSelfPickupEnabled();
 
   // Validate FIUU account mapping at render-time too (mapping can change after items were added to cart).
   let onlinePayWarning = '';
@@ -247,6 +253,7 @@ router.get('/checkout', requireUser, async (req, res) => {
     prefillShippingLabel,
     totalWeightKg,
     offlineTransferBanks,
+    selfPickupEnabled,
   });
 });
 
@@ -483,6 +490,12 @@ router.post(
       };
 
       const fulfillmentMethod = String(req.validated.body.fulfillment_method || 'DELIVERY');
+      const selfPickupEnabled = isSelfPickupEnabled();
+
+      if (fulfillmentMethod === 'PICKUP' && !selfPickupEnabled) {
+        req.session.flash = { type: 'error', message: 'Self pickup is currently disabled.' };
+        return res.redirect('/checkout');
+      }
 
       let offline_transfer_recipient = null;
       if (req.validated.body.payment_method === 'OFFLINE_TRANSFER') {
@@ -653,6 +666,11 @@ router.post(
       if (e && (e.status === 400 || e.status === 422) && String(e.message || '').toLowerCase().includes('cart is empty')) {
         req.session.flash = { type: 'error', message: 'Your cart is empty.' };
         return res.redirect('/cart');
+      }
+
+      if (e && e.status === 400 && String(e.message || '').toLowerCase().includes('pickup')) {
+        req.session.flash = { type: 'error', message: String(e.message || 'Self pickup is currently disabled.') };
+        return res.redirect('/checkout');
       }
 
       if (e && e.status === 400 && String(e.message || '').toLowerCase().includes('shipping')) {

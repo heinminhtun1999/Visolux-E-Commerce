@@ -29,6 +29,7 @@
 
   const form = document.getElementById('checkoutForm');
   const formMsg = $('checkoutFormMessage');
+  const selfPickupEnabled = Boolean(document.querySelector('input[name="fulfillment_method"][value="PICKUP"]:not(:disabled)'));
 
   let quoteInFlight = false;
   let lastShippingOk = false;
@@ -120,7 +121,7 @@
   }
 
   async function requestQuote() {
-     const isPickup = Array.from(fulfillmentRadios || []).some(r => r.checked && String(r.value) === 'PICKUP');
+      const isPickup = selfPickupEnabled && Array.from(fulfillmentRadios || []).some(r => r.checked && String(r.value) === 'PICKUP');
      if (isPickup) {
        if (regionLabel) regionLabel.textContent = 'Self pickup';
        setInlineMessage('', false);
@@ -251,7 +252,7 @@
   }
 
   function updateFulfillmentDisplay() {
-    const isPickup = Array.from(fulfillmentRadios || []).some(r => r.checked && String(r.value) === 'PICKUP');
+    const isPickup = selfPickupEnabled && Array.from(fulfillmentRadios || []).some(r => r.checked && String(r.value) === 'PICKUP');
     if (deliveryAddressSection) deliveryAddressSection.style.display = isPickup ? 'none' : 'block';
 
     // Toggle required attributes for address fields when pickup selected.

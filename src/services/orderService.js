@@ -8,6 +8,7 @@ const { getMalaysiaRegionForState } = require('../utils/malaysia');
 const shippingService = require('./shippingService');
 const promoService = require('./promoService');
 const { normalizeProductType } = require('../utils/productTypes');
+const settingsRepo = require('../repositories/settingsRepo');
 
 class StockInsufficientError extends Error {
   constructor(message) {
@@ -79,6 +80,10 @@ function computeTotalWeightKgFromCartItems(cartItems) {
   return Math.max(0, total);
 }
 
+function isSelfPickupEnabled() {
+  return String(settingsRepo.get('orders.self_pickup.enabled', '0') || '').trim() === '1';
+}
+
 function placeOrder({
   user,
   customer,
@@ -100,6 +105,11 @@ function placeOrder({
   const totalWeightKg = computeTotalWeightKgFromCartItems(cartItems);
 
   const isPickup = String(fulfillment_method || '').toUpperCase() === 'PICKUP';
+  if (isPickup && !isSelfPickupEnabled()) {
+    const err = new Error('Self pickup is currently disabled.');
+    err.status = 400;
+    throw err;
+  }
   let deliveryRegion = null;
   let deliveryZoneName = '';
   let shippingFeeCents = 0;
